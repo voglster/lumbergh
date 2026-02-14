@@ -17,6 +17,10 @@ from routers import notes
 class SendInput(BaseModel):
     text: str
 
+
+class CommitInput(BaseModel):
+    message: str
+
 app = FastAPI(title="Lumbergh", description="Tmux session supervisor")
 app.include_router(notes.router)
 
@@ -169,6 +173,49 @@ async def git_diff():
                             pass  # Skip files that can't be read
 
         return {"files": files, "stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/git/commit")
+async def git_commit(body: CommitInput):
+    """Stage all changes and create a commit."""
+    try:
+        # Stage all changes (including untracked files)
+        add_result = subprocess.run(
+            ["git", "add", "-A"],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+        )
+        if add_result.returncode != 0:
+            raise HTTPException(status_code=500, detail=f"git add failed: {add_result.stderr}")
+
+        # Create commit
+        commit_result = subprocess.run(
+            ["git", "commit", "-m", body.message],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+        )
+        if commit_result.returncode != 0:
+            # Check if there's nothing to commit
+            if "nothing to commit" in commit_result.stdout or "nothing to commit" in commit_result.stderr:
+                return {"status": "nothing_to_commit", "message": "No changes to commit"}
+            raise HTTPException(status_code=500, detail=f"git commit failed: {commit_result.stderr}")
+
+        # Get the commit hash
+        hash_result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+        )
+        commit_hash = hash_result.stdout.strip() if hash_result.returncode == 0 else "unknown"
+
+        return {"status": "committed", "hash": commit_hash, "message": body.message}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

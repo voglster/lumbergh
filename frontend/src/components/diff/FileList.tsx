@@ -1,13 +1,54 @@
+import { useState } from 'react'
 import type { DiffData } from './types'
 import { getFileStats } from './utils'
 
 interface Props {
   data: DiffData
+  apiHost: string
   onSelectFile: (path: string) => void
   onRefresh: () => void
 }
 
-export default function FileList({ data, onSelectFile, onRefresh }: Props) {
+export default function FileList({ data, apiHost, onSelectFile, onRefresh }: Props) {
+  const [commitMessage, setCommitMessage] = useState('')
+  const [isCommitting, setIsCommitting] = useState(false)
+  const [commitResult, setCommitResult] = useState<{ type: 'success' | 'error', message: string } | null>(null)
+
+  const handleCommit = async () => {
+    if (!commitMessage.trim()) return
+    setIsCommitting(true)
+    setCommitResult(null)
+    try {
+      const res = await fetch(`http://${apiHost}/api/git/commit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: commitMessage.trim() }),
+      })
+      const result = await res.json()
+      if (!res.ok) {
+        setCommitResult({ type: 'error', message: result.detail || 'Commit failed' })
+      } else if (result.status === 'nothing_to_commit') {
+        setCommitResult({ type: 'error', message: 'Nothing to commit' })
+      } else {
+        setCommitResult({ type: 'success', message: `Committed: ${result.hash}` })
+        setCommitMessage('')
+        onRefresh()
+      }
+    } catch (err) {
+      setCommitResult({ type: 'error', message: 'Failed to commit' })
+    } finally {
+      setIsCommitting(false)
+      // Clear result message after 3 seconds
+      setTimeout(() => setCommitResult(null), 3000)
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      handleCommit()
+    }
+  }
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -25,6 +66,33 @@ export default function FileList({ data, onSelectFile, onRefresh }: Props) {
         >
           ↻
         </button>
+      </div>
+
+      {/* Commit input */}
+      <div className="p-3 bg-gray-800 border-b border-gray-700">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={commitMessage}
+            onChange={e => setCommitMessage(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Commit message... (Ctrl+Enter to commit)"
+            className="flex-1 px-3 py-2 bg-gray-700 text-white text-sm rounded border border-gray-600 focus:outline-none focus:border-blue-500"
+            disabled={isCommitting}
+          />
+          <button
+            onClick={handleCommit}
+            disabled={!commitMessage.trim() || isCommitting}
+            className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm rounded disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isCommitting ? '...' : 'Commit'}
+          </button>
+        </div>
+        {commitResult && (
+          <div className={`mt-2 text-sm ${commitResult.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+            {commitResult.message}
+          </div>
+        )}
       </div>
 
       {/* File list */}

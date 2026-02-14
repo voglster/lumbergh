@@ -81,6 +81,7 @@ export default function DiffViewer({ apiHost }: Props) {
   return (
     <FileList
       data={data}
+      apiHost={apiHost}
       onSelectFile={setSelectedFile}
       onRefresh={fetchDiff}
     />
