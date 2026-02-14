@@ -151,10 +151,10 @@ export default function SessionDetail() {
       <div className="flex-1 min-h-0 overflow-hidden">
         {rightPanel === 'diff' && <DiffViewer key={diffKey} apiHost={apiHost} sessionName={name} onCommitSuccess={handleCommitSuccess} />}
         {rightPanel === 'files' && <FileBrowser apiHost={apiHost} />}
-        {rightPanel === 'todos' && (
+        {rightPanel === 'todos' && name && (
           <VerticalResizablePanes
             top={<TodoList apiHost={apiHost} sessionName={name} onFocusTerminal={handleFocusTerminal} />}
-            bottom={<Scratchpad apiHost={apiHost} />}
+            bottom={<Scratchpad apiHost={apiHost} sessionName={name} />}
             defaultTopHeight={50}
             minTopHeight={20}
             maxTopHeight={80}
@@ -226,10 +226,10 @@ export default function SessionDetail() {
           {mobileTab === 'terminal' && renderTerminal()}
           {mobileTab === 'diff' && <DiffViewer key={diffKey} apiHost={apiHost} sessionName={name} onCommitSuccess={handleCommitSuccess} />}
           {mobileTab === 'files' && <FileBrowser apiHost={apiHost} />}
-          {mobileTab === 'todos' && (
+          {mobileTab === 'todos' && name && (
             <VerticalResizablePanes
               top={<TodoList apiHost={apiHost} sessionName={name} onFocusTerminal={handleFocusTerminal} />}
-              bottom={<Scratchpad apiHost={apiHost} />}
+              bottom={<Scratchpad apiHost={apiHost} sessionName={name} />}
               defaultTopHeight={50}
               minTopHeight={20}
               maxTopHeight={80}

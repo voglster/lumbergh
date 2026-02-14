@@ -7,7 +7,7 @@ interface Todo {
 
 interface TodoListProps {
   apiHost: string
-  sessionName?: string | null
+  sessionName: string
   onFocusTerminal?: () => void
 }
 
@@ -22,7 +22,7 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal }: Todo
   const [editingText, setEditingText] = useState('')
 
   useEffect(() => {
-    fetch(`http://${apiHost}/api/todos`)
+    fetch(`http://${apiHost}/api/sessions/${sessionName}/todos`)
       .then(res => res.json())
       .then(data => {
         setTodos(data.todos || [])
@@ -32,12 +32,12 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal }: Todo
         console.error('Failed to fetch todos:', err)
         setLoading(false)
       })
-  }, [apiHost])
+  }, [apiHost, sessionName])
 
   const saveTodos = async (updatedTodos: Todo[]) => {
     setSaving(true)
     try {
-      await fetch(`http://${apiHost}/api/todos`, {
+      await fetch(`http://${apiHost}/api/sessions/${sessionName}/todos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ todos: updatedTodos }),

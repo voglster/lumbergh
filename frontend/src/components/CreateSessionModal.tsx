@@ -1,9 +1,21 @@
 import { useState } from 'react'
+import DirectoryPicker from './DirectoryPicker'
 
 interface Props {
   apiHost: string
   onClose: () => void
   onCreated: () => void
+}
+
+// Generate a URL-safe slug from free-form text
+function toSlug(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s_-]/g, '') // Remove invalid characters
+    .replace(/\s+/g, '-')          // Replace spaces with hyphens
+    .replace(/-+/g, '-')           // Collapse multiple hyphens
+    .replace(/^-|-$/g, '')         // Trim leading/trailing hyphens
 }
 
 export default function CreateSessionModal({ apiHost, onClose, onCreated }: Props) {
@@ -12,10 +24,13 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
   const [description, setDescription] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+  const [manualEntry, setManualEntry] = useState(false)
+
+  const slug = toSlug(name)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim() || !workdir.trim()) return
+    if (!slug || !workdir.trim()) return
 
     setIsCreating(true)
     setError(null)
@@ -25,7 +40,7 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: name.trim(),
+          name: slug,
           workdir: workdir.trim(),
           description: description.trim(),
         }),
@@ -67,25 +82,48 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="e.g., auth-feature"
+              placeholder="e.g., Auth Feature, fix-login-bug"
               className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500"
-              pattern="[a-zA-Z0-9_-]+"
-              title="Only letters, numbers, underscores, and hyphens"
               required
             />
-            <p className="text-xs text-gray-500 mt-1">Letters, numbers, underscores, and hyphens only</p>
+            {slug && (
+              <p className="text-xs text-gray-500 mt-1">
+                Session ID: <span className="text-gray-400 font-mono">{slug}</span>
+              </p>
+            )}
           </div>
 
           <div>
             <label className="block text-sm text-gray-400 mb-1">Working Directory</label>
-            <input
-              type="text"
-              value={workdir}
-              onChange={e => setWorkdir(e.target.value)}
-              placeholder="e.g., /home/user/myproject"
-              className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500 font-mono text-sm"
-              required
-            />
+            {manualEntry ? (
+              <div>
+                <input
+                  type="text"
+                  value={workdir}
+                  onChange={e => setWorkdir(e.target.value)}
+                  placeholder="e.g., /home/user/myproject"
+                  className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500 font-mono text-sm"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setManualEntry(false)
+                    setWorkdir('')
+                  }}
+                  className="mt-2 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  Search repositories instead
+                </button>
+              </div>
+            ) : (
+              <DirectoryPicker
+                apiHost={apiHost}
+                value={workdir}
+                onChange={setWorkdir}
+                onManualEntry={() => setManualEntry(true)}
+              />
+            )}
           </div>
 
           <div>
@@ -113,7 +151,7 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
             </button>
             <button
               type="submit"
-              disabled={isCreating || !name.trim() || !workdir.trim()}
+              disabled={isCreating || !slug || !workdir.trim()}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded transition-colors"
             >
               {isCreating ? 'Creating...' : 'Create Session'}

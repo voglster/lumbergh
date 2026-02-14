@@ -2,9 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 
 interface ScratchpadProps {
   apiHost: string
+  sessionName: string
 }
 
-export default function Scratchpad({ apiHost }: ScratchpadProps) {
+export default function Scratchpad({ apiHost, sessionName }: ScratchpadProps) {
   const [content, setContent] = useState('')
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [loading, setLoading] = useState(true)
@@ -12,7 +13,7 @@ export default function Scratchpad({ apiHost }: ScratchpadProps) {
 
   // Fetch content on mount
   useEffect(() => {
-    fetch(`http://${apiHost}/api/scratchpad`)
+    fetch(`http://${apiHost}/api/sessions/${sessionName}/scratchpad`)
       .then(res => res.json())
       .then(data => {
         setContent(data.content || '')
@@ -22,12 +23,12 @@ export default function Scratchpad({ apiHost }: ScratchpadProps) {
         console.error('Failed to fetch scratchpad:', err)
         setLoading(false)
       })
-  }, [apiHost])
+  }, [apiHost, sessionName])
 
   const saveContent = useCallback(async (text: string) => {
     setStatus('saving')
     try {
-      await fetch(`http://${apiHost}/api/scratchpad`, {
+      await fetch(`http://${apiHost}/api/sessions/${sessionName}/scratchpad`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: text }),
@@ -39,7 +40,7 @@ export default function Scratchpad({ apiHost }: ScratchpadProps) {
       console.error('Failed to save scratchpad:', err)
       setStatus('error')
     }
-  }, [apiHost])
+  }, [apiHost, sessionName])
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value

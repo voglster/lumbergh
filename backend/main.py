@@ -25,6 +25,7 @@ class CommitInput(BaseModel):
 app = FastAPI(title="Lumbergh", description="Tmux session supervisor")
 app.include_router(notes.router)
 app.include_router(sessions.router)
+app.include_router(sessions.directories_router)
 
 # Project root (parent of backend/)
 PROJECT_ROOT = Path(__file__).parent.parent

@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from tinydb import TinyDB, Query
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
+directories_router = APIRouter(prefix="/api/directories", tags=["directories"])
 
 # Database setup
 CONFIG_DIR = Path.home() / ".config" / "lumbergh"
@@ -23,6 +24,46 @@ sessions_table = db.table("sessions")
 # Session name pattern
 SESSION_NAME_PATTERN = re.compile(r'^[a-zA-Z0-9_-]+$')
 
+# Directories to skip when searching for git repos
+SKIP_DIRS = {'.git', 'node_modules', '__pycache__', '.venv', 'venv', '.cache', 'dist', 'build', '.tox', '.nox'}
+
+
+def find_git_repos(base_dir: Path, query: str = "", limit: int = 20) -> list[dict]:
+    """Find git repositories under base_dir matching the query."""
+    results = []
+    query_lower = query.lower()
+
+    def should_skip(name: str) -> bool:
+        return name.startswith('.') or name in SKIP_DIRS
+
+    def search_dir(directory: Path, depth: int = 0):
+        if depth > 3 or len(results) >= limit:  # Limit recursion depth
+            return
+
+        try:
+            for entry in directory.iterdir():
+                if len(results) >= limit:
+                    return
+                if not entry.is_dir() or should_skip(entry.name):
+                    continue
+
+                # Check if this directory is a git repo
+                if (entry / ".git").is_dir():
+                    # Check if name matches query
+                    if query_lower in entry.name.lower():
+                        results.append({
+                            "path": str(entry),
+                            "name": entry.name,
+                        })
+                else:
+                    # Recurse into subdirectories
+                    search_dir(entry, depth + 1)
+        except PermissionError:
+            pass
+
+    search_dir(base_dir)
+    return sorted(results, key=lambda x: x["name"].lower())
+
 
 class CreateSessionRequest(BaseModel):
     name: str
@@ -32,6 +73,30 @@ class CreateSessionRequest(BaseModel):
 
 class CommitInput(BaseModel):
     message: str
+
+
+class TodoItem(BaseModel):
+    text: str
+    done: bool
+
+
+class TodoList(BaseModel):
+    todos: list[TodoItem]
+
+
+class ScratchpadContent(BaseModel):
+    content: str
+
+
+@directories_router.get("/search")
+async def search_directories(query: str = ""):
+    """Search for git repositories in ~/src/."""
+    base_dir = Path.home() / "src"
+    if not base_dir.exists():
+        return {"directories": []}
+
+    directories = find_git_repos(base_dir, query, limit=20)
+    return {"directories": directories}
 
 
 def get_tmux_server() -> libtmux.Server:
@@ -465,5 +530,69 @@ async def session_git_commit(name: str, body: CommitInput):
         return {"status": "committed", "hash": commit_hash, "message": body.message}
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Session-scoped Todos and Scratchpad ---
+
+def get_session_db(name: str) -> TinyDB:
+    """Get a TinyDB instance for session-specific data."""
+    sessions_data_dir = CONFIG_DIR / "session_data"
+    sessions_data_dir.mkdir(parents=True, exist_ok=True)
+    return TinyDB(sessions_data_dir / f"{name}.json")
+
+
+@router.get("/{name}/todos")
+async def get_session_todos(name: str):
+    """Get todos for a specific session."""
+    try:
+        session_db = get_session_db(name)
+        todos_table = session_db.table("todos")
+        all_todos = todos_table.all()
+        if all_todos:
+            return {"todos": all_todos[0].get("items", [])}
+        return {"todos": []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{name}/todos")
+async def save_session_todos(name: str, todo_list: TodoList):
+    """Save todos for a specific session."""
+    try:
+        session_db = get_session_db(name)
+        todos_table = session_db.table("todos")
+        todos = [{"text": t.text, "done": t.done} for t in todo_list.todos]
+        todos_table.truncate()
+        todos_table.insert({"items": todos})
+        return {"todos": todos}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{name}/scratchpad")
+async def get_session_scratchpad(name: str):
+    """Get scratchpad content for a specific session."""
+    try:
+        session_db = get_session_db(name)
+        scratchpad_table = session_db.table("scratchpad")
+        all_content = scratchpad_table.all()
+        if all_content:
+            return {"content": all_content[0].get("content", "")}
+        return {"content": ""}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{name}/scratchpad")
+async def save_session_scratchpad(name: str, data: ScratchpadContent):
+    """Save scratchpad content for a specific session."""
+    try:
+        session_db = get_session_db(name)
+        scratchpad_table = session_db.table("scratchpad")
+        scratchpad_table.truncate()
+        scratchpad_table.insert({"content": data.content})
+        return {"content": data.content}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
