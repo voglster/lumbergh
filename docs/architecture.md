@@ -42,20 +42,20 @@ graph TD
 | Mobile Strategy | Responsive Web | Primary target. The JSON API allows a future Expo/React Native app if native features (notifications) are needed. |
 | Terminal Widget | xterm.js | Industry standard. Wrapped in a React component for lifecycle management. |
 | Styling | Tailwind CSS | Utility-first CSS for rapid, reliable mobile layouts. |
-| Persistence | TinyDB | Serverless, document-oriented database stored in `~/.lumbergh/db.json`. Portable and human-readable. |
+| Persistence | TinyDB | Serverless, document-oriented database stored in `~/.config/lumbergh/`. Portable and human-readable. |
 
 ## 3. Data Flow
 
 ### 3.1 Terminal Stream (WebSocket)
 
-1. **Connect:** React Client opens WebSocket to `ws://host/api/session/{uuid}/stream`.
+1. **Connect:** React Client opens WebSocket to `ws://host/api/session/{name}/stream`.
 2. **Attach:** Backend spawns a pty attached to the specific tmux pane using `tmux attach`.
 3. **Read (Host → Client):** Backend streams raw bytes. React passes them to `xterm.write()`.
 4. **Write (Client → Host):** React captures keystrokes (or Virtual Keyboard input) and sends to Backend. Backend injects via `pane.send_keys()`.
 
 ### 3.2 Live Diffs (Polling/JSON)
 
-1. **Trigger:** React Query polls `/api/session/{uuid}/diff` every 3-5 seconds.
+1. **Trigger:** React Query polls `/api/sessions/{name}/git/diff` every 3-5 seconds.
 2. **Execution:** Backend runs `git diff HEAD` in the worktree.
 3. **Response:** Backend returns JSON:
 
@@ -96,20 +96,40 @@ To ensure safety, Lumbergh prioritizes the Worktree Flow:
 
 ## 5. Persistence Schema (TinyDB)
 
-Data is stored in `~/.lumbergh/db.json`.
+Data is stored across multiple files in `~/.config/lumbergh/`:
 
+### Session Registry (`sessions.json`)
 ```json
 {
-  "_default": {
+  "sessions": {
     "1": {
-      "uuid": "550e8400-e29b...",
-      "name": "Jira-123: Auth Fix",
-      "repo_path": "/home/user/code/app",
-      "worktree_path": "/home/user/code/worktrees/app-auth",
-      "tmux_session": "lumbergh_550e8400",
-      "created_at": 1698412000,
-      "status": "active"
+      "name": "my-feature",
+      "workdir": "/home/user/code/app",
+      "description": "Working on auth fix"
     }
+  }
+}
+```
+
+### Session-Scoped Data (`session_data/{name}.json`)
+Per-session todos and scratchpad:
+```json
+{
+  "todos": {
+    "1": { "items": [{"text": "Fix login bug", "done": false}] }
+  },
+  "scratchpad": {
+    "1": { "content": "Notes for this session..." }
+  }
+}
+```
+
+### Global Data (`global.json`)
+Shared prompt templates:
+```json
+{
+  "prompts": {
+    "1": { "items": [{"id": "...", "name": "Review PR", "content": "..."}] }
   }
 }
 ```

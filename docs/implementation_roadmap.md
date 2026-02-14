@@ -61,28 +61,37 @@ This roadmap focuses on a "Depth First" approach: get a single session working p
   - [x] Mobile-friendly tabbed layout
   - [x] Diff stats badge showing file count and +/- lines
 
-## Phase 3: The "Office Floor" 🚧
+## Phase 3: The "Office Floor" ✅
 
 **Goal:** Scale from one hardcoded session to a Dashboard managing many.
 
 - [x] **Persistence Layer (TinyDB):**
-  - [x] TinyDB setup in `~/.config/lumbergh/projects/{hash}.json`
-  - [x] Project-scoped storage (hashed by project path)
+  - [x] TinyDB setup in `~/.config/lumbergh/sessions.json`
+  - [x] Session-scoped storage in `~/.config/lumbergh/session_data/{name}.json`
   - [x] Global storage for cross-project data (`~/.config/lumbergh/global.json`)
 
-- [ ] **Session Management API:**
-  - [x] `GET /api/sessions`: List existing tmux sessions
-  - [ ] `POST /api/sessions`: Create new session
-    - [ ] Accept `repo_url` or `path`
-    - [ ] (Optional) Create git worktree
-    - [ ] Spawn new named tmux session
-  - [ ] `DELETE /api/sessions/{name}`: Kill session
+- [x] **Session Management API:**
+  - [x] `GET /api/sessions`: List existing tmux sessions (merged live + stored state)
+  - [x] `POST /api/sessions`: Create new session
+    - [x] Accept `name`, `workdir`, `description`
+    - [x] Spawn new named tmux session
+    - [x] Auto-launch Claude Code in new session
+  - [x] `DELETE /api/sessions/{name}`: Kill session and remove metadata
 
-- [ ] **Dashboard UI:**
-  - [ ] Create `Dashboard.tsx` (Grid view of sessions)
-  - [ ] Create `NewSessionModal.tsx`
-  - [ ] Add routing (`react-router-dom`) to navigate between `/` (Dashboard) and `/session/:id`
-  - [ ] Session status indicators (idle/active/error)
+- [x] **Session-Scoped APIs:**
+  - [x] `GET /api/sessions/{name}/git/status`
+  - [x] `GET /api/sessions/{name}/git/diff`
+  - [x] `GET /api/sessions/{name}/git/log`
+  - [x] `GET /api/sessions/{name}/git/commit/{hash}`
+  - [x] `POST /api/sessions/{name}/git/commit`
+  - [x] `GET/POST /api/sessions/{name}/todos`
+  - [x] `GET/POST /api/sessions/{name}/scratchpad`
+
+- [x] **Dashboard UI:**
+  - [x] Create `Dashboard.tsx` (Grid view of sessions)
+  - [x] Create `CreateSessionModal.tsx`
+  - [x] Add routing (`react-router-dom`) to navigate between `/` (Dashboard) and `/session/:name`
+  - [x] Session status indicators (green dot for alive, attached/orphan badges)
 
 ## Phase 4: The "Manager" & Context ⏳
 
@@ -121,4 +130,4 @@ This roadmap focuses on a "Depth First" approach: get a single session working p
 - [x] **Responsive Design:** Terminal/Diff/Notes stack correctly via tabs on mobile
 - [x] **Resizable Panes:** Persistent split positions via localStorage
 - [ ] **Virtual Keyboard Handling:** Prevent the keyboard from covering the input box
-- [ ] **PWA Config:** Add `manifest.json` so it can be installed to the home screen
+- [x] **PWA Config:** VitePWA fully configured with manifest, icons, and workbox caching

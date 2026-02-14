@@ -79,4 +79,4 @@ Or run separately:
 
 ## Current Phase
 
-Phase 3: "Office Floor" - Building multi-session support. Phases 1-2 complete (terminal, diff viewer, file browser, todos, prompts all working).
+Phase 4: "The Manager & Context" - Building the AI chat/review pane. Phases 1-3 complete (terminal, diff viewer, file browser, todos, prompts, multi-session dashboard all working).
