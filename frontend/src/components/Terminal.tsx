@@ -78,12 +78,31 @@ export default function Terminal({ sessionName, apiHost, onSendReady }: Terminal
     }
   }, [sessionName])
 
-  const handleFit = () => {
+  const handleFit = useCallback(() => {
     if (fitAddonRef.current && termRef.current) {
       fitAddonRef.current.fit()
       sendResizeRef.current(termRef.current.cols, termRef.current.rows)
     }
-  }
+  }, [])
+
+  // Auto-fit on container resize (debounced)
+  useEffect(() => {
+    if (!containerRef.current) return
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (timeoutId) clearTimeout(timeoutId)
+      timeoutId = setTimeout(handleFit, 150)
+    })
+
+    resizeObserver.observe(containerRef.current)
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId)
+      resizeObserver.disconnect()
+    }
+  }, [handleFit])
 
   return (
     <div className="h-full w-full relative flex flex-col">

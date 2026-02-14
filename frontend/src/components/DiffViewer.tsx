@@ -1,66 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
-import { DiffView, DiffModeEnum } from '@git-diff-view/react'
 import '@git-diff-view/react/styles/diff-view.css'
-
-interface DiffFile {
-  path: string
-  diff: string
-}
-
-interface DiffData {
-  files: DiffFile[]
-  stats: {
-    additions: number
-    deletions: number
-  }
-}
+import { FileList, FileDiff } from './diff'
+import type { DiffData } from './diff'
 
 interface Props {
   apiHost: string
-}
-
-// Extract the diff content starting from --- line
-// The library expects: --- a/file\n+++ b/file\n@@ ... @@\n...
-function extractDiffContent(diff: string): string[] {
-  const lines = diff.split('\n')
-  const result: string[] = []
-  let started = false
-
-  for (const line of lines) {
-    // Start capturing from the --- line
-    if (line.startsWith('--- ')) {
-      started = true
-    }
-    if (started) {
-      result.push(line)
-    }
-  }
-
-  // Return as a single diff string if we have content
-  return result.length > 0 ? [result.join('\n')] : []
-}
-
-// Extract language from file path
-function getLangFromPath(path: string): string {
-  const ext = path.split('.').pop()?.toLowerCase() || ''
-  const extMap: Record<string, string> = {
-    ts: 'typescript',
-    tsx: 'tsx',
-    js: 'javascript',
-    jsx: 'jsx',
-    py: 'python',
-    rs: 'rust',
-    go: 'go',
-    java: 'java',
-    css: 'css',
-    scss: 'scss',
-    json: 'json',
-    md: 'markdown',
-    sh: 'bash',
-    yml: 'yaml',
-    yaml: 'yaml',
-  }
-  return extMap[ext] || 'plaintext'
 }
 
 export default function DiffViewer({ apiHost }: Props) {
@@ -77,16 +21,12 @@ export default function DiffViewer({ apiHost }: Props) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       setData(json)
-      // Auto-select first file
-      if (json.files?.length > 0 && !selectedFile) {
-        setSelectedFile(json.files[0].path)
-      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch diff')
     } finally {
       setLoading(false)
     }
-  }, [apiHost, selectedFile])
+  }, [apiHost])
 
   useEffect(() => {
     fetchDiff()
@@ -128,57 +68,21 @@ export default function DiffViewer({ apiHost }: Props) {
     )
   }
 
-  const currentFile = data.files.find(f => f.path === selectedFile) || data.files[0]
-  const hunks = extractDiffContent(currentFile.diff)
-  const lang = getLangFromPath(currentFile.path)
+  // Single file diff view
+  if (selectedFile) {
+    const file = data.files.find(f => f.path === selectedFile)
+    if (file) {
+      return <FileDiff file={file} onBack={() => setSelectedFile(null)} />
+    }
+    setSelectedFile(null)
+  }
 
+  // File list view
   return (
-    <div className="h-full flex flex-col">
-      {/* Header with file selector and stats */}
-      <div className="flex items-center gap-3 p-2 bg-gray-800 border-b border-gray-700">
-        <select
-          value={selectedFile || ''}
-          onChange={(e) => setSelectedFile(e.target.value)}
-          className="flex-1 bg-gray-700 text-white px-2 py-1.5 rounded border border-gray-600 text-sm font-mono truncate"
-        >
-          {data.files.map(file => (
-            <option key={file.path} value={file.path}>
-              {file.path}
-            </option>
-          ))}
-        </select>
-        <div className="flex items-center gap-2 text-sm whitespace-nowrap">
-          <span className="text-green-400">+{data.stats.additions}</span>
-          <span className="text-red-400">-{data.stats.deletions}</span>
-        </div>
-        <button
-          onClick={fetchDiff}
-          className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
-        >
-          ↻
-        </button>
-      </div>
-
-      {/* Diff viewer */}
-      <div className="flex-1 overflow-auto">
-        {hunks.length > 0 ? (
-          <DiffView
-            data={{
-              oldFile: { fileName: currentFile.path, fileLang: lang },
-              newFile: { fileName: currentFile.path, fileLang: lang },
-              hunks: hunks,
-            }}
-            diffViewMode={DiffModeEnum.Unified}
-            diffViewTheme="dark"
-            diffViewHighlight
-            diffViewWrap
-          />
-        ) : (
-          <div className="flex items-center justify-center h-full text-gray-500">
-            No diff content for this file
-          </div>
-        )}
-      </div>
-    </div>
+    <FileList
+      data={data}
+      onSelectFile={setSelectedFile}
+      onRefresh={fetchDiff}
+    />
   )
 }

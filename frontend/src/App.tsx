@@ -3,6 +3,7 @@ import Terminal from './components/Terminal'
 import QuickInput from './components/QuickInput'
 import DiffViewer from './components/DiffViewer'
 import FileBrowser from './components/FileBrowser'
+import ResizablePanes from './components/ResizablePanes'
 
 interface Session {
   name: string
@@ -126,16 +127,15 @@ function App() {
         </select>
       </header>
 
-      {/* Desktop layout: side-by-side panes */}
-      <main className="flex-1 min-h-0 hidden md:flex">
-        {/* Left pane: Terminal */}
-        <div className="w-1/2 border-r border-gray-700">
-          {renderTerminal()}
-        </div>
-        {/* Right pane: Diff/Files */}
-        <div className="w-1/2">
-          {renderRightPanel()}
-        </div>
+      {/* Desktop layout: resizable side-by-side panes */}
+      <main className="flex-1 min-h-0 hidden md:block">
+        <ResizablePanes
+          left={renderTerminal()}
+          right={renderRightPanel()}
+          defaultLeftWidth={50}
+          minLeftWidth={25}
+          maxLeftWidth={75}
+        />
       </main>
 
       {/* Mobile layout: tabs */}
