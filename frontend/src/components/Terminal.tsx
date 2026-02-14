@@ -79,6 +79,16 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
       sendRef.current(data)
     })
 
+    // Handle Shift+Enter to send newline (like Claude Code CLI)
+    term.attachCustomKeyEventHandler((event) => {
+      if (event.type === 'keydown' && event.key === 'Enter' && event.shiftKey) {
+        // Send newline character instead of carriage return
+        sendRef.current('\n')
+        return false // Prevent default handling
+      }
+      return true // Allow default handling for other keys
+    })
+
     return () => {
       term.dispose()
       termRef.current = null
