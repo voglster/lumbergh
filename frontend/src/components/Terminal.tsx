@@ -207,6 +207,14 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
               Mode
             </button>
             <button
+              onClick={() => sendViaApi('1')}
+              disabled={!isConnected}
+              className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 disabled:opacity-50 rounded"
+              title="Send 1"
+            >
+              1
+            </button>
+            <button
               onClick={handleFit}
               className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
             >
