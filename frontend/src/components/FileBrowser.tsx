@@ -63,6 +63,13 @@ export default function FileBrowser({ apiHost }: Props) {
 
   const fetchFileContent = async (path: string) => {
     setLoadingFile(true)
+
+    // Auto-collapse sidebar on mobile when selecting a file
+    const isMobile = window.matchMedia('(max-width: 767px)').matches
+    if (isMobile) {
+      setSidebarCollapsed(true)
+    }
+
     try {
       const res = await fetch(`http://${apiHost}/api/files/${encodeURIComponent(path)}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
