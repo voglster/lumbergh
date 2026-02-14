@@ -10,7 +10,12 @@ from pathlib import Path
 import uvicorn
 from fastapi import FastAPI, WebSocket, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from routers import notes
+
+
+class SendInput(BaseModel):
+    text: str
 
 app = FastAPI(title="Lumbergh", description="Tmux session supervisor")
 app.include_router(notes.router)
@@ -242,6 +247,32 @@ async def list_sessions():
     from tmux_pty import list_tmux_sessions
     sessions = list_tmux_sessions()
     return {"sessions": sessions}
+
+
+@app.post("/api/session/{session_name}/send")
+async def send_to_session(session_name: str, body: SendInput):
+    """Send text to a tmux session using tmux send-keys."""
+    text = body.text.rstrip('\n')
+
+    # Use -l for literal text (no special key interpretation)
+    result = subprocess.run(
+        ["tmux", "send-keys", "-t", session_name, "-l", text],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise HTTPException(status_code=500, detail=result.stderr)
+
+    # Send Enter key separately (without -l so it's interpreted as a key)
+    result = subprocess.run(
+        ["tmux", "send-keys", "-t", session_name, "Enter"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise HTTPException(status_code=500, detail=result.stderr)
+
+    return {"status": "sent"}
 
 
 @app.websocket("/api/session/{session_name}/stream")

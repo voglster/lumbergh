@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Terminal from './components/Terminal'
-import QuickInput from './components/QuickInput'
 import DiffViewer from './components/DiffViewer'
 import FileBrowser from './components/FileBrowser'
 import ResizablePanes from './components/ResizablePanes'
@@ -22,20 +21,40 @@ function App() {
   const [selectedSession, setSelectedSession] = useState<string | null>(null)
   const [rightPanel, setRightPanel] = useState<RightPanel>('diff')
   const [mobileTab, setMobileTab] = useState<MobileTab>('terminal')
-  const sendFnRef = useRef<((data: string) => void) | null>(null)
+  const [diffStats, setDiffStats] = useState<{files: number, additions: number, deletions: number} | null>(null)
+  const focusFnRef = useRef<(() => void) | null>(null)
 
-  const handleSendReady = useCallback((fn: ((data: string) => void) | null) => {
-    sendFnRef.current = fn
+  const handleFocusReady = useCallback((fn: () => void) => {
+    focusFnRef.current = fn
   }, [])
 
-  const handleSendInput = useCallback((text: string) => {
-    if (sendFnRef.current) {
-      sendFnRef.current(text + '\n')
-    }
+  const handleFocusTerminal = useCallback(() => {
+    focusFnRef.current?.()
   }, [])
 
   // Determine API host - use same hostname but port 8000 for backend
   const apiHost = `${window.location.hostname}:8000`
+
+  const fetchDiffStats = useCallback(async () => {
+    try {
+      const res = await fetch(`http://${apiHost}/api/git/diff`)
+      const data = await res.json()
+      setDiffStats({
+        files: data.files?.length || 0,
+        additions: data.stats?.additions || 0,
+        deletions: data.stats?.deletions || 0,
+      })
+    } catch (err) {
+      console.error('Failed to fetch diff stats:', err)
+    }
+  }, [apiHost])
+
+  // Poll for diff stats every 5 seconds
+  useEffect(() => {
+    fetchDiffStats()
+    const interval = setInterval(fetchDiffStats, 5000)
+    return () => clearInterval(interval)
+  }, [fetchDiffStats])
 
   useEffect(() => {
     // Fetch available sessions
@@ -59,26 +78,18 @@ function App() {
   ]
 
   const renderTerminal = () => (
-    <div className="h-full flex flex-col">
-      <div className="flex-1 min-h-0">
-        {selectedSession ? (
-          <Terminal
-            sessionName={selectedSession}
-            apiHost={apiHost}
-            onSendReady={handleSendReady}
-          />
-        ) : (
-          <div className="flex items-center justify-center h-full text-gray-500">
-            Select a tmux session to connect
-          </div>
-        )}
-      </div>
-      <div className="p-2 bg-gray-800 border-t border-gray-700">
-        <QuickInput
-          onSend={handleSendInput}
-          disabled={!selectedSession}
+    <div className="h-full">
+      {selectedSession ? (
+        <Terminal
+          sessionName={selectedSession}
+          apiHost={apiHost}
+          onFocusReady={handleFocusReady}
         />
-      </div>
+      ) : (
+        <div className="flex items-center justify-center h-full text-gray-500">
+          Select a tmux session to connect
+        </div>
+      )}
     </div>
   )
 
@@ -95,6 +106,13 @@ function App() {
           }`}
         >
           Diff
+          {diffStats && diffStats.files > 0 && (
+            <span className="ml-2 text-xs">
+              ({diffStats.files})
+              <span className="text-green-400 ml-1">+{diffStats.additions}</span>
+              <span className="text-red-400 ml-1">-{diffStats.deletions}</span>
+            </span>
+          )}
         </button>
         <button
           onClick={() => setRightPanel('files')}
@@ -124,7 +142,7 @@ function App() {
         {rightPanel === 'todos' && (
           <div className="h-full flex flex-col">
             <div className="h-1/2 border-b border-gray-700 overflow-auto">
-              <TodoList apiHost={apiHost} />
+              <TodoList apiHost={apiHost} sessionName={selectedSession} onFocusTerminal={handleFocusTerminal} />
             </div>
             <div className="h-1/2">
               <Scratchpad apiHost={apiHost} />
@@ -180,6 +198,13 @@ function App() {
               }`}
             >
               {tab.label}
+              {tab.id === 'diff' && diffStats && diffStats.files > 0 && (
+                <span className="ml-1 text-xs">
+                  ({diffStats.files})
+                  <span className="text-green-400 ml-1">+{diffStats.additions}</span>
+                  <span className="text-red-400 ml-1">-{diffStats.deletions}</span>
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -191,7 +216,7 @@ function App() {
           {mobileTab === 'todos' && (
             <div className="h-full flex flex-col">
               <div className="h-1/2 border-b border-gray-700 overflow-auto">
-                <TodoList apiHost={apiHost} />
+                <TodoList apiHost={apiHost} sessionName={selectedSession} onFocusTerminal={handleFocusTerminal} />
               </div>
               <div className="h-1/2">
                 <Scratchpad apiHost={apiHost} />

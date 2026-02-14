@@ -7,9 +7,11 @@ interface Todo {
 
 interface TodoListProps {
   apiHost: string
+  sessionName?: string | null
+  onFocusTerminal?: () => void
 }
 
-export default function TodoList({ apiHost }: TodoListProps) {
+export default function TodoList({ apiHost, sessionName, onFocusTerminal }: TodoListProps) {
   const [todos, setTodos] = useState<Todo[]>([])
   const [newTodo, setNewTodo] = useState('')
   const [loading, setLoading] = useState(true)
@@ -50,13 +52,17 @@ export default function TodoList({ apiHost }: TodoListProps) {
     const updated = todos.map((t, i) =>
       i === index ? { ...t, done: !t.done } : t
     )
-    setTodos(updated)
-    saveTodos(updated)
+    // Sort: unchecked first, then checked
+    const unchecked = updated.filter(t => !t.done)
+    const checked = updated.filter(t => t.done)
+    const reordered = [...unchecked, ...checked]
+    setTodos(reordered)
+    saveTodos(reordered)
   }
 
   const handleAdd = () => {
     if (!newTodo.trim()) return
-    const updated = [...todos, { text: newTodo.trim(), done: false }]
+    const updated = [{ text: newTodo.trim(), done: false }, ...todos]
     setTodos(updated)
     setNewTodo('')
     saveTodos(updated)
@@ -108,6 +114,31 @@ export default function TodoList({ apiHost }: TodoListProps) {
     }
   }
 
+  const handleSendToTerminal = async (index: number) => {
+    if (!sessionName) return
+    const todo = todos[index]
+    try {
+      await fetch(`http://${apiHost}/api/session/${sessionName}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: todo.text }),
+      })
+      // Mark as done and move to top of done items (bottom of list)
+      const updated = todos.map((t, i) =>
+        i === index ? { ...t, done: true } : t
+      )
+      // Sort: unchecked first, then checked
+      const unchecked = updated.filter(t => !t.done)
+      const checked = updated.filter(t => t.done)
+      const reordered = [...unchecked, ...checked]
+      setTodos(reordered)
+      saveTodos(reordered)
+      onFocusTerminal?.()
+    } catch (err) {
+      console.error('Failed to send to terminal:', err)
+    }
+  }
+
   const handleDragStart = (index: number) => {
     setDragIndex(index)
   }
@@ -140,31 +171,15 @@ export default function TodoList({ apiHost }: TodoListProps) {
   return (
     <div className="h-full flex flex-col p-4 overflow-hidden">
       {/* Add todo input */}
-      <div className="flex gap-2 mb-4">
+      <div className="mb-4">
         <input
           type="text"
           value={newTodo}
           onChange={e => setNewTodo(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Add a task..."
-          className="flex-1 px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500"
+          placeholder="Add a task... (press Enter)"
+          className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500"
         />
-        <button
-          onClick={handleAdd}
-          disabled={!newTodo.trim()}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Add
-        </button>
-        {todos.some(t => t.done) && (
-          <button
-            onClick={handleDeleteAllDone}
-            className="px-3 py-2 text-gray-400 hover:text-red-400 text-sm"
-            title="Delete completed tasks"
-          >
-            Clear done
-          </button>
-        )}
       </div>
 
       {/* Todo list */}
@@ -175,53 +190,74 @@ export default function TodoList({ apiHost }: TodoListProps) {
           </div>
         ) : (
           <ul className="space-y-2">
-            {todos.map((todo, index) => (
-              <li
-                key={index}
-                draggable
-                onDragStart={() => handleDragStart(index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDragEnd={handleDragEnd}
-                className={`flex items-center gap-3 p-3 bg-gray-800 rounded border border-gray-700 group cursor-grab active:cursor-grabbing ${
-                  dragIndex === index ? 'opacity-50' : ''
-                } ${dragOverIndex === index && dragIndex !== index ? 'border-blue-500' : ''}`}
-              >
-                <span className="text-gray-600 select-none">⠿</span>
-                <input
-                  type="checkbox"
-                  checked={todo.done}
-                  onChange={() => handleToggle(index)}
-                  className="w-5 h-5 rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
-                />
-                {editingIndex === index ? (
-                  <input
-                    type="text"
-                    value={editingText}
-                    onChange={e => setEditingText(e.target.value)}
-                    onBlur={handleSaveEdit}
-                    onKeyDown={handleEditKeyDown}
-                    autoFocus
-                    className="flex-1 px-2 py-1 bg-gray-700 text-white rounded border border-blue-500 focus:outline-none"
-                  />
-                ) : (
-                  <span
-                    onClick={() => handleStartEdit(index)}
-                    className={`flex-1 cursor-text ${
-                      todo.done ? 'text-gray-500 line-through' : 'text-white'
-                    }`}
+            {todos.map((todo, index) => {
+              const prevTodo = index > 0 ? todos[index - 1] : null
+              const showCompletedSeparator = todo.done && (!prevTodo || !prevTodo.done)
+              return (
+                <li key={index}>
+                  {showCompletedSeparator && (
+                    <div className="flex items-center gap-2 py-2 mb-2">
+                      <div className="flex-1 border-t border-gray-700" />
+                      <span className="text-xs text-gray-500 uppercase tracking-wide">Completed</span>
+                      <button
+                        onClick={handleDeleteAllDone}
+                        className="text-xs text-gray-500 hover:text-red-400 transition-colors"
+                        title="Clear completed tasks"
+                      >
+                        (clear)
+                      </button>
+                      <div className="flex-1 border-t border-gray-700" />
+                    </div>
+                  )}
+                  <div
+                    draggable
+                    onDragStart={() => handleDragStart(index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragEnd={handleDragEnd}
+                    className={`flex items-center gap-3 p-3 bg-gray-800 rounded border border-gray-700 group cursor-grab active:cursor-grabbing ${
+                      dragIndex === index ? 'opacity-50' : ''
+                    } ${dragOverIndex === index && dragIndex !== index ? 'border-blue-500' : ''}`}
                   >
-                    {todo.text}
-                  </span>
-                )}
-                <button
-                  onClick={() => handleDelete(index)}
-                  className="text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Delete"
-                >
-                  ✕
-                </button>
-              </li>
-            ))}
+                    <span className="text-gray-600 select-none">⠿</span>
+                    <input
+                      type="checkbox"
+                      checked={todo.done}
+                      onChange={() => handleToggle(index)}
+                      className="w-5 h-5 rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
+                    />
+                    {editingIndex === index ? (
+                      <input
+                        type="text"
+                        value={editingText}
+                        onChange={e => setEditingText(e.target.value)}
+                        onBlur={handleSaveEdit}
+                        onKeyDown={handleEditKeyDown}
+                        autoFocus
+                        className="flex-1 px-2 py-1 bg-gray-700 text-white rounded border border-blue-500 focus:outline-none"
+                      />
+                    ) : (
+                      <span
+                        onClick={() => handleStartEdit(index)}
+                        className={`flex-1 cursor-text ${
+                          todo.done ? 'text-gray-500 line-through' : 'text-white'
+                        }`}
+                      >
+                        {todo.text}
+                      </span>
+                    )}
+                    {sessionName && !todo.done && (
+                      <button
+                        onClick={() => handleSendToTerminal(index)}
+                        className="text-2xl text-gray-500 hover:text-blue-400 transition-colors px-2"
+                        title="Send to terminal"
+                      >
+                        ➤
+                      </button>
+                    )}
+                  </div>
+                </li>
+              )
+            })}
           </ul>
         )}
       </div>

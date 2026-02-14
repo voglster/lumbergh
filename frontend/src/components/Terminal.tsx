@@ -9,9 +9,10 @@ interface TerminalProps {
   sessionName: string
   apiHost: string
   onSendReady?: (send: ((data: string) => void) | null) => void
+  onFocusReady?: (focus: () => void) => void
 }
 
-export default function Terminal({ sessionName, apiHost, onSendReady }: TerminalProps) {
+export default function Terminal({ sessionName, apiHost, onSendReady, onFocusReady }: TerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<XTerm | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
@@ -38,6 +39,13 @@ export default function Terminal({ sessionName, apiHost, onSendReady }: Terminal
   useEffect(() => {
     onSendReady?.(isConnected ? send : null)
   }, [isConnected, send, onSendReady])
+
+  // Expose focus function to parent
+  useEffect(() => {
+    onFocusReady?.(() => {
+      termRef.current?.focus()
+    })
+  }, [onFocusReady])
 
   // Initialize terminal
   useEffect(() => {

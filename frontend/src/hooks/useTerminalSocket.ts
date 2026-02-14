@@ -27,6 +27,17 @@ export function useTerminalSocket({
   const [error, setError] = useState<string | null>(null)
   const reconnectTimeoutRef = useRef<number | null>(null)
 
+  // Store callbacks in refs to avoid recreating connect() on every render
+  const onDataRef = useRef(onData)
+  const onConnectRef = useRef(onConnect)
+  const onDisconnectRef = useRef(onDisconnect)
+
+  useEffect(() => {
+    onDataRef.current = onData
+    onConnectRef.current = onConnect
+    onDisconnectRef.current = onDisconnect
+  }, [onData, onConnect, onDisconnect])
+
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       return
@@ -38,26 +49,26 @@ export function useTerminalSocket({
     ws.onopen = () => {
       setIsConnected(true)
       setError(null)
-      onConnect?.()
+      onConnectRef.current?.()
     }
 
     ws.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data)
         if (message.type === 'output') {
-          onData(message.data)
+          onDataRef.current(message.data)
         } else if (message.type === 'error') {
           setError(message.message)
         }
       } catch {
         // If not JSON, treat as raw output
-        onData(event.data)
+        onDataRef.current(event.data)
       }
     }
 
     ws.onclose = () => {
       setIsConnected(false)
-      onDisconnect?.()
+      onDisconnectRef.current?.()
       wsRef.current = null
 
       // Attempt reconnect after delay
@@ -71,7 +82,7 @@ export function useTerminalSocket({
     }
 
     wsRef.current = ws
-  }, [sessionName, apiHost, onData, onConnect, onDisconnect])
+  }, [sessionName, apiHost])
 
   const send = useCallback((data: string) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
