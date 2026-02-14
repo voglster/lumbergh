@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/github-dark.css'
 
 interface FileEntry {
   path: string
@@ -23,6 +25,7 @@ export default function FileBrowser({ apiHost }: Props) {
   const [selectedFile, setSelectedFile] = useState<FileContent | null>(null)
   const [loadingFile, setLoadingFile] = useState(false)
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   const fetchFiles = useCallback(async (silent = false) => {
     if (!silent) {
@@ -166,10 +169,66 @@ export default function FileBrowser({ apiHost }: Props) {
     return `${(bytes / (1024 * 1024)).toFixed(1)}M`
   }
 
-  const getLanguageClass = (lang: string): string => {
-    // Basic syntax highlighting class mapping
-    return `language-${lang}`
-  }
+  // Syntax highlight with fallback for unknown languages
+  const getHighlightedCode = useCallback((content: string, language: string): string => {
+    try {
+      if (hljs.getLanguage(language)) {
+        return hljs.highlight(content, { language, ignoreIllegals: true }).value
+      }
+      return hljs.highlightAuto(content).value
+    } catch {
+      return content
+    }
+  }, [])
+
+  // Navigate to a directory from breadcrumb
+  const navigateToDir = useCallback((dirPath: string) => {
+    // Expand all directories up to and including this path
+    const parts = dirPath.split('/')
+    const newExpanded = new Set<string>()
+    let currentPath = ''
+    for (const part of parts) {
+      currentPath = currentPath ? `${currentPath}/${part}` : part
+      newExpanded.add(currentPath)
+    }
+    setExpandedDirs(newExpanded)
+    setSelectedFile(null)
+  }, [])
+
+  // Render breadcrumb for current file path
+  const renderBreadcrumb = useCallback((path: string) => {
+    const parts = path.split('/')
+    const segments: { name: string; path: string }[] = []
+
+    let currentPath = ''
+    for (let i = 0; i < parts.length; i++) {
+      currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i]
+      segments.push({ name: parts[i], path: currentPath })
+    }
+
+    return (
+      <div className="flex items-center gap-1 flex-wrap">
+        <span className="text-yellow-400">📁</span>
+        {segments.map((segment, i) => (
+          <span key={segment.path} className="flex items-center">
+            {i < segments.length - 1 ? (
+              <>
+                <button
+                  onClick={() => navigateToDir(segment.path)}
+                  className="text-blue-400 hover:text-blue-300 hover:underline"
+                >
+                  {segment.name}
+                </button>
+                <span className="text-gray-500 mx-1">›</span>
+              </>
+            ) : (
+              <span className="text-gray-300">{segment.name}</span>
+            )}
+          </span>
+        ))}
+      </div>
+    )
+  }, [navigateToDir])
 
   if (loading) {
     return (
@@ -198,20 +257,32 @@ export default function FileBrowser({ apiHost }: Props) {
   return (
     <div className="h-full flex">
       {/* File tree sidebar */}
-      <div className="w-64 flex-shrink-0 border-r border-gray-700 overflow-auto">
-        <div className="p-2 bg-gray-800 border-b border-gray-700 flex justify-between items-center">
-          <span className="text-sm text-gray-400">Files</span>
-          <button
-            onClick={() => fetchFiles()}
-            className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded"
-          >
-            Refresh
-          </button>
+      {!sidebarCollapsed && (
+        <div className="w-64 flex-shrink-0 border-r border-gray-700 overflow-auto">
+          <div className="p-2 bg-gray-800 border-b border-gray-700 flex justify-between items-center">
+            <span className="text-sm text-gray-400">Files</span>
+            <div className="flex gap-1">
+              <button
+                onClick={() => fetchFiles()}
+                className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded"
+                title="Refresh"
+              >
+                ↻
+              </button>
+              <button
+                onClick={() => setSidebarCollapsed(true)}
+                className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded"
+                title="Collapse sidebar"
+              >
+                ◀
+              </button>
+            </div>
+          </div>
+          <div className="py-1">
+            {renderTree(tree, '', 0)}
+          </div>
         </div>
-        <div className="py-1">
-          {renderTree(tree, '', 0)}
-        </div>
-      </div>
+      )}
 
       {/* File content viewer */}
       <div className="flex-1 overflow-auto">
@@ -221,21 +292,48 @@ export default function FileBrowser({ apiHost }: Props) {
           </div>
         ) : selectedFile ? (
           <div className="h-full flex flex-col">
-            <div className="p-2 bg-gray-800 border-b border-gray-700">
-              <span className="font-mono text-sm text-blue-400">
-                {selectedFile.path}
-              </span>
+            <div className="p-2 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
+              <div className="font-mono text-sm flex items-center gap-2">
+                {sidebarCollapsed && (
+                  <button
+                    onClick={() => setSidebarCollapsed(false)}
+                    className="text-gray-400 hover:text-gray-200 px-1"
+                    title="Show file tree"
+                  >
+                    ▶
+                  </button>
+                )}
+                {renderBreadcrumb(selectedFile.path)}
+              </div>
               <span className="text-gray-500 text-xs ml-2">
-                ({selectedFile.language})
+                {selectedFile.language}
               </span>
             </div>
-            <pre className={`flex-1 p-4 overflow-auto text-sm font-mono text-gray-300 ${getLanguageClass(selectedFile.language)}`}>
-              {selectedFile.content}
+            <pre className="flex-1 p-4 overflow-auto text-sm font-mono">
+              <code
+                className="hljs"
+                dangerouslySetInnerHTML={{
+                  __html: getHighlightedCode(selectedFile.content, selectedFile.language)
+                }}
+              />
             </pre>
           </div>
         ) : (
-          <div className="flex items-center justify-center h-full text-gray-500">
-            Select a file to view
+          <div className="h-full flex flex-col">
+            {sidebarCollapsed && (
+              <div className="p-2 bg-gray-800 border-b border-gray-700">
+                <button
+                  onClick={() => setSidebarCollapsed(false)}
+                  className="text-gray-400 hover:text-gray-200 px-1"
+                  title="Show file tree"
+                >
+                  ▶
+                </button>
+              </div>
+            )}
+            <div className="flex-1 flex items-center justify-center text-gray-500">
+              Select a file to view
+            </div>
           </div>
         )}
       </div>
