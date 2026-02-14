@@ -164,12 +164,22 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
             {isConnected ? 'Connected' : 'Disconnected'}
           </span>
         </div>
-        <button
-          onClick={handleFit}
-          className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
-        >
-          Fit
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => sendRef.current('\x1b[Z')}
+            disabled={!isConnected}
+            className="px-2 py-1 text-xs bg-blue-700 hover:bg-blue-600 disabled:bg-gray-600 disabled:opacity-50 rounded"
+            title="Toggle Plan/Accept Edits mode (Shift+Tab)"
+          >
+            Mode
+          </button>
+          <button
+            onClick={handleFit}
+            className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
+          >
+            Fit
+          </button>
+        </div>
       </div>
 
       {/* Error display */}
