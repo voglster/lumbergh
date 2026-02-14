@@ -8,4 +8,9 @@ html, body, #root {
 
 body {
   background-color: #1a1a1a;
+  /* Safe area insets for notched devices */
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
 }
