@@ -24,23 +24,36 @@ export default function FileBrowser({ apiHost }: Props) {
   const [loadingFile, setLoadingFile] = useState(false)
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
 
-  const fetchFiles = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+  const fetchFiles = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true)
+      setError(null)
+    }
     try {
       const res = await fetch(`http://${apiHost}/api/files`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       setFiles(json.files)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to fetch files')
+      if (!silent) {
+        setError(e instanceof Error ? e.message : 'Failed to fetch files')
+      }
     } finally {
-      setLoading(false)
+      if (!silent) {
+        setLoading(false)
+      }
     }
   }, [apiHost])
 
   useEffect(() => {
     fetchFiles()
+
+    // Auto-refresh every 5 seconds
+    const interval = setInterval(() => {
+      fetchFiles(true)
+    }, 5000)
+
+    return () => clearInterval(interval)
   }, [fetchFiles])
 
   const fetchFileContent = async (path: string) => {

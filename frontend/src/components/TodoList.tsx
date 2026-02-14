@@ -16,6 +16,8 @@ export default function TodoList({ apiHost }: TodoListProps) {
   const [saving, setSaving] = useState(false)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [editingText, setEditingText] = useState('')
 
   useEffect(() => {
     fetch(`http://${apiHost}/api/todos`)
@@ -66,9 +68,43 @@ export default function TodoList({ apiHost }: TodoListProps) {
     saveTodos(updated)
   }
 
+  const handleDeleteAllDone = () => {
+    const updated = todos.filter(t => !t.done)
+    setTodos(updated)
+    saveTodos(updated)
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleAdd()
+    }
+  }
+
+  const handleStartEdit = (index: number) => {
+    setEditingIndex(index)
+    setEditingText(todos[index].text)
+  }
+
+  const handleSaveEdit = () => {
+    if (editingIndex === null) return
+    const trimmed = editingText.trim()
+    if (trimmed && trimmed !== todos[editingIndex].text) {
+      const updated = todos.map((t, i) =>
+        i === editingIndex ? { ...t, text: trimmed } : t
+      )
+      setTodos(updated)
+      saveTodos(updated)
+    }
+    setEditingIndex(null)
+    setEditingText('')
+  }
+
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveEdit()
+    } else if (e.key === 'Escape') {
+      setEditingIndex(null)
+      setEditingText('')
     }
   }
 
@@ -120,6 +156,15 @@ export default function TodoList({ apiHost }: TodoListProps) {
         >
           Add
         </button>
+        {todos.some(t => t.done) && (
+          <button
+            onClick={handleDeleteAllDone}
+            className="px-3 py-2 text-gray-400 hover:text-red-400 text-sm"
+            title="Delete completed tasks"
+          >
+            Clear done
+          </button>
+        )}
       </div>
 
       {/* Todo list */}
@@ -148,13 +193,26 @@ export default function TodoList({ apiHost }: TodoListProps) {
                   onChange={() => handleToggle(index)}
                   className="w-5 h-5 rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
                 />
-                <span
-                  className={`flex-1 ${
-                    todo.done ? 'text-gray-500 line-through' : 'text-white'
-                  }`}
-                >
-                  {todo.text}
-                </span>
+                {editingIndex === index ? (
+                  <input
+                    type="text"
+                    value={editingText}
+                    onChange={e => setEditingText(e.target.value)}
+                    onBlur={handleSaveEdit}
+                    onKeyDown={handleEditKeyDown}
+                    autoFocus
+                    className="flex-1 px-2 py-1 bg-gray-700 text-white rounded border border-blue-500 focus:outline-none"
+                  />
+                ) : (
+                  <span
+                    onClick={() => handleStartEdit(index)}
+                    className={`flex-1 cursor-text ${
+                      todo.done ? 'text-gray-500 line-through' : 'text-white'
+                    }`}
+                  >
+                    {todo.text}
+                  </span>
+                )}
                 <button
                   onClick={() => handleDelete(index)}
                   className="text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"

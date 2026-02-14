@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Terminal from './components/Terminal'
 import QuickInput from './components/QuickInput'
 import DiffViewer from './components/DiffViewer'
@@ -20,9 +20,19 @@ type MobileTab = 'terminal' | 'diff' | 'files' | 'todos'
 function App() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [selectedSession, setSelectedSession] = useState<string | null>(null)
-  const [sendFn, setSendFn] = useState<((data: string) => void) | null>(null)
   const [rightPanel, setRightPanel] = useState<RightPanel>('diff')
   const [mobileTab, setMobileTab] = useState<MobileTab>('terminal')
+  const sendFnRef = useRef<((data: string) => void) | null>(null)
+
+  const handleSendReady = useCallback((fn: ((data: string) => void) | null) => {
+    sendFnRef.current = fn
+  }, [])
+
+  const handleSendInput = useCallback((text: string) => {
+    if (sendFnRef.current) {
+      sendFnRef.current(text + '\n')
+    }
+  }, [])
 
   // Determine API host - use same hostname but port 8000 for backend
   const apiHost = `${window.location.hostname}:8000`
@@ -41,12 +51,6 @@ function App() {
       .catch(err => console.error('Failed to fetch sessions:', err))
   }, [apiHost])
 
-  const handleSendInput = (text: string) => {
-    if (sendFn) {
-      sendFn(text + '\n')
-    }
-  }
-
   const mobileTabs: { id: MobileTab; label: string }[] = [
     { id: 'terminal', label: 'Terminal' },
     { id: 'diff', label: 'Diff' },
@@ -61,7 +65,7 @@ function App() {
           <Terminal
             sessionName={selectedSession}
             apiHost={apiHost}
-            onSendReady={setSendFn}
+            onSendReady={handleSendReady}
           />
         ) : (
           <div className="flex items-center justify-center h-full text-gray-500">
@@ -72,7 +76,7 @@ function App() {
       <div className="p-2 bg-gray-800 border-t border-gray-700">
         <QuickInput
           onSend={handleSendInput}
-          disabled={!selectedSession || !sendFn}
+          disabled={!selectedSession}
         />
       </div>
     </div>
