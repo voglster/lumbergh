@@ -9,9 +9,10 @@ interface Props {
   onRefresh: () => void
   commit?: { hash: string; shortHash: string; message: string } | null
   onNavigateToHistory?: () => void
+  onCommitSuccess?: () => void
 }
 
-export default function FileList({ data, apiHost, onSelectFile, onRefresh, commit, onNavigateToHistory }: Props) {
+export default function FileList({ data, apiHost, onSelectFile, onRefresh, commit, onNavigateToHistory, onCommitSuccess }: Props) {
   const [commitMessage, setCommitMessage] = useState('')
   const [isCommitting, setIsCommitting] = useState(false)
   const [commitResult, setCommitResult] = useState<{ type: 'success' | 'error', message: string } | null>(null)
@@ -35,6 +36,7 @@ export default function FileList({ data, apiHost, onSelectFile, onRefresh, commi
         setCommitResult({ type: 'success', message: `Committed: ${result.hash}` })
         setCommitMessage('')
         onRefresh()
+        onCommitSuccess?.()
       }
     } catch (err) {
       setCommitResult({ type: 'error', message: 'Failed to commit' })
@@ -46,7 +48,8 @@ export default function FileList({ data, apiHost, onSelectFile, onRefresh, commi
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    if (e.key === 'Enter' && commitMessage.trim()) {
+      e.preventDefault()
       handleCommit()
     }
   }
@@ -96,24 +99,15 @@ export default function FileList({ data, apiHost, onSelectFile, onRefresh, commi
       {/* Commit input - only show for working changes */}
       {isWorkingChanges && (
       <div className="p-3 bg-gray-800 border-b border-gray-700">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={commitMessage}
-            onChange={e => setCommitMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Commit message... (Ctrl+Enter to commit)"
-            className="flex-1 px-3 py-2 bg-gray-700 text-white text-sm rounded border border-gray-600 focus:outline-none focus:border-blue-500"
-            disabled={isCommitting}
-          />
-          <button
-            onClick={handleCommit}
-            disabled={!commitMessage.trim() || isCommitting}
-            className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm rounded disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isCommitting ? '...' : 'Commit'}
-          </button>
-        </div>
+        <input
+          type="text"
+          value={commitMessage}
+          onChange={e => setCommitMessage(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Commit message... (Enter to commit)"
+          className="w-full px-3 py-2 bg-gray-700 text-white text-sm rounded border border-gray-600 focus:outline-none focus:border-blue-500"
+          disabled={isCommitting}
+        />
         {commitResult && (
           <div className={`mt-2 text-sm ${commitResult.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
             {commitResult.message}

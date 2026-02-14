@@ -5,6 +5,7 @@ import type { DiffData, Commit, CommitDiff } from './diff'
 
 interface Props {
   apiHost: string
+  onCommitSuccess?: () => void
 }
 
 type ViewState =
@@ -12,7 +13,7 @@ type ViewState =
   | { level: 'changes'; commit: string | null }
   | { level: 'file'; commit: string | null; file: string }
 
-export default function DiffViewer({ apiHost }: Props) {
+export default function DiffViewer({ apiHost, onCommitSuccess }: Props) {
   // Working changes data
   const [workingData, setWorkingData] = useState<DiffData | null>(null)
   // Commit history
@@ -271,6 +272,7 @@ export default function DiffViewer({ apiHost }: Props) {
       onRefresh={handleRefresh}
       commit={getCurrentCommitInfo()}
       onNavigateToHistory={handleNavigateToHistory}
+      onCommitSuccess={onCommitSuccess}
     />
   )
 }

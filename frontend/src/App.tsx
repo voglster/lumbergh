@@ -46,6 +46,11 @@ function App() {
     focusFnRef.current?.()
   }, [])
 
+  const handleCommitSuccess = useCallback(() => {
+    setRightPanel('todos')
+    setMobileTab('todos')
+  }, [])
+
   // Determine API host - use same hostname but port 8000 for backend
   const apiHost = `${window.location.hostname}:8000`
 
@@ -162,7 +167,7 @@ function App() {
       </div>
       {/* Panel content */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        {rightPanel === 'diff' && <DiffViewer key={diffKey} apiHost={apiHost} />}
+        {rightPanel === 'diff' && <DiffViewer key={diffKey} apiHost={apiHost} onCommitSuccess={handleCommitSuccess} />}
         {rightPanel === 'files' && <FileBrowser apiHost={apiHost} />}
         {rightPanel === 'todos' && (
           <VerticalResizablePanes
@@ -240,7 +245,7 @@ function App() {
         {/* Tab content */}
         <div className="flex-1 min-h-0 overflow-hidden">
           {mobileTab === 'terminal' && renderTerminal()}
-          {mobileTab === 'diff' && <DiffViewer key={diffKey} apiHost={apiHost} />}
+          {mobileTab === 'diff' && <DiffViewer key={diffKey} apiHost={apiHost} onCommitSuccess={handleCommitSuccess} />}
           {mobileTab === 'files' && <FileBrowser apiHost={apiHost} />}
           {mobileTab === 'todos' && (
             <VerticalResizablePanes
