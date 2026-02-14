@@ -5,6 +5,7 @@ import { getFileStats } from './utils'
 interface Props {
   data: DiffData
   apiHost: string
+  sessionName?: string
   onSelectFile: (path: string) => void
   onRefresh: () => void
   commit?: { hash: string; shortHash: string; message: string } | null
@@ -12,17 +13,22 @@ interface Props {
   onCommitSuccess?: () => void
 }
 
-export default function FileList({ data, apiHost, onSelectFile, onRefresh, commit, onNavigateToHistory, onCommitSuccess }: Props) {
+export default function FileList({ data, apiHost, sessionName, onSelectFile, onRefresh, commit, onNavigateToHistory, onCommitSuccess }: Props) {
   const [commitMessage, setCommitMessage] = useState('')
   const [isCommitting, setIsCommitting] = useState(false)
   const [commitResult, setCommitResult] = useState<{ type: 'success' | 'error', message: string } | null>(null)
+
+  // Build commit URL based on whether we have a session
+  const commitUrl = sessionName
+    ? `http://${apiHost}/api/sessions/${sessionName}/git/commit`
+    : `http://${apiHost}/api/git/commit`
 
   const handleCommit = async () => {
     if (!commitMessage.trim()) return
     setIsCommitting(true)
     setCommitResult(null)
     try {
-      const res = await fetch(`http://${apiHost}/api/git/commit`, {
+      const res = await fetch(commitUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: commitMessage.trim() }),

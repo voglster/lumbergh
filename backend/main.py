@@ -11,7 +11,7 @@ import uvicorn
 from fastapi import FastAPI, WebSocket, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from routers import notes
+from routers import notes, sessions
 
 
 class SendInput(BaseModel):
@@ -24,6 +24,7 @@ class CommitInput(BaseModel):
 
 app = FastAPI(title="Lumbergh", description="Tmux session supervisor")
 app.include_router(notes.router)
+app.include_router(sessions.router)
 
 # Project root (parent of backend/)
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -394,14 +395,6 @@ async def get_file(file_path: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/api/sessions")
-async def list_sessions():
-    """List available tmux sessions."""
-    from tmux_pty import list_tmux_sessions
-    sessions = list_tmux_sessions()
-    return {"sessions": sessions}
 
 
 @app.post("/api/session/{session_name}/send")

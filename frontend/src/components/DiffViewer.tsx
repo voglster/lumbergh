@@ -5,6 +5,7 @@ import type { DiffData, Commit, CommitDiff } from './diff'
 
 interface Props {
   apiHost: string
+  sessionName?: string
   onCommitSuccess?: () => void
 }
 
@@ -13,7 +14,11 @@ type ViewState =
   | { level: 'changes'; commit: string | null }
   | { level: 'file'; commit: string | null; file: string }
 
-export default function DiffViewer({ apiHost, onCommitSuccess }: Props) {
+export default function DiffViewer({ apiHost, sessionName, onCommitSuccess }: Props) {
+  // Build base URL for git endpoints
+  const gitBaseUrl = sessionName
+    ? `http://${apiHost}/api/sessions/${sessionName}/git`
+    : `http://${apiHost}/api/git`
   // Working changes data
   const [workingData, setWorkingData] = useState<DiffData | null>(null)
   // Commit history
@@ -29,36 +34,36 @@ export default function DiffViewer({ apiHost, onCommitSuccess }: Props) {
 
   const fetchWorkingChanges = useCallback(async () => {
     try {
-      const res = await fetch(`http://${apiHost}/api/git/diff`)
+      const res = await fetch(`${gitBaseUrl}/diff`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       setWorkingData(json)
     } catch (e) {
       throw e
     }
-  }, [apiHost])
+  }, [gitBaseUrl])
 
   const fetchCommits = useCallback(async () => {
     try {
-      const res = await fetch(`http://${apiHost}/api/git/log`)
+      const res = await fetch(`${gitBaseUrl}/log`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       setCommits(json.commits)
     } catch (e) {
       throw e
     }
-  }, [apiHost])
+  }, [gitBaseUrl])
 
   const fetchCommitDiff = useCallback(async (hash: string) => {
     try {
-      const res = await fetch(`http://${apiHost}/api/git/commit/${hash}`)
+      const res = await fetch(`${gitBaseUrl}/commit/${hash}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       setCommitData(json)
     } catch (e) {
       throw e
     }
-  }, [apiHost])
+  }, [gitBaseUrl])
 
   // Initial load - fetch working changes
   const loadInitialData = useCallback(async () => {
@@ -268,6 +273,7 @@ export default function DiffViewer({ apiHost, onCommitSuccess }: Props) {
     <FileList
       data={data}
       apiHost={apiHost}
+      sessionName={sessionName}
       onSelectFile={handleSelectFile}
       onRefresh={handleRefresh}
       commit={getCurrentCommitInfo()}
