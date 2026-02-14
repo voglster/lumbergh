@@ -436,6 +436,9 @@ async def session_stream(websocket: WebSocket, session_name: str):
     """
     WebSocket endpoint for bidirectional terminal I/O with a tmux session.
 
+    Uses session pooling to ensure one PTY per tmux session, even with
+    multiple WebSocket clients (e.g., React StrictMode double-mounts).
+
     Messages from client:
     - {"type": "input", "data": "..."} - Send keystrokes to terminal
     - {"type": "resize", "cols": N, "rows": M} - Resize terminal
@@ -444,16 +447,30 @@ async def session_stream(websocket: WebSocket, session_name: str):
     - {"type": "output", "data": "..."} - Terminal output
     - {"type": "error", "message": "..."} - Error messages
     """
+    from fastapi import WebSocketDisconnect
+    from session_manager import session_manager
+
     await websocket.accept()
 
-    from tmux_pty import TmuxPtySession
-
     try:
-        session = TmuxPtySession(session_name)
-        await session.run(websocket)
+        # Register this client with the session manager
+        await session_manager.register_client(session_name, websocket)
+
+        # Read messages from client and forward to PTY
+        while True:
+            message = await websocket.receive_json()
+            await session_manager.handle_client_message(session_name, message)
+
+    except WebSocketDisconnect:
+        pass
     except Exception as e:
-        await websocket.send_json({"type": "error", "message": str(e)})
-        await websocket.close()
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+        except Exception:
+            pass
+    finally:
+        # Unregister client - PTY closes only when last client disconnects
+        await session_manager.unregister_client(session_name, websocket)
 
 
 if __name__ == "__main__":

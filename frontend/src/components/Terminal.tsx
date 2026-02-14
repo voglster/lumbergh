@@ -18,15 +18,34 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
   const fitAddonRef = useRef<FitAddon | null>(null)
   const sendRef = useRef<(data: string) => void>(() => {})
   const sendResizeRef = useRef<(cols: number, rows: number) => void>(() => {})
+  // Track last known dimensions for stability check
+  const lastDimensionsRef = useRef<{ width: number; height: number } | null>(null)
 
   const handleData = useCallback((data: string) => {
     termRef.current?.write(data)
   }, [])
 
+  // Fit terminal and send resize - used on connect and container resize
+  const handleFit = useCallback(() => {
+    if (fitAddonRef.current && termRef.current) {
+      fitAddonRef.current.fit()
+      sendResizeRef.current(termRef.current.cols, termRef.current.rows)
+    }
+  }, [])
+
+  // Handle connection - immediately fit to ensure correct size is sent
+  const handleConnect = useCallback(() => {
+    // Small delay to ensure terminal is ready
+    setTimeout(() => {
+      handleFit()
+    }, 50)
+  }, [handleFit])
+
   const { send, sendResize, isConnected, error } = useTerminalSocket({
     sessionName,
     apiHost,
     onData: handleData,
+    onConnect: handleConnect,
   })
 
   // Keep refs updated
@@ -96,20 +115,31 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
     }
   }, [sessionName])
 
-  const handleFit = useCallback(() => {
-    if (fitAddonRef.current && termRef.current) {
-      fitAddonRef.current.fit()
-      sendResizeRef.current(termRef.current.cols, termRef.current.rows)
-    }
-  }, [])
-
-  // Auto-fit on container resize (debounced)
+  // Auto-fit on container resize (debounced with stability check)
   useEffect(() => {
     if (!containerRef.current) return
 
     let timeoutId: ReturnType<typeof setTimeout> | null = null
 
-    const resizeObserver = new ResizeObserver(() => {
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (!entry) return
+
+      const { width, height } = entry.contentRect
+      const last = lastDimensionsRef.current
+
+      // Stability check: skip if dimensions changed less than 5px
+      // This prevents resize thrashing from minor fluctuations
+      if (last) {
+        const deltaW = Math.abs(width - last.width)
+        const deltaH = Math.abs(height - last.height)
+        if (deltaW < 5 && deltaH < 5) {
+          return
+        }
+      }
+
+      lastDimensionsRef.current = { width, height }
+
       if (timeoutId) clearTimeout(timeoutId)
       timeoutId = setTimeout(handleFit, 150)
     })
