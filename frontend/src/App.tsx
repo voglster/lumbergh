@@ -4,6 +4,8 @@ import QuickInput from './components/QuickInput'
 import DiffViewer from './components/DiffViewer'
 import FileBrowser from './components/FileBrowser'
 import ResizablePanes from './components/ResizablePanes'
+import TodoList from './components/TodoList'
+import Scratchpad from './components/Scratchpad'
 
 interface Session {
   name: string
@@ -12,8 +14,8 @@ interface Session {
   attached: boolean
 }
 
-type RightPanel = 'diff' | 'files'
-type MobileTab = 'terminal' | 'diff' | 'files'
+type RightPanel = 'diff' | 'files' | 'todos'
+type MobileTab = 'terminal' | 'diff' | 'files' | 'todos'
 
 function App() {
   const [sessions, setSessions] = useState<Session[]>([])
@@ -49,6 +51,7 @@ function App() {
     { id: 'terminal', label: 'Terminal' },
     { id: 'diff', label: 'Diff' },
     { id: 'files', label: 'Files' },
+    { id: 'todos', label: 'Todo' },
   ]
 
   const renderTerminal = () => (
@@ -99,11 +102,31 @@ function App() {
         >
           Files
         </button>
+        <button
+          onClick={() => setRightPanel('todos')}
+          className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+            rightPanel === 'todos'
+              ? 'bg-gray-600 text-white'
+              : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'
+          }`}
+        >
+          Todo
+        </button>
       </div>
       {/* Panel content */}
       <div className="flex-1 min-h-0 overflow-hidden">
         {rightPanel === 'diff' && <DiffViewer apiHost={apiHost} />}
         {rightPanel === 'files' && <FileBrowser apiHost={apiHost} />}
+        {rightPanel === 'todos' && (
+          <div className="h-full flex flex-col">
+            <div className="h-1/2 border-b border-gray-700 overflow-auto">
+              <TodoList apiHost={apiHost} />
+            </div>
+            <div className="h-1/2">
+              <Scratchpad apiHost={apiHost} />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -161,6 +184,16 @@ function App() {
           {mobileTab === 'terminal' && renderTerminal()}
           {mobileTab === 'diff' && <DiffViewer apiHost={apiHost} />}
           {mobileTab === 'files' && <FileBrowser apiHost={apiHost} />}
+          {mobileTab === 'todos' && (
+            <div className="h-full flex flex-col">
+              <div className="h-1/2 border-b border-gray-700 overflow-auto">
+                <TodoList apiHost={apiHost} />
+              </div>
+              <div className="h-1/2">
+                <Scratchpad apiHost={apiHost} />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

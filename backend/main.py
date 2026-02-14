@@ -8,10 +8,12 @@ import subprocess
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from routers import notes
 
 app = FastAPI(title="Lumbergh", description="Tmux session supervisor")
+app.include_router(notes.router)
 
 # Project root (parent of backend/)
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -83,7 +85,7 @@ async def git_status():
 
 @app.get("/api/git/diff")
 async def git_diff():
-    """Get git diff for all changed files."""
+    """Get git diff for all changed files, including untracked files."""
     try:
         # Get diff for staged and unstaged changes
         diff_result = subprocess.run(
@@ -126,6 +128,40 @@ async def git_diff():
                     "path": current_file,
                     "diff": "\n".join(current_diff_lines),
                 })
+
+        # Also include untracked files
+        status_result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+        )
+        if status_result.returncode == 0:
+            for line in status_result.stdout.split("\n"):
+                if line.startswith("??"):
+                    untracked_path = line[3:]
+                    full_path = PROJECT_ROOT / untracked_path
+                    if full_path.is_file():
+                        try:
+                            content = full_path.read_text(errors="replace")
+                            lines = content.split("\n")
+                            # Generate pseudo-diff for new file
+                            diff_lines = [
+                                f"diff --git a/{untracked_path} b/{untracked_path}",
+                                "new file mode 100644",
+                                "--- /dev/null",
+                                f"+++ b/{untracked_path}",
+                                f"@@ -0,0 +1,{len(lines)} @@",
+                            ]
+                            for content_line in lines:
+                                diff_lines.append(f"+{content_line}")
+                                stats["additions"] += 1
+                            files.append({
+                                "path": untracked_path,
+                                "diff": "\n".join(diff_lines),
+                            })
+                        except Exception:
+                            pass  # Skip files that can't be read
 
         return {"files": files, "stats": stats}
     except Exception as e:
