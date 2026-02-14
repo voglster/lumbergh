@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface Todo {
   text: string
@@ -14,6 +14,8 @@ export default function TodoList({ apiHost }: TodoListProps) {
   const [newTodo, setNewTodo] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   useEffect(() => {
     fetch(`http://${apiHost}/api/todos`)
@@ -70,6 +72,27 @@ export default function TodoList({ apiHost }: TodoListProps) {
     }
   }
 
+  const handleDragStart = (index: number) => {
+    setDragIndex(index)
+  }
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    setDragOverIndex(index)
+  }
+
+  const handleDragEnd = () => {
+    if (dragIndex !== null && dragOverIndex !== null && dragIndex !== dragOverIndex) {
+      const updated = [...todos]
+      const [dragged] = updated.splice(dragIndex, 1)
+      updated.splice(dragOverIndex, 0, dragged)
+      setTodos(updated)
+      saveTodos(updated)
+    }
+    setDragIndex(null)
+    setDragOverIndex(null)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
@@ -110,8 +133,15 @@ export default function TodoList({ apiHost }: TodoListProps) {
             {todos.map((todo, index) => (
               <li
                 key={index}
-                className="flex items-center gap-3 p-3 bg-gray-800 rounded border border-gray-700 group"
+                draggable
+                onDragStart={() => handleDragStart(index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDragEnd={handleDragEnd}
+                className={`flex items-center gap-3 p-3 bg-gray-800 rounded border border-gray-700 group cursor-grab active:cursor-grabbing ${
+                  dragIndex === index ? 'opacity-50' : ''
+                } ${dragOverIndex === index && dragIndex !== index ? 'border-blue-500' : ''}`}
               >
+                <span className="text-gray-600 select-none">⠿</span>
                 <input
                   type="checkbox"
                   checked={todo.done}
