@@ -20,20 +20,34 @@ See `docs/` for full PRD, architecture, and implementation roadmap.
 
 ```
 lumbergh/
-├── backend/              # FastAPI backend (uv + pyproject.toml)
-│   ├── main.py           # App entrypoint, routes, WebSocket
-│   ├── tmux_pty.py       # PTY/tmux attachment logic
-│   ├── pyproject.toml    # Python dependencies
-│   └── start.sh          # Backend startup script
-├── frontend/             # React + Vite frontend
+├── backend/
+│   ├── main.py             # FastAPI app, git/file/session endpoints
+│   ├── tmux_pty.py         # PTY/tmux attachment logic
+│   ├── session_manager.py  # PTY pooling for WebSocket clients
+│   ├── routers/
+│   │   └── notes.py        # Todo, scratchpad, prompt template APIs
+│   ├── pyproject.toml      # Python dependencies (uv)
+│   └── start.sh
+├── frontend/
 │   ├── src/
-│   │   ├── App.tsx
+│   │   ├── App.tsx         # Main app with session selector + tabs
 │   │   ├── components/
 │   │   │   ├── Terminal.tsx
-│   │   │   └── QuickInput.tsx
+│   │   │   ├── QuickInput.tsx
+│   │   │   ├── DiffViewer.tsx
+│   │   │   ├── FileBrowser.tsx
+│   │   │   ├── TodoList.tsx
+│   │   │   ├── Scratchpad.tsx
+│   │   │   ├── PromptTemplates.tsx
+│   │   │   ├── ResizablePanes.tsx
+│   │   │   ├── VerticalResizablePanes.tsx
+│   │   │   └── diff/
+│   │   │       ├── FileList.tsx
+│   │   │       ├── FileDiff.tsx
+│   │   │       └── CommitList.tsx
 │   │   └── hooks/
 │   │       └── useTerminalSocket.ts
-│   └── start.sh          # Frontend startup script
+│   └── start.sh
 ├── start.sh              # Start both backend + frontend
 └── docs/                 # PRD, architecture, roadmap
 ```
@@ -57,10 +71,12 @@ Or run separately:
 ## Conventions
 
 - Keep the backend simple - it's a thin layer over tmux/git subprocesses
-- Use TinyDB for persistence (stored at `~/.lumbergh/db.json`)
+- TinyDB for persistence:
+  - Project data: `~/.config/lumbergh/projects/{hash}.json` (todos, scratchpad, prompts)
+  - Global data: `~/.config/lumbergh/global.json` (shared prompts)
 - WebSocket for terminal streaming, REST+polling for diffs and metadata
 - Mobile-first responsive design (this will be used from phones/tablets)
 
 ## Current Phase
 
-Phase 1: "Intern" MVP - Single terminal session working in browser with xterm.js attached to a tmux pane via WebSocket.
+Phase 3: "Office Floor" - Building multi-session support. Phases 1-2 complete (terminal, diff viewer, file browser, todos, prompts all working).

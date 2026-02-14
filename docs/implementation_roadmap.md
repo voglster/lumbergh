@@ -18,80 +18,107 @@ This roadmap focuses on a "Depth First" approach: get a single session working p
 
 - [x] **The Terminal Component:**
   - [x] Build `<Terminal />` wrapper around xterm.js.
-  - [x] Handle window resizing (manual Fit button for now).
-  - [x] Verify: Type in browser, see it in tmux.
+  - [x] Handle window resizing (auto-fit on resize).
+  - [x] Stable session management (PTY pooling to handle React StrictMode).
+  - [x] Configurable font sizing.
 
 - [x] **Input Routing:**
   - [x] Add "Quick Input" text box (for mobile typing).
+  - [x] `POST /api/session/{name}/send` for sending text to terminal.
   - [ ] Add "Push-to-Talk" button (Web Speech API → Text → Backend). *(deferred)*
 
 - [x] **Session Selection:**
   - [x] `GET /api/sessions` to list available tmux sessions.
   - [x] Dropdown to select which session to connect to.
 
-## Phase 2: The "Supervisor" Pane 🚧
+## Phase 2: The "Supervisor" Pane ✅
 
 **Goal:** Add git diff viewer and file browser so you can review AI changes from mobile.
 
-- [ ] **Backend Git/File API:**
-  - [ ] `GET /api/git/status` - current repo status
-  - [ ] `GET /api/git/diff` - staged + unstaged changes
-  - [ ] `GET /api/files` - list files in repo
-  - [ ] `GET /api/files/{path}` - read file contents
+- [x] **Backend Git/File API:**
+  - [x] `GET /api/git/status` - current repo status
+  - [x] `GET /api/git/diff` - staged + unstaged changes (including untracked files)
+  - [x] `GET /api/git/log` - recent commit history
+  - [x] `GET /api/git/commit/{hash}` - diff for a specific commit
+  - [x] `POST /api/git/commit` - stage all and commit
+  - [x] `GET /api/files` - list files in repo
+  - [x] `GET /api/files/{path}` - read file contents with language detection
 
-- [ ] **Frontend Diff Viewer:**
-  - [ ] Create `<DiffViewer />` component with syntax highlighting
-  - [ ] File list showing changed files
-  - [ ] Expandable/collapsible diff per file
+- [x] **Frontend Diff Viewer:**
+  - [x] Create `<DiffViewer />` component with syntax highlighting
+  - [x] `<FileList />` showing changed files
+  - [x] `<FileDiff />` for expandable/collapsible diff per file
+  - [x] `<CommitList />` for viewing commit history
+  - [x] Quick commit functionality with message input
 
-- [ ] **Layout:**
-  - [ ] Tab-based navigation: Terminal | Diff | Files
-  - [ ] Mobile-friendly layout
+- [x] **File Browser:**
+  - [x] `<FileBrowser />` component with tree view
+  - [x] File content viewing with syntax highlighting
 
-## Phase 3: The "Office Floor"
+- [x] **Layout:**
+  - [x] `<ResizablePanes />` for desktop side-by-side split
+  - [x] Tab-based navigation: Terminal | Diff | Files | Todo | Prompts
+  - [x] Mobile-friendly tabbed layout
+  - [x] Diff stats badge showing file count and +/- lines
+
+## Phase 3: The "Office Floor" 🚧
 
 **Goal:** Scale from one hardcoded session to a Dashboard managing many.
 
-- [ ] **Persistence Layer (TinyDB):**
-  - [ ] Implement `db.py` to save Session Metadata (ID, Path, Name, Status).
+- [x] **Persistence Layer (TinyDB):**
+  - [x] TinyDB setup in `~/.config/lumbergh/projects/{hash}.json`
+  - [x] Project-scoped storage (hashed by project path)
+  - [x] Global storage for cross-project data (`~/.config/lumbergh/global.json`)
 
 - [ ] **Session Management API:**
-  - [ ] `GET /api/sessions`: List active sessions (sync DB with actual `tmux ls`).
-  - [ ] `POST /api/sessions`:
-    - [ ] Accept `repo_url` or `path`.
-    - [ ] (Optional) Create git worktree.
-    - [ ] Spawn new named tmux session.
+  - [x] `GET /api/sessions`: List existing tmux sessions
+  - [ ] `POST /api/sessions`: Create new session
+    - [ ] Accept `repo_url` or `path`
+    - [ ] (Optional) Create git worktree
+    - [ ] Spawn new named tmux session
+  - [ ] `DELETE /api/sessions/{name}`: Kill session
 
 - [ ] **Dashboard UI:**
-  - [ ] Create `Dashboard.tsx` (Grid view of sessions).
-  - [ ] Create `NewSessionModal.tsx`.
-  - [ ] Add routing (`react-router-dom`) to navigate between `/` (Dashboard) and `/session/:id`.
+  - [ ] Create `Dashboard.tsx` (Grid view of sessions)
+  - [ ] Create `NewSessionModal.tsx`
+  - [ ] Add routing (`react-router-dom`) to navigate between `/` (Dashboard) and `/session/:id`
+  - [ ] Session status indicators (idle/active/error)
 
-## Phase 4: The "Manager" & Context
+## Phase 4: The "Manager" & Context ⏳
 
 **Goal:** The "Brain" pane with Notes, Todos, and AI Chat.
 
-- [ ] **File System API:**
-  - [ ] `GET /api/context`: Read `PLAN.md` and `docs/*.md`.
-  - [ ] `POST /api/context`: Save changes to Markdown files.
+- [x] **Notes & Planning UI:**
+  - [x] `<TodoList />` component with add/edit/delete/reorder
+  - [x] `<Scratchpad />` component for free-form notes
+  - [x] `<PromptTemplates />` for reusable prompts
+    - [x] Project-specific templates
+    - [x] Global templates (shared across projects)
+    - [x] Copy between project/global
+    - [x] Send to terminal functionality
+  - [x] `<VerticalResizablePanes />` for splitting Todo/Scratchpad
 
-- [ ] **The "Memo" UI:**
-  - [ ] Create `<MarkdownEditor />` (e.g., using Milkdown or simple textarea with preview).
-  - [ ] Implement "Action Items" (Todo list) parsing from Markdown.
+- [x] **Notes API:**
+  - [x] `GET/POST /api/todos` - Todo list persistence
+  - [x] `GET/POST /api/scratchpad` - Scratchpad persistence
+  - [x] `GET/POST /api/prompts` - Project prompt templates
+  - [x] `GET/POST /api/global/prompts` - Global prompt templates
+  - [x] Copy endpoints between project/global
 
 - [ ] **The Manager Agent (Backend):**
-  - [ ] Integrate `anthropic` or `openai` SDK.
-  - [ ] Construct the "Context Packet" (Plan + Diff + User Query).
-  - [ ] Create Chat Endpoint (`POST /api/chat`).
+  - [ ] Integrate `anthropic` or `openai` SDK
+  - [ ] Construct the "Context Packet" (Plan + Diff + User Query)
+  - [ ] Create Chat Endpoint (`POST /api/chat`)
 
 - [ ] **The Manager Agent (Frontend):**
-  - [ ] Build Chat UI in the third pane.
-  - [ ] Add "Review Code" button that sends the current Diff to the LLM.
+  - [ ] Build Chat UI in a new pane/tab
+  - [ ] Add "Review Code" button that sends the current Diff to the LLM
 
-## Phase 5: Polish & Mobile
+## Phase 5: Polish & Mobile ⏳
 
 **Goal:** Make it usable on a phone.
 
-- [ ] **Responsive Design:** Ensure Terminal/Diff/Notes stack correctly on portrait.
-- [ ] **Virtual Keyboard Handling:** Prevent the keyboard from covering the input box.
-- [ ] **PWA Config:** Add `manifest.json` so it can be installed to the home screen.
+- [x] **Responsive Design:** Terminal/Diff/Notes stack correctly via tabs on mobile
+- [x] **Resizable Panes:** Persistent split positions via localStorage
+- [ ] **Virtual Keyboard Handling:** Prevent the keyboard from covering the input box
+- [ ] **PWA Config:** Add `manifest.json` so it can be installed to the home screen
