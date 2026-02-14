@@ -6,6 +6,7 @@ import ResizablePanes from './components/ResizablePanes'
 import VerticalResizablePanes from './components/VerticalResizablePanes'
 import TodoList from './components/TodoList'
 import Scratchpad from './components/Scratchpad'
+import PromptTemplates from './components/PromptTemplates'
 
 interface Session {
   name: string
@@ -14,15 +15,15 @@ interface Session {
   attached: boolean
 }
 
-type RightPanel = 'diff' | 'files' | 'todos'
-type MobileTab = 'terminal' | 'diff' | 'files' | 'todos'
+type RightPanel = 'diff' | 'files' | 'todos' | 'prompts'
+type MobileTab = 'terminal' | 'diff' | 'files' | 'todos' | 'prompts'
 
 function App() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [selectedSession, setSelectedSession] = useState<string | null>(null)
   const [rightPanel, setRightPanel] = useState<RightPanel>(() => {
     const saved = localStorage.getItem('lumbergh:rightPanel')
-    if (saved === 'diff' || saved === 'files' || saved === 'todos') {
+    if (saved === 'diff' || saved === 'files' || saved === 'todos' || saved === 'prompts') {
       return saved
     }
     return 'diff'
@@ -88,6 +89,7 @@ function App() {
     { id: 'diff', label: 'Diff' },
     { id: 'files', label: 'Files' },
     { id: 'todos', label: 'Todo' },
+    { id: 'prompts', label: 'Prompts' },
   ]
 
   const renderTerminal = () => (
@@ -147,6 +149,16 @@ function App() {
         >
           Todo
         </button>
+        <button
+          onClick={() => setRightPanel('prompts')}
+          className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+            rightPanel === 'prompts'
+              ? 'bg-gray-600 text-white'
+              : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'
+          }`}
+        >
+          Prompts
+        </button>
       </div>
       {/* Panel content */}
       <div className="flex-1 min-h-0 overflow-hidden">
@@ -161,6 +173,9 @@ function App() {
             maxTopHeight={80}
             storageKey="lumbergh:todoSplitHeight"
           />
+        )}
+        {rightPanel === 'prompts' && (
+          <PromptTemplates apiHost={apiHost} sessionName={selectedSession} onFocusTerminal={handleFocusTerminal} />
         )}
       </div>
     </div>
@@ -236,6 +251,9 @@ function App() {
               maxTopHeight={80}
               storageKey="lumbergh:todoSplitHeight"
             />
+          )}
+          {mobileTab === 'prompts' && (
+            <PromptTemplates apiHost={apiHost} sessionName={selectedSession} onFocusTerminal={handleFocusTerminal} />
           )}
         </div>
       </div>
