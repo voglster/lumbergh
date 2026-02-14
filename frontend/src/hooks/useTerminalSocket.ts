@@ -26,8 +26,6 @@ export function useTerminalSocket({
   const [isConnected, setIsConnected] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const reconnectTimeoutRef = useRef<number | null>(null)
-  // Track if component is still mounted (handles React StrictMode)
-  const mountedRef = useRef(true)
 
   // Store callbacks in refs to avoid recreating connect() on every render
   const onDataRef = useRef(onData)
@@ -41,11 +39,6 @@ export function useTerminalSocket({
   }, [onData, onConnect, onDisconnect])
 
   const connect = useCallback(() => {
-    // Skip connection if component has unmounted (StrictMode cleanup)
-    if (!mountedRef.current) {
-      return
-    }
-
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       return
     }
@@ -54,8 +47,8 @@ export function useTerminalSocket({
     const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
-      // Don't update state if unmounted
-      if (!mountedRef.current) {
+      // Only process if this is still the active WebSocket
+      if (wsRef.current !== ws) {
         ws.close()
         return
       }
@@ -65,7 +58,8 @@ export function useTerminalSocket({
     }
 
     ws.onmessage = (event) => {
-      if (!mountedRef.current) return
+      // Only process if this is still the active WebSocket
+      if (wsRef.current !== ws) return
       try {
         const message = JSON.parse(event.data)
         if (message.type === 'output') {
@@ -80,21 +74,21 @@ export function useTerminalSocket({
     }
 
     ws.onclose = () => {
-      if (!mountedRef.current) return
+      // Only process if this is still the active WebSocket
+      if (wsRef.current !== ws) return
       setIsConnected(false)
       onDisconnectRef.current?.()
       wsRef.current = null
 
-      // Only attempt reconnect if still mounted
-      if (mountedRef.current) {
-        reconnectTimeoutRef.current = window.setTimeout(() => {
-          connect()
-        }, 2000)
-      }
+      // Attempt reconnect
+      reconnectTimeoutRef.current = window.setTimeout(() => {
+        connect()
+      }, 2000)
     }
 
     ws.onerror = () => {
-      if (!mountedRef.current) return
+      // Only process if this is still the active WebSocket
+      if (wsRef.current !== ws) return
       setError('WebSocket connection error')
     }
 
@@ -114,20 +108,18 @@ export function useTerminalSocket({
   }, [])
 
   useEffect(() => {
-    mountedRef.current = true
     connect()
 
     return () => {
-      // Mark as unmounted first to prevent reconnection attempts
-      mountedRef.current = false
-
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current)
         reconnectTimeoutRef.current = null
       }
       if (wsRef.current) {
-        wsRef.current.close()
+        const ws = wsRef.current
+        // Set to null first so handlers exit early
         wsRef.current = null
+        ws.close()
       }
     }
   }, [connect])
