@@ -197,6 +197,13 @@ async def create_session(body: CreateSessionRequest):
     if result.returncode != 0:
         raise HTTPException(status_code=500, detail=f"Failed to create session: {result.stderr}")
 
+    # Launch Claude Code in the new session
+    subprocess.run(
+        ["tmux", "send-keys", "-t", body.name, "claude", "Enter"],
+        capture_output=True,
+        text=True,
+    )
+
     # Store metadata
     Session = Query()
     sessions_table.upsert(
