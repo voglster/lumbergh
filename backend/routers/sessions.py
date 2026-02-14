@@ -75,6 +75,10 @@ class CommitInput(BaseModel):
     message: str
 
 
+class CheckoutInput(BaseModel):
+    branch: str
+
+
 class TodoItem(BaseModel):
     text: str
     done: bool
@@ -535,6 +539,127 @@ async def session_git_commit(name: str, body: CommitInput):
         commit_hash = hash_result.stdout.strip() if hash_result.returncode == 0 else "unknown"
 
         return {"status": "committed", "hash": commit_hash, "message": body.message}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{name}/git/branches")
+async def session_git_branches(name: str):
+    """Get list of local and remote branches for a session's workdir."""
+    workdir = get_session_workdir(name)
+
+    try:
+        # Get current branch
+        current_result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=workdir,
+            capture_output=True,
+            text=True,
+        )
+        current_branch = current_result.stdout.strip() if current_result.returncode == 0 else "unknown"
+
+        # Get local branches
+        local_result = subprocess.run(
+            ["git", "branch", "--list", "--format=%(refname:short)"],
+            cwd=workdir,
+            capture_output=True,
+            text=True,
+        )
+        local_branches = []
+        if local_result.returncode == 0 and local_result.stdout.strip():
+            for branch in local_result.stdout.strip().split("\n"):
+                if branch:
+                    local_branches.append({
+                        "name": branch,
+                        "current": branch == current_branch,
+                    })
+
+        # Get remote branches
+        remote_result = subprocess.run(
+            ["git", "branch", "-r", "--list", "--format=%(refname:short)"],
+            cwd=workdir,
+            capture_output=True,
+            text=True,
+        )
+        remote_branches = []
+        if remote_result.returncode == 0 and remote_result.stdout.strip():
+            for branch in remote_result.stdout.strip().split("\n"):
+                if branch and not branch.endswith("/HEAD"):
+                    # Extract remote name (e.g., "origin/main" -> remote="origin")
+                    parts = branch.split("/", 1)
+                    remote_branches.append({
+                        "name": branch,
+                        "remote": parts[0] if len(parts) > 1 else None,
+                    })
+
+        # Check if working directory is clean
+        status_result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=workdir,
+            capture_output=True,
+            text=True,
+        )
+        clean = status_result.returncode == 0 and not status_result.stdout.strip()
+
+        return {
+            "current": current_branch,
+            "local": local_branches,
+            "remote": remote_branches,
+            "clean": clean,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{name}/git/checkout")
+async def session_git_checkout(name: str, body: CheckoutInput):
+    """Checkout a branch in a session's workdir."""
+    workdir = get_session_workdir(name)
+
+    try:
+        # Safety check: ensure working directory is clean
+        status_result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=workdir,
+            capture_output=True,
+            text=True,
+        )
+        if status_result.returncode != 0:
+            raise HTTPException(status_code=500, detail="Failed to check git status")
+
+        if status_result.stdout.strip():
+            raise HTTPException(
+                status_code=409,
+                detail="Working directory has pending changes. Commit or stash changes first."
+            )
+
+        # Checkout the branch
+        checkout_result = subprocess.run(
+            ["git", "checkout", body.branch],
+            cwd=workdir,
+            capture_output=True,
+            text=True,
+        )
+        if checkout_result.returncode != 0:
+            error_msg = checkout_result.stderr.strip() or "Failed to checkout branch"
+            raise HTTPException(status_code=400, detail=error_msg)
+
+        # Get the current branch name after checkout
+        branch_result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=workdir,
+            capture_output=True,
+            text=True,
+        )
+        current_branch = branch_result.stdout.strip() if branch_result.returncode == 0 else body.branch
+
+        return {
+            "status": "success",
+            "branch": current_branch,
+            "message": f"Switched to branch '{current_branch}'",
+        }
     except HTTPException:
         raise
     except Exception as e:

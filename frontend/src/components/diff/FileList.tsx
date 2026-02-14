@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { DiffData } from './types'
 import { getFileStats } from './utils'
+import BranchSelector from './BranchSelector'
 
 interface Props {
   data: DiffData
@@ -89,6 +90,12 @@ export default function FileList({ data, apiHost, sessionName, onSelectFile, onR
               </>
             )}
           </span>
+          {isWorkingChanges && sessionName && (
+            <BranchSelector
+              gitBaseUrl={`http://${apiHost}/api/sessions/${sessionName}/git`}
+              onBranchChange={onRefresh}
+            />
+          )}
         </div>
         <div className="flex items-center gap-3 shrink-0 ml-2">
           <span className="text-green-400 text-sm">+{data.stats.additions}</span>

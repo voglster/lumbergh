@@ -31,3 +31,16 @@ export interface FileStats {
   additions: number
   deletions: number
 }
+
+export interface Branch {
+  name: string
+  current?: boolean
+  remote?: string
+}
+
+export interface BranchData {
+  current: string
+  local: Branch[]
+  remote: Branch[]
+  clean: boolean
+}
