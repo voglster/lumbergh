@@ -223,8 +223,8 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
         </div>
         {/* Expanded row */}
         {headerExpanded && (
-          <div className="flex items-center justify-end gap-2 px-2 pb-2">
-            {/* Font size controls */}
+          <div className="flex items-center justify-between px-2 pb-2">
+            {/* Font size controls - left aligned */}
             <div className="flex items-center gap-1">
               <span className="text-xs text-gray-400">Font:</span>
               <button
@@ -243,20 +243,22 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
                 +
               </button>
             </div>
-            {/* Quick buttons */}
-            {['1', '2', '3', '4', 'yes', '/clear'].map((text) => (
-              <button
-                key={text}
-                onClick={() => {
-                  sendViaApi(text)
-                  setHeaderExpanded(false)
-                }}
-                disabled={!isConnected}
-                className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 disabled:opacity-50 rounded"
-              >
-                {text}
-              </button>
-            ))}
+            {/* Quick buttons - right aligned */}
+            <div className="flex items-center gap-2">
+              {['1', '2', '3', '4', 'yes', '/clear'].map((text) => (
+                <button
+                  key={text}
+                  onClick={() => {
+                    sendViaApi(text)
+                    setHeaderExpanded(false)
+                  }}
+                  disabled={!isConnected}
+                  className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 disabled:opacity-50 rounded"
+                >
+                  {text}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>

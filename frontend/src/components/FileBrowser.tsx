@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
+import MarkdownViewer from './MarkdownViewer'
 
 interface FileEntry {
   path: string
@@ -26,6 +27,7 @@ export default function FileBrowser({ apiHost }: Props) {
   const [loadingFile, setLoadingFile] = useState(false)
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [showMarkdownPreview, setShowMarkdownPreview] = useState(false)
 
   const fetchFiles = useCallback(async (silent = false) => {
     if (!silent) {
@@ -305,9 +307,20 @@ export default function FileBrowser({ apiHost }: Props) {
                 )}
                 {renderBreadcrumb(selectedFile.path)}
               </div>
-              <span className="text-gray-500 text-xs ml-2">
-                {selectedFile.language}
-              </span>
+              <div className="flex items-center gap-2">
+                {selectedFile.path.endsWith('.md') && (
+                  <button
+                    onClick={() => setShowMarkdownPreview(true)}
+                    className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-white"
+                    title="Preview markdown"
+                  >
+                    Preview
+                  </button>
+                )}
+                <span className="text-gray-500 text-xs">
+                  {selectedFile.language}
+                </span>
+              </div>
             </div>
             <pre className="flex-1 p-4 overflow-auto text-sm font-mono">
               <code
@@ -337,6 +350,15 @@ export default function FileBrowser({ apiHost }: Props) {
           </div>
         )}
       </div>
+
+      {/* Markdown preview modal */}
+      {showMarkdownPreview && selectedFile && (
+        <MarkdownViewer
+          content={selectedFile.content}
+          filePath={selectedFile.path}
+          onClose={() => setShowMarkdownPreview(false)}
+        />
+      )}
     </div>
   )
 }
