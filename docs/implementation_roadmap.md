@@ -2,42 +2,51 @@
 
 This roadmap focuses on a "Depth First" approach: get a single session working perfectly with the terminal and diffs before building the dashboard to manage multiple of them.
 
-## Phase 1: The "Intern" MVP
+## Phase 1: The "Intern" MVP ✅
 
 **Goal:** A React app that connects to a single tmux session in a specific directory.
 
-- [ ] **Backend Scaffold (FastAPI):**
-  - [ ] Setup `main.py` with FastAPI and libtmux.
-  - [ ] Create a WS `/api/stream` endpoint that spawns a pty attached to a hardcoded tmux session (e.g., `lumbergh_dev`).
+- [x] **Backend Scaffold (FastAPI):**
+  - [x] Setup `main.py` with FastAPI and libtmux.
+  - [x] Create a WS `/api/session/{name}/stream` endpoint that spawns a pty attached to tmux session.
+  - [x] Use `uv` + `pyproject.toml` for dependency management.
 
-- [ ] **Frontend Scaffold (React + Vite):**
-  - [ ] Initialize project with `npm create vite@latest client -- --template react-ts`.
-  - [ ] Install `xterm.js`, `xterm-addon-fit`, and `socket.io-client` (or native WS).
+- [x] **Frontend Scaffold (React + Vite):**
+  - [x] Initialize project with `npm create vite@latest frontend -- --template react-ts`.
+  - [x] Install `@xterm/xterm`, `@xterm/addon-fit`, native WebSocket.
+  - [x] Setup Tailwind CSS.
 
-- [ ] **The Terminal Component:**
-  - [ ] Build `<Terminal />` wrapper around xterm.js.
-  - [ ] Handle window resizing (frontend → backend).
-  - [ ] Verify: Type `ls` in browser, see it in local tmux window.
+- [x] **The Terminal Component:**
+  - [x] Build `<Terminal />` wrapper around xterm.js.
+  - [x] Handle window resizing (manual Fit button for now).
+  - [x] Verify: Type in browser, see it in tmux.
 
-- [ ] **Input Routing:**
-  - [ ] Add "Quick Input" text box (for mobile typing).
-  - [ ] Add "Push-to-Talk" button (Web Speech API → Text → Backend).
+- [x] **Input Routing:**
+  - [x] Add "Quick Input" text box (for mobile typing).
+  - [ ] Add "Push-to-Talk" button (Web Speech API → Text → Backend). *(deferred)*
 
-## Phase 2: The "Supervisor" Pane
+- [x] **Session Selection:**
+  - [x] `GET /api/sessions` to list available tmux sessions.
+  - [x] Dropdown to select which session to connect to.
 
-**Goal:** Add the "Over-the-Shoulder" monitoring view for that single session.
+## Phase 2: The "Supervisor" Pane 🚧
 
-- [ ] **Backend Diff Logic:**
-  - [ ] Create endpoint `GET /api/diff` that runs `git diff HEAD` in the target directory.
-  - [ ] Return parsed JSON: `{ files: [...], additions: 10, deletions: 2, raw: "..." }`.
+**Goal:** Add git diff viewer and file browser so you can review AI changes from mobile.
 
-- [ ] **Frontend Polling:**
-  - [ ] Install `@tanstack/react-query`.
-  - [ ] Create `<DiffMonitor />` component that polls every 3s.
-  - [ ] Render diffs using a syntax highlighter (e.g., `react-diff-view` or `prismjs`).
+- [ ] **Backend Git/File API:**
+  - [ ] `GET /api/git/status` - current repo status
+  - [ ] `GET /api/git/diff` - staged + unstaged changes
+  - [ ] `GET /api/files` - list files in repo
+  - [ ] `GET /api/files/{path}` - read file contents
+
+- [ ] **Frontend Diff Viewer:**
+  - [ ] Create `<DiffViewer />` component with syntax highlighting
+  - [ ] File list showing changed files
+  - [ ] Expandable/collapsible diff per file
 
 - [ ] **Layout:**
-  - [ ] Implement the Split-Pane layout (Terminal on Left/Top, Diffs on Right/Bottom).
+  - [ ] Tab-based navigation: Terminal | Diff | Files
+  - [ ] Mobile-friendly layout
 
 ## Phase 3: The "Office Floor"
 
