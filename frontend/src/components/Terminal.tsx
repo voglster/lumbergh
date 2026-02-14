@@ -30,6 +30,19 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
   // Expanded header state
   const [headerExpanded, setHeaderExpanded] = useState(false)
 
+  // Send text via backend API (uses tmux send-keys which works better with Claude Code)
+  const sendViaApi = useCallback(async (text: string, sendEnter: boolean = true) => {
+    try {
+      await fetch(`http://${apiHost}/api/session/${sessionName}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, send_enter: sendEnter }),
+      })
+    } catch (err) {
+      console.error('Failed to send to terminal:', err)
+    }
+  }, [apiHost, sessionName])
+
   const handleData = useCallback((data: string) => {
     termRef.current?.write(data)
   }, [])
@@ -199,17 +212,6 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
             >
               Fit
             </button>
-            {/* Quick number buttons */}
-            {['1', '2', '3', '4'].map((text) => (
-              <button
-                key={text}
-                onClick={() => sendRef.current(text)}
-                disabled={!isConnected}
-                className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 disabled:opacity-50 rounded"
-              >
-                {text}
-              </button>
-            ))}
             <button
               onClick={() => setHeaderExpanded(!headerExpanded)}
               className={`px-2 py-1 text-xs rounded ${headerExpanded ? 'bg-gray-600' : 'bg-gray-700 hover:bg-gray-600'}`}
@@ -241,11 +243,14 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
                 +
               </button>
             </div>
-            {/* Extra quick buttons */}
-            {['yes', 'clear'].map((text) => (
+            {/* Quick buttons */}
+            {['1', '2', '3', '4', 'yes', '/clear'].map((text) => (
               <button
                 key={text}
-                onClick={() => sendRef.current(text)}
+                onClick={() => {
+                  sendViaApi(text)
+                  setHeaderExpanded(false)
+                }}
                 disabled={!isConnected}
                 className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 disabled:opacity-50 rounded"
               >
