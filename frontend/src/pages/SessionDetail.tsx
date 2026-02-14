@@ -24,7 +24,7 @@ export default function SessionDetail() {
     return 'diff'
   })
   const [mobileTab, setMobileTab] = useState<MobileTab>('terminal')
-  const [diffStats, setDiffStats] = useState<{files: number, additions: number, deletions: number} | null>(null)
+  const [diffData, setDiffData] = useState<{ files: Array<{ path: string; diff: string }>; stats: { additions: number; deletions: number } } | null>(null)
   const [diffKey, setDiffKey] = useState(0)
   const focusFnRef = useRef<(() => void) | null>(null)
 
@@ -49,27 +49,30 @@ export default function SessionDetail() {
     setMobileTab('todos')
   }, [])
 
-  const fetchDiffStats = useCallback(async () => {
+  const fetchDiffData = useCallback(async () => {
     if (!name) return
     try {
       const res = await fetch(`http://${apiHost}/api/sessions/${name}/git/diff`)
       const data = await res.json()
-      setDiffStats({
-        files: data.files?.length || 0,
-        additions: data.stats?.additions || 0,
-        deletions: data.stats?.deletions || 0,
-      })
+      setDiffData(data)
     } catch (err) {
-      console.error('Failed to fetch diff stats:', err)
+      console.error('Failed to fetch diff data:', err)
     }
   }, [apiHost, name])
 
-  // Poll for diff stats every 5 seconds
+  // Compute stats from full diff data for tab badges
+  const diffStats = diffData ? {
+    files: diffData.files?.length || 0,
+    additions: diffData.stats?.additions || 0,
+    deletions: diffData.stats?.deletions || 0,
+  } : null
+
+  // Poll for diff data every 5 seconds
   useEffect(() => {
-    fetchDiffStats()
-    const interval = setInterval(fetchDiffStats, 5000)
+    fetchDiffData()
+    const interval = setInterval(fetchDiffData, 5000)
     return () => clearInterval(interval)
-  }, [fetchDiffStats])
+  }, [fetchDiffData])
 
   const mobileTabs: { id: MobileTab; label: string }[] = [
     { id: 'terminal', label: 'Terminal' },
@@ -149,7 +152,7 @@ export default function SessionDetail() {
       </div>
       {/* Panel content */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        {rightPanel === 'diff' && <DiffViewer key={diffKey} apiHost={apiHost} sessionName={name} onCommitSuccess={handleCommitSuccess} />}
+        {rightPanel === 'diff' && <DiffViewer key={diffKey} apiHost={apiHost} sessionName={name} diffData={diffData} onRefreshDiff={fetchDiffData} onCommitSuccess={handleCommitSuccess} />}
         {rightPanel === 'files' && <FileBrowser apiHost={apiHost} />}
         {rightPanel === 'todos' && name && (
           <VerticalResizablePanes
@@ -224,7 +227,7 @@ export default function SessionDetail() {
         {/* Tab content */}
         <div className="flex-1 min-h-0 overflow-hidden">
           {mobileTab === 'terminal' && renderTerminal()}
-          {mobileTab === 'diff' && <DiffViewer key={diffKey} apiHost={apiHost} sessionName={name} onCommitSuccess={handleCommitSuccess} />}
+          {mobileTab === 'diff' && <DiffViewer key={diffKey} apiHost={apiHost} sessionName={name} diffData={diffData} onRefreshDiff={fetchDiffData} onCommitSuccess={handleCommitSuccess} />}
           {mobileTab === 'files' && <FileBrowser apiHost={apiHost} />}
           {mobileTab === 'todos' && name && (
             <VerticalResizablePanes

@@ -6,6 +6,8 @@ import type { DiffData, Commit, CommitDiff } from './diff'
 interface Props {
   apiHost: string
   sessionName?: string
+  diffData?: DiffData | null
+  onRefreshDiff?: () => void
   onCommitSuccess?: () => void
 }
 
@@ -14,13 +16,14 @@ type ViewState =
   | { level: 'changes'; commit: string | null }
   | { level: 'file'; commit: string | null; file: string }
 
-export default function DiffViewer({ apiHost, sessionName, onCommitSuccess }: Props) {
+export default function DiffViewer({ apiHost, sessionName, diffData: externalDiffData, onRefreshDiff, onCommitSuccess }: Props) {
   // Build base URL for git endpoints
   const gitBaseUrl = sessionName
     ? `http://${apiHost}/api/sessions/${sessionName}/git`
     : `http://${apiHost}/api/git`
-  // Working changes data
-  const [workingData, setWorkingData] = useState<DiffData | null>(null)
+  // Working changes data - use external data if provided, otherwise fetch internally
+  const [internalWorkingData, setInternalWorkingData] = useState<DiffData | null>(null)
+  const workingData = externalDiffData !== undefined ? externalDiffData : internalWorkingData
   // Commit history
   const [commits, setCommits] = useState<Commit[]>([])
   // Selected commit diff data
@@ -32,16 +35,26 @@ export default function DiffViewer({ apiHost, sessionName, onCommitSuccess }: Pr
   // Navigation state - default to working changes view
   const [view, setView] = useState<ViewState>({ level: 'changes', commit: null })
 
-  const fetchWorkingChanges = useCallback(async () => {
+  // Internal fetch for working changes (used when no external data provided)
+  const fetchWorkingChangesInternal = useCallback(async () => {
     try {
       const res = await fetch(`${gitBaseUrl}/diff`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
-      setWorkingData(json)
+      setInternalWorkingData(json)
     } catch (e) {
       throw e
     }
   }, [gitBaseUrl])
+
+  // Refresh working changes - use external callback if provided
+  const refreshWorkingChanges = useCallback(async () => {
+    if (onRefreshDiff) {
+      onRefreshDiff()
+    } else {
+      await fetchWorkingChangesInternal()
+    }
+  }, [onRefreshDiff, fetchWorkingChangesInternal])
 
   const fetchCommits = useCallback(async () => {
     try {
@@ -65,18 +78,23 @@ export default function DiffViewer({ apiHost, sessionName, onCommitSuccess }: Pr
     }
   }, [gitBaseUrl])
 
-  // Initial load - fetch working changes
+  // Initial load - fetch working changes only if no external data provided
   const loadInitialData = useCallback(async () => {
+    // If external data is being used, no need to fetch
+    if (externalDiffData !== undefined) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError(null)
     try {
-      await fetchWorkingChanges()
+      await fetchWorkingChangesInternal()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch diff')
     } finally {
       setLoading(false)
     }
-  }, [fetchWorkingChanges])
+  }, [externalDiffData, fetchWorkingChangesInternal])
 
   useEffect(() => {
     loadInitialData()
@@ -98,13 +116,15 @@ export default function DiffViewer({ apiHost, sessionName, onCommitSuccess }: Pr
     setLoading(true)
     setError(null)
     try {
-      await Promise.all([fetchCommits(), fetchWorkingChanges()])
+      // Fetch commits and refresh working changes
+      await fetchCommits()
+      await refreshWorkingChanges()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch history')
     } finally {
       setLoading(false)
     }
-  }, [fetchCommits, fetchWorkingChanges])
+  }, [fetchCommits, refreshWorkingChanges])
 
   // Handle navigation
   const handleSelectCommit = (hash: string | null) => {
@@ -145,7 +165,8 @@ export default function DiffViewer({ apiHost, sessionName, onCommitSuccess }: Pr
         setLoading(false)
       }
     } else {
-      await loadInitialData()
+      // Refresh working changes
+      await refreshWorkingChanges()
     }
   }
 
