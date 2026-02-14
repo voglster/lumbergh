@@ -1,7 +1,67 @@
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
-import MarkdownViewer from './MarkdownViewer'
+import MarkdownPreview from '@uiw/react-markdown-preview'
+import mermaid from 'mermaid'
+
+// Initialize mermaid with dark theme
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'dark',
+  securityLevel: 'loose',
+})
+
+// Extract text content from React children (can be string, array, or nested)
+function getTextContent(children: React.ReactNode): string {
+  if (typeof children === 'string') return children
+  if (typeof children === 'number') return String(children)
+  if (!children) return ''
+  if (Array.isArray(children)) {
+    return children.map(getTextContent).join('')
+  }
+  if (React.isValidElement(children)) {
+    const props = children.props as { children?: React.ReactNode }
+    if (props.children) {
+      return getTextContent(props.children)
+    }
+  }
+  return ''
+}
+
+// Mermaid diagram component
+function MermaidDiagram({ code }: { code: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (ref.current && code) {
+      const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`
+      mermaid.render(id, code).then(({ svg }) => {
+        if (ref.current) {
+          ref.current.innerHTML = svg
+        }
+      }).catch((err) => {
+        if (ref.current) {
+          ref.current.innerHTML = `<pre class="text-red-400 p-4">Mermaid error: ${err.message}</pre>`
+        }
+      })
+    }
+  }, [code])
+
+  return <div ref={ref} className="flex justify-center my-4 overflow-auto" />
+}
+
+// Custom code component that renders mermaid diagrams
+function Code({ children, className }: { children?: React.ReactNode; className?: string }) {
+  // Check for mermaid in className (could be "language-mermaid" or contain it)
+  const isMermaid = className?.includes('language-mermaid') || className === 'mermaid'
+
+  if (isMermaid) {
+    const codeContent = getTextContent(children)
+    return <MermaidDiagram code={codeContent} />
+  }
+
+  return <code className={className}>{children}</code>
+}
 
 interface FileEntry {
   path: string
@@ -63,6 +123,7 @@ export default function FileBrowser({ apiHost }: Props) {
 
   const fetchFileContent = async (path: string) => {
     setLoadingFile(true)
+    setShowMarkdownPreview(false)
 
     // Auto-collapse sidebar on mobile when selecting a file
     const isMobile = window.matchMedia('(max-width: 767px)').matches
@@ -317,11 +378,11 @@ export default function FileBrowser({ apiHost }: Props) {
               <div className="flex items-center gap-2">
                 {selectedFile.path.endsWith('.md') && (
                   <button
-                    onClick={() => setShowMarkdownPreview(true)}
+                    onClick={() => setShowMarkdownPreview(!showMarkdownPreview)}
                     className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-white"
-                    title="Preview markdown"
+                    title={showMarkdownPreview ? "Show code" : "Preview markdown"}
                   >
-                    Preview
+                    {showMarkdownPreview ? 'Code' : 'Preview'}
                   </button>
                 )}
                 <span className="text-gray-500 text-xs">
@@ -329,14 +390,34 @@ export default function FileBrowser({ apiHost }: Props) {
                 </span>
               </div>
             </div>
-            <pre className="flex-1 p-4 overflow-auto text-sm font-mono">
-              <code
-                className="hljs"
-                dangerouslySetInnerHTML={{
-                  __html: getHighlightedCode(selectedFile.content, selectedFile.language)
-                }}
-              />
-            </pre>
+            {showMarkdownPreview && selectedFile.path.endsWith('.md') ? (
+              <div className="flex-1 overflow-auto p-4 md:p-8">
+                <div className="max-w-4xl mx-auto">
+                  <MarkdownPreview
+                    source={selectedFile.content}
+                    style={{
+                      backgroundColor: 'transparent',
+                      color: '#e5e7eb',
+                    }}
+                    wrapperElement={{
+                      'data-color-mode': 'dark',
+                    }}
+                    components={{
+                      code: Code,
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <pre className="flex-1 p-4 overflow-auto text-sm font-mono">
+                <code
+                  className="hljs"
+                  dangerouslySetInnerHTML={{
+                    __html: getHighlightedCode(selectedFile.content, selectedFile.language)
+                  }}
+                />
+              </pre>
+            )}
           </div>
         ) : (
           <div className="h-full flex flex-col">
@@ -358,14 +439,6 @@ export default function FileBrowser({ apiHost }: Props) {
         )}
       </div>
 
-      {/* Markdown preview modal */}
-      {showMarkdownPreview && selectedFile && (
-        <MarkdownViewer
-          content={selectedFile.content}
-          filePath={selectedFile.path}
-          onClose={() => setShowMarkdownPreview(false)}
-        />
-      )}
     </div>
   )
 }
