@@ -1,0 +1,13 @@
+[project]
+name = "lumbergh-backend"
+version = "0.1.0"
+description = "Tmux session supervisor backend"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "libtmux",
+]
+
+[project.scripts]
+lumbergh = "main:run"
