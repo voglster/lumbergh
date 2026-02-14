@@ -27,6 +27,9 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
     return saved ? parseInt(saved, 10) : 16
   })
 
+  // Expanded header state
+  const [headerExpanded, setHeaderExpanded] = useState(false)
+
   const handleData = useCallback((data: string) => {
     termRef.current?.write(data)
   }, [])
@@ -170,48 +173,87 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
   return (
     <div className="h-full w-full relative flex flex-col">
       {/* Header bar */}
-      <div className="flex items-center justify-between p-2 bg-gray-800 border-b border-gray-700">
-        <div className="flex items-center gap-2">
-          <span
-            className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
-          />
-          <span className="text-xs text-gray-400">
-            {isConnected ? 'Connected' : 'Disconnected'}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => sendRef.current('\x1b[Z')}
-            disabled={!isConnected}
-            className="px-2 py-1 text-xs bg-blue-700 hover:bg-blue-600 disabled:bg-gray-600 disabled:opacity-50 rounded"
-            title="Toggle Plan/Accept Edits mode (Shift+Tab)"
-          >
-            Mode
-          </button>
-          <button
-            onClick={handleFit}
-            className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
-          >
-            Fit
-          </button>
-          <div className="flex items-center gap-1">
+      <div className="bg-gray-800 border-b border-gray-700">
+        {/* Main row */}
+        <div className="flex items-center justify-between p-2">
+          <div className="flex items-center gap-2">
+            <span
+              className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
+            />
+            <span className="text-xs text-gray-400">
+              {isConnected ? 'Connected' : 'Disconnected'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setFontSize((s) => Math.max(8, s - 1))}
-              className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
-              title="Decrease font size"
+              onClick={() => sendRef.current('\x1b[Z')}
+              disabled={!isConnected}
+              className="px-2 py-1 text-xs bg-blue-700 hover:bg-blue-600 disabled:bg-gray-600 disabled:opacity-50 rounded"
+              title="Toggle Plan/Accept Edits mode (Shift+Tab)"
             >
-              -
+              Mode
             </button>
-            <span className="text-xs text-gray-300 w-5 text-center">{fontSize}</span>
             <button
-              onClick={() => setFontSize((s) => Math.min(24, s + 1))}
+              onClick={handleFit}
               className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
-              title="Increase font size"
             >
-              +
+              Fit
+            </button>
+            {/* Quick number buttons */}
+            {['1', '2', '3', '4'].map((text) => (
+              <button
+                key={text}
+                onClick={() => sendRef.current(text)}
+                disabled={!isConnected}
+                className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 disabled:opacity-50 rounded"
+              >
+                {text}
+              </button>
+            ))}
+            <button
+              onClick={() => setHeaderExpanded(!headerExpanded)}
+              className={`px-2 py-1 text-xs rounded ${headerExpanded ? 'bg-gray-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+              title="More options"
+            >
+              ...
             </button>
           </div>
         </div>
+        {/* Expanded row */}
+        {headerExpanded && (
+          <div className="flex items-center justify-end gap-2 px-2 pb-2">
+            {/* Font size controls */}
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-gray-400">Font:</span>
+              <button
+                onClick={() => setFontSize((s) => Math.max(8, s - 1))}
+                className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
+                title="Decrease font size"
+              >
+                -
+              </button>
+              <span className="text-xs text-gray-300 w-5 text-center">{fontSize}</span>
+              <button
+                onClick={() => setFontSize((s) => Math.min(24, s + 1))}
+                className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
+                title="Increase font size"
+              >
+                +
+              </button>
+            </div>
+            {/* Extra quick buttons */}
+            {['yes', 'clear'].map((text) => (
+              <button
+                key={text}
+                onClick={() => sendRef.current(text)}
+                disabled={!isConnected}
+                className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 disabled:opacity-50 rounded"
+              >
+                {text}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Error display */}
