@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 
 interface Todo {
   text: string
@@ -68,11 +68,12 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal }: Todo
     saveTodos(updated)
   }
 
-  const handleDelete = (index: number) => {
+  const _handleDelete = (index: number) => {
     const updated = todos.filter((_, i) => i !== index)
     setTodos(updated)
     saveTodos(updated)
   }
+  void _handleDelete // keep for future use
 
   const handleDeleteAllDone = () => {
     const updated = todos.filter(t => !t.done)
@@ -114,20 +115,19 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal }: Todo
     }
   }
 
-  const handleSendToTerminal = async (index: number) => {
+  const handleSendToTerminal = async (index: number, sendEnter: boolean = true) => {
     if (!sessionName) return
     const todo = todos[index]
     try {
       await fetch(`http://${apiHost}/api/session/${sessionName}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: todo.text }),
+        body: JSON.stringify({ text: todo.text, send_enter: sendEnter }),
       })
-      // Mark as done and move to top of done items (bottom of list)
+      // Mark as done and move to bottom (with other done items)
       const updated = todos.map((t, i) =>
         i === index ? { ...t, done: true } : t
       )
-      // Sort: unchecked first, then checked
       const unchecked = updated.filter(t => !t.done)
       const checked = updated.filter(t => t.done)
       const reordered = [...unchecked, ...checked]
@@ -246,13 +246,22 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal }: Todo
                       </span>
                     )}
                     {sessionName && !todo.done && (
-                      <button
-                        onClick={() => handleSendToTerminal(index)}
-                        className="text-2xl text-gray-500 hover:text-blue-400 transition-colors px-2"
-                        title="Send to terminal"
-                      >
-                        ➤
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleSendToTerminal(index, false)}
+                          className="text-xl text-gray-500 hover:text-yellow-400 transition-colors px-1"
+                          title="Send text (no Enter)"
+                        >
+                          ▷
+                        </button>
+                        <button
+                          onClick={() => handleSendToTerminal(index, true)}
+                          className="text-xl text-gray-500 hover:text-blue-400 transition-colors px-1"
+                          title="Send + Enter (yolo)"
+                        >
+                          ➤
+                        </button>
+                      </>
                     )}
                   </div>
                 </li>

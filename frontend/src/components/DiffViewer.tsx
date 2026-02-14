@@ -146,20 +146,24 @@ export default function DiffViewer({ apiHost }: Props) {
   // Get current data based on view
   const getCurrentData = (): DiffData | null => {
     if (view.level === 'history') return null
-    if (view.commit) return commitData
+    if (view.level === 'changes' || view.level === 'file') {
+      if (view.commit) return commitData
+    }
     return workingData
   }
 
   const getCurrentCommitInfo = () => {
-    if (!view.commit) return null
-    if (commitData && commitData.hash === view.commit) {
+    if (view.level === 'history') return null
+    const commitHash = view.commit
+    if (!commitHash) return null
+    if (commitData && commitData.hash === commitHash) {
       return {
         hash: commitData.hash,
         shortHash: commitData.hash.slice(0, 7),
         message: commitData.message,
       }
     }
-    const commit = commits.find(c => c.hash === view.commit)
+    const commit = commits.find(c => c.hash === commitHash)
     if (commit) {
       return {
         hash: commit.hash,
@@ -210,8 +214,10 @@ export default function DiffViewer({ apiHost }: Props) {
   const data = getCurrentData()
 
   // No data / empty state (only for working changes)
+  // At this point view.level is 'changes' or 'file' (we returned early for 'history')
+  const isWorkingChanges = view.level === 'changes' && !view.commit
   if (!data || data.files.length === 0) {
-    if (!view.commit) {
+    if (isWorkingChanges) {
       return (
         <div className="h-full flex flex-col">
           {/* Breadcrumb header */}

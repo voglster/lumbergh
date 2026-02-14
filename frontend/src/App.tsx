@@ -3,6 +3,7 @@ import Terminal from './components/Terminal'
 import DiffViewer from './components/DiffViewer'
 import FileBrowser from './components/FileBrowser'
 import ResizablePanes from './components/ResizablePanes'
+import VerticalResizablePanes from './components/VerticalResizablePanes'
 import TodoList from './components/TodoList'
 import Scratchpad from './components/Scratchpad'
 
@@ -19,11 +20,22 @@ type MobileTab = 'terminal' | 'diff' | 'files' | 'todos'
 function App() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [selectedSession, setSelectedSession] = useState<string | null>(null)
-  const [rightPanel, setRightPanel] = useState<RightPanel>('diff')
+  const [rightPanel, setRightPanel] = useState<RightPanel>(() => {
+    const saved = localStorage.getItem('lumbergh:rightPanel')
+    if (saved === 'diff' || saved === 'files' || saved === 'todos') {
+      return saved
+    }
+    return 'diff'
+  })
   const [mobileTab, setMobileTab] = useState<MobileTab>('terminal')
   const [diffStats, setDiffStats] = useState<{files: number, additions: number, deletions: number} | null>(null)
   const [diffKey, setDiffKey] = useState(0)
   const focusFnRef = useRef<(() => void) | null>(null)
+
+  // Persist right panel selection
+  useEffect(() => {
+    localStorage.setItem('lumbergh:rightPanel', rightPanel)
+  }, [rightPanel])
 
   const handleFocusReady = useCallback((fn: () => void) => {
     focusFnRef.current = fn
@@ -141,14 +153,14 @@ function App() {
         {rightPanel === 'diff' && <DiffViewer key={diffKey} apiHost={apiHost} />}
         {rightPanel === 'files' && <FileBrowser apiHost={apiHost} />}
         {rightPanel === 'todos' && (
-          <div className="h-full flex flex-col">
-            <div className="h-1/2 border-b border-gray-700 overflow-auto">
-              <TodoList apiHost={apiHost} sessionName={selectedSession} onFocusTerminal={handleFocusTerminal} />
-            </div>
-            <div className="h-1/2">
-              <Scratchpad apiHost={apiHost} />
-            </div>
-          </div>
+          <VerticalResizablePanes
+            top={<TodoList apiHost={apiHost} sessionName={selectedSession} onFocusTerminal={handleFocusTerminal} />}
+            bottom={<Scratchpad apiHost={apiHost} />}
+            defaultTopHeight={50}
+            minTopHeight={20}
+            maxTopHeight={80}
+            storageKey="lumbergh:todoSplitHeight"
+          />
         )}
       </div>
     </div>
@@ -181,6 +193,7 @@ function App() {
           defaultLeftWidth={50}
           minLeftWidth={25}
           maxLeftWidth={75}
+          storageKey="lumbergh:mainSplitWidth"
         />
       </main>
 
@@ -215,14 +228,14 @@ function App() {
           {mobileTab === 'diff' && <DiffViewer key={diffKey} apiHost={apiHost} />}
           {mobileTab === 'files' && <FileBrowser apiHost={apiHost} />}
           {mobileTab === 'todos' && (
-            <div className="h-full flex flex-col">
-              <div className="h-1/2 border-b border-gray-700 overflow-auto">
-                <TodoList apiHost={apiHost} sessionName={selectedSession} onFocusTerminal={handleFocusTerminal} />
-              </div>
-              <div className="h-1/2">
-                <Scratchpad apiHost={apiHost} />
-              </div>
-            </div>
+            <VerticalResizablePanes
+              top={<TodoList apiHost={apiHost} sessionName={selectedSession} onFocusTerminal={handleFocusTerminal} />}
+              bottom={<Scratchpad apiHost={apiHost} />}
+              defaultTopHeight={50}
+              minTopHeight={20}
+              maxTopHeight={80}
+              storageKey="lumbergh:todoSplitHeight"
+            />
           )}
         </div>
       </div>

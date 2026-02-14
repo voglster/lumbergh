@@ -1,4 +1,5 @@
-import { useState, useCallback, KeyboardEvent } from 'react'
+import { useState, useCallback } from 'react'
+import type { KeyboardEvent } from 'react'
 
 interface QuickInputProps {
   onSend: (text: string) => void

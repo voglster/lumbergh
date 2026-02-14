@@ -184,7 +184,7 @@ export default function FileBrowser({ apiHost }: Props) {
       <div className="flex flex-col items-center justify-center h-full gap-4">
         <span className="text-red-400">Error: {error}</span>
         <button
-          onClick={fetchFiles}
+          onClick={() => fetchFiles()}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-white"
         >
           Retry
@@ -202,7 +202,7 @@ export default function FileBrowser({ apiHost }: Props) {
         <div className="p-2 bg-gray-800 border-b border-gray-700 flex justify-between items-center">
           <span className="text-sm text-gray-400">Files</span>
           <button
-            onClick={fetchFiles}
+            onClick={() => fetchFiles()}
             className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded"
           >
             Refresh

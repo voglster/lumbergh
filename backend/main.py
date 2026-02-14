@@ -16,6 +16,7 @@ from routers import notes
 
 class SendInput(BaseModel):
     text: str
+    send_enter: bool = True
 
 
 class CommitInput(BaseModel):
@@ -418,13 +419,14 @@ async def send_to_session(session_name: str, body: SendInput):
         raise HTTPException(status_code=500, detail=result.stderr)
 
     # Send Enter key separately (without -l so it's interpreted as a key)
-    result = subprocess.run(
-        ["tmux", "send-keys", "-t", session_name, "Enter"],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        raise HTTPException(status_code=500, detail=result.stderr)
+    if body.send_enter:
+        result = subprocess.run(
+            ["tmux", "send-keys", "-t", session_name, "Enter"],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=result.stderr)
 
     return {"status": "sent"}
 
