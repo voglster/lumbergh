@@ -7,9 +7,11 @@ interface Props {
   apiHost: string
   onSelectFile: (path: string) => void
   onRefresh: () => void
+  commit?: { hash: string; shortHash: string; message: string } | null
+  onNavigateToHistory?: () => void
 }
 
-export default function FileList({ data, apiHost, onSelectFile, onRefresh }: Props) {
+export default function FileList({ data, apiHost, onSelectFile, onRefresh, commit, onNavigateToHistory }: Props) {
   const [commitMessage, setCommitMessage] = useState('')
   const [isCommitting, setIsCommitting] = useState(false)
   const [commitResult, setCommitResult] = useState<{ type: 'success' | 'error', message: string } | null>(null)
@@ -49,26 +51,50 @@ export default function FileList({ data, apiHost, onSelectFile, onRefresh }: Pro
     }
   }
 
+  const isWorkingChanges = !commit
+
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
+      {/* Breadcrumb header */}
       <div className="flex items-center justify-between p-3 bg-gray-800 border-b border-gray-700">
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-400">
-            {data.files.length} file{data.files.length !== 1 ? 's' : ''} changed
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          {onNavigateToHistory && (
+            <>
+              <button
+                onClick={onNavigateToHistory}
+                className="text-sm text-blue-400 hover:text-blue-300 shrink-0"
+              >
+                History
+              </button>
+              <span className="text-gray-500 shrink-0">›</span>
+            </>
+          )}
+          <span className="text-sm text-gray-300 truncate">
+            {isWorkingChanges ? (
+              'Working Changes'
+            ) : (
+              <>
+                <span className="text-blue-400 font-mono">{commit.shortHash}</span>
+                <span className="text-gray-500">: </span>
+                <span className="text-gray-400">{commit.message}</span>
+              </>
+            )}
           </span>
+        </div>
+        <div className="flex items-center gap-3 shrink-0 ml-2">
           <span className="text-green-400 text-sm">+{data.stats.additions}</span>
           <span className="text-red-400 text-sm">-{data.stats.deletions}</span>
+          <button
+            onClick={onRefresh}
+            className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+          >
+            ↻
+          </button>
         </div>
-        <button
-          onClick={onRefresh}
-          className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
-        >
-          ↻
-        </button>
       </div>
 
-      {/* Commit input */}
+      {/* Commit input - only show for working changes */}
+      {isWorkingChanges && (
       <div className="p-3 bg-gray-800 border-b border-gray-700">
         <div className="flex gap-2">
           <input
@@ -94,6 +120,7 @@ export default function FileList({ data, apiHost, onSelectFile, onRefresh }: Pro
           </div>
         )}
       </div>
+      )}
 
       {/* File list */}
       <div className="flex-1 overflow-auto">

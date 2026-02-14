@@ -177,6 +177,113 @@ async def git_diff():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/git/log")
+async def git_log(limit: int = 20):
+    """Get recent commit history."""
+    try:
+        result = subprocess.run(
+            ["git", "log", f"-n{limit}", "--format=%H|%h|%s|%an|%ar"],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=result.stderr)
+
+        commits = []
+        for line in result.stdout.strip().split("\n"):
+            if line:
+                parts = line.split("|", 4)
+                if len(parts) >= 5:
+                    commits.append({
+                        "hash": parts[0],
+                        "shortHash": parts[1],
+                        "message": parts[2],
+                        "author": parts[3],
+                        "relativeDate": parts[4],
+                    })
+        return {"commits": commits}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/git/commit/{commit_hash}")
+async def git_commit_diff(commit_hash: str):
+    """Get diff for a specific commit."""
+    try:
+        # Get commit info
+        info_result = subprocess.run(
+            ["git", "show", commit_hash, "--format=%H|%s|%an|%ar", "--stat", "-s"],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+        )
+        if info_result.returncode != 0:
+            raise HTTPException(status_code=404, detail="Commit not found")
+
+        info_line = info_result.stdout.strip().split("\n")[0]
+        parts = info_line.split("|", 3)
+        commit_info = {
+            "hash": parts[0] if len(parts) > 0 else commit_hash,
+            "message": parts[1] if len(parts) > 1 else "",
+            "author": parts[2] if len(parts) > 2 else "",
+            "relativeDate": parts[3] if len(parts) > 3 else "",
+        }
+
+        # Get diff for the commit
+        diff_result = subprocess.run(
+            ["git", "diff", f"{commit_hash}^..{commit_hash}"],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+        )
+        # For first commit, use show instead
+        if diff_result.returncode != 0:
+            diff_result = subprocess.run(
+                ["git", "show", commit_hash, "--format="],
+                cwd=PROJECT_ROOT,
+                capture_output=True,
+                text=True,
+            )
+
+        # Parse diff into per-file chunks
+        files = []
+        stats = {"additions": 0, "deletions": 0}
+
+        if diff_result.returncode == 0 and diff_result.stdout.strip():
+            current_file = None
+            current_diff_lines = []
+
+            for line in diff_result.stdout.split("\n"):
+                if line.startswith("diff --git"):
+                    if current_file:
+                        files.append({
+                            "path": current_file,
+                            "diff": "\n".join(current_diff_lines),
+                        })
+                    parts = line.split(" b/")
+                    current_file = parts[-1] if len(parts) > 1 else "unknown"
+                    current_diff_lines = [line]
+                elif current_file:
+                    current_diff_lines.append(line)
+                    if line.startswith("+") and not line.startswith("+++"):
+                        stats["additions"] += 1
+                    elif line.startswith("-") and not line.startswith("---"):
+                        stats["deletions"] += 1
+
+            if current_file:
+                files.append({
+                    "path": current_file,
+                    "diff": "\n".join(current_diff_lines),
+                })
+
+        return {**commit_info, "files": files, "stats": stats}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/git/commit")
 async def git_commit(body: CommitInput):
     """Stage all changes and create a commit."""

@@ -22,6 +22,7 @@ function App() {
   const [rightPanel, setRightPanel] = useState<RightPanel>('diff')
   const [mobileTab, setMobileTab] = useState<MobileTab>('terminal')
   const [diffStats, setDiffStats] = useState<{files: number, additions: number, deletions: number} | null>(null)
+  const [diffKey, setDiffKey] = useState(0)
   const focusFnRef = useRef<(() => void) | null>(null)
 
   const handleFocusReady = useCallback((fn: () => void) => {
@@ -98,7 +99,7 @@ function App() {
       {/* Panel switcher */}
       <div className="flex gap-1 p-2 bg-gray-800 border-b border-gray-700">
         <button
-          onClick={() => setRightPanel('diff')}
+          onClick={() => { setRightPanel('diff'); setDiffKey(k => k + 1) }}
           className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
             rightPanel === 'diff'
               ? 'bg-gray-600 text-white'
@@ -137,7 +138,7 @@ function App() {
       </div>
       {/* Panel content */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        {rightPanel === 'diff' && <DiffViewer apiHost={apiHost} />}
+        {rightPanel === 'diff' && <DiffViewer key={diffKey} apiHost={apiHost} />}
         {rightPanel === 'files' && <FileBrowser apiHost={apiHost} />}
         {rightPanel === 'todos' && (
           <div className="h-full flex flex-col">
@@ -190,7 +191,7 @@ function App() {
           {mobileTabs.map(tab => (
             <button
               key={tab.id}
-              onClick={() => setMobileTab(tab.id)}
+              onClick={() => { setMobileTab(tab.id); if (tab.id === 'diff') setDiffKey(k => k + 1) }}
               className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
                 mobileTab === tab.id
                   ? 'bg-gray-600 text-white'
@@ -211,7 +212,7 @@ function App() {
         {/* Tab content */}
         <div className="flex-1 min-h-0 overflow-hidden">
           {mobileTab === 'terminal' && renderTerminal()}
-          {mobileTab === 'diff' && <DiffViewer apiHost={apiHost} />}
+          {mobileTab === 'diff' && <DiffViewer key={diffKey} apiHost={apiHost} />}
           {mobileTab === 'files' && <FileBrowser apiHost={apiHost} />}
           {mobileTab === 'todos' && (
             <div className="h-full flex flex-col">

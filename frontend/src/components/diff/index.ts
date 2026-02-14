@@ -1,4 +1,5 @@
 export { default as FileList } from './FileList'
 export { default as FileDiff } from './FileDiff'
+export { default as CommitList } from './CommitList'
 export * from './types'
 export * from './utils'
