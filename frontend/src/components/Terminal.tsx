@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react'
+import { useRef, useEffect, useCallback, useState } from 'react'
 import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
@@ -20,6 +20,12 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
   const sendResizeRef = useRef<(cols: number, rows: number) => void>(() => {})
   // Track last known dimensions for stability check
   const lastDimensionsRef = useRef<{ width: number; height: number } | null>(null)
+
+  // Font size state with localStorage persistence
+  const [fontSize, setFontSize] = useState(() => {
+    const saved = localStorage.getItem('terminal-font-size')
+    return saved ? parseInt(saved, 10) : 16
+  })
 
   const handleData = useCallback((data: string) => {
     termRef.current?.write(data)
@@ -74,7 +80,7 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
 
     const term = new XTerm({
       cursorBlink: true,
-      fontSize: 14,
+      fontSize: fontSize,
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
       theme: {
         background: '#1a1a1a',
@@ -152,6 +158,15 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
     }
   }, [handleFit])
 
+  // Update terminal font size when it changes
+  useEffect(() => {
+    if (termRef.current) {
+      termRef.current.options.fontSize = fontSize
+      handleFit()
+      localStorage.setItem('terminal-font-size', String(fontSize))
+    }
+  }, [fontSize, handleFit])
+
   return (
     <div className="h-full w-full relative flex flex-col">
       {/* Header bar */}
@@ -179,6 +194,23 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
           >
             Fit
           </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setFontSize((s) => Math.max(8, s - 1))}
+              className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
+              title="Decrease font size"
+            >
+              -
+            </button>
+            <span className="text-xs text-gray-300 w-5 text-center">{fontSize}</span>
+            <button
+              onClick={() => setFontSize((s) => Math.min(24, s + 1))}
+              className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
+              title="Increase font size"
+            >
+              +
+            </button>
+          </div>
         </div>
       </div>
 
