@@ -14,12 +14,24 @@ interface Props {
   onCommitSuccess?: () => void
 }
 
-export default function FileList({ data, apiHost, sessionName, onSelectFile, onRefresh, commit, onNavigateToHistory, onCommitSuccess }: Props) {
+export default function FileList({
+  data,
+  apiHost,
+  sessionName,
+  onSelectFile,
+  onRefresh,
+  commit,
+  onNavigateToHistory,
+  onCommitSuccess,
+}: Props) {
   const [commitMessage, setCommitMessage] = useState('')
   const [isCommitting, setIsCommitting] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
-  const [commitResult, setCommitResult] = useState<{ type: 'success' | 'error', message: string } | null>(null)
+  const [commitResult, setCommitResult] = useState<{
+    type: 'success' | 'error'
+    message: string
+  } | null>(null)
 
   // Build commit URL based on whether we have a session
   const commitUrl = sessionName
@@ -37,7 +49,11 @@ export default function FileList({ data, apiHost, sessionName, onSelectFile, onR
     : `http://${apiHost}/api/git/reset`
 
   const handleReset = async () => {
-    if (!confirm('Revert all changes? This will discard all uncommitted changes and cannot be undone.')) {
+    if (
+      !confirm(
+        'Revert all changes? This will discard all uncommitted changes and cannot be undone.'
+      )
+    ) {
       return
     }
     setIsResetting(true)
@@ -53,7 +69,7 @@ export default function FileList({ data, apiHost, sessionName, onSelectFile, onR
         setCommitResult({ type: 'success', message: 'All changes reverted' })
         onRefresh()
       }
-    } catch (err) {
+    } catch {
       setCommitResult({ type: 'error', message: 'Failed to reset changes' })
     } finally {
       setIsResetting(false)
@@ -82,7 +98,7 @@ export default function FileList({ data, apiHost, sessionName, onSelectFile, onR
         onRefresh()
         onCommitSuccess?.()
       }
-    } catch (err) {
+    } catch {
       setCommitResult({ type: 'error', message: 'Failed to commit' })
     } finally {
       setIsCommitting(false)
@@ -114,7 +130,7 @@ export default function FileList({ data, apiHost, sessionName, onSelectFile, onR
       } else {
         setCommitMessage(result.message)
       }
-    } catch (err) {
+    } catch {
       setCommitResult({ type: 'error', message: 'Failed to generate commit message' })
     } finally {
       setIsGenerating(false)
@@ -184,49 +200,51 @@ export default function FileList({ data, apiHost, sessionName, onSelectFile, onR
 
       {/* Commit input - only show for working changes */}
       {isWorkingChanges && (
-      <div className="p-3 bg-gray-800 border-b border-gray-700">
-        <div className="flex gap-2">
-          <textarea
-            value={commitMessage}
-            onChange={e => setCommitMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Commit message..."
-            rows={commitMessage.includes('\n') ? 3 : 1}
-            className="flex-1 px-3 py-2 bg-gray-700 text-white text-sm rounded border border-gray-600 focus:outline-none focus:border-blue-500 resize-none"
-            disabled={isCommitting || isGenerating}
-          />
-          <div className="flex flex-col gap-2 shrink-0">
-            <button
-              onClick={handleCommit}
-              disabled={!commitMessage.trim() || isCommitting || isGenerating || isResetting}
-              className="px-3 py-2 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
-              title="Commit changes (Ctrl/Cmd+Enter)"
-            >
-              {isCommitting ? '...' : 'Commit'}
-            </button>
-            {generateUrl && hasChanges && (
+        <div className="p-3 bg-gray-800 border-b border-gray-700">
+          <div className="flex gap-2">
+            <textarea
+              value={commitMessage}
+              onChange={(e) => setCommitMessage(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Commit message..."
+              rows={commitMessage.includes('\n') ? 3 : 1}
+              className="flex-1 px-3 py-2 bg-gray-700 text-white text-sm rounded border border-gray-600 focus:outline-none focus:border-blue-500 resize-none"
+              disabled={isCommitting || isGenerating}
+            />
+            <div className="flex flex-col gap-2 shrink-0">
               <button
-                onClick={handleGenerate}
-                disabled={isGenerating || isCommitting || isResetting}
-                className="px-3 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
-                title="Generate commit message with AI"
+                onClick={handleCommit}
+                disabled={!commitMessage.trim() || isCommitting || isGenerating || isResetting}
+                className="px-3 py-2 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
+                title="Commit changes (Ctrl/Cmd+Enter)"
               >
-                {isGenerating ? '...' : 'AI'}
+                {isCommitting ? '...' : 'Commit'}
               </button>
-            )}
+              {generateUrl && hasChanges && (
+                <button
+                  onClick={handleGenerate}
+                  disabled={isGenerating || isCommitting || isResetting}
+                  className="px-3 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
+                  title="Generate commit message with AI"
+                >
+                  {isGenerating ? '...' : 'AI'}
+                </button>
+              )}
+            </div>
           </div>
+          {commitResult && (
+            <div
+              className={`mt-2 text-sm ${commitResult.type === 'success' ? 'text-green-400' : 'text-red-400'}`}
+            >
+              {commitResult.message}
+            </div>
+          )}
         </div>
-        {commitResult && (
-          <div className={`mt-2 text-sm ${commitResult.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
-            {commitResult.message}
-          </div>
-        )}
-      </div>
       )}
 
       {/* File list */}
       <div className="flex-1 overflow-auto">
-        {data.files.map(file => {
+        {data.files.map((file) => {
           const stats = getFileStats(file.diff)
           return (
             <button
@@ -234,9 +252,7 @@ export default function FileList({ data, apiHost, sessionName, onSelectFile, onR
               onClick={() => onSelectFile(file.path)}
               className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-800 border-b border-gray-700/50 text-left"
             >
-              <span className="text-blue-400 font-mono text-sm truncate flex-1">
-                {file.path}
-              </span>
+              <span className="text-blue-400 font-mono text-sm truncate flex-1">{file.path}</span>
               <span className="text-green-400 text-xs">+{stats.additions}</span>
               <span className="text-red-400 text-xs">-{stats.deletions}</span>
               <span className="text-gray-500">›</span>

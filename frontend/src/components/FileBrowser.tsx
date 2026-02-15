@@ -35,15 +35,18 @@ function MermaidDiagram({ code }: { code: string }) {
   useEffect(() => {
     if (ref.current && code) {
       const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`
-      mermaid.render(id, code).then(({ svg }) => {
-        if (ref.current) {
-          ref.current.innerHTML = svg
-        }
-      }).catch((err) => {
-        if (ref.current) {
-          ref.current.innerHTML = `<pre class="text-red-400 p-4">Mermaid error: ${err.message}</pre>`
-        }
-      })
+      mermaid
+        .render(id, code)
+        .then(({ svg }) => {
+          if (ref.current) {
+            ref.current.innerHTML = svg
+          }
+        })
+        .catch((err) => {
+          if (ref.current) {
+            ref.current.innerHTML = `<pre class="text-red-400 p-4">Mermaid error: ${err.message}</pre>`
+          }
+        })
     }
   }, [code])
 
@@ -130,30 +133,33 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
     }
   }
 
-  const fetchFiles = useCallback(async (silent = false) => {
-    if (!silent) {
-      setLoading(true)
-      setError(null)
-    }
-    try {
-      // Use session-scoped endpoint if sessionName is provided
-      const url = sessionName
-        ? `http://${apiHost}/api/sessions/${sessionName}/files`
-        : `http://${apiHost}/api/files`
-      const res = await fetch(url)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const json = await res.json()
-      setFiles(json.files)
-    } catch (e) {
+  const fetchFiles = useCallback(
+    async (silent = false) => {
       if (!silent) {
-        setError(e instanceof Error ? e.message : 'Failed to fetch files')
+        setLoading(true)
+        setError(null)
       }
-    } finally {
-      if (!silent) {
-        setLoading(false)
+      try {
+        // Use session-scoped endpoint if sessionName is provided
+        const url = sessionName
+          ? `http://${apiHost}/api/sessions/${sessionName}/files`
+          : `http://${apiHost}/api/files`
+        const res = await fetch(url)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const json = await res.json()
+        setFiles(json.files)
+      } catch (e) {
+        if (!silent) {
+          setError(e instanceof Error ? e.message : 'Failed to fetch files')
+        }
+      } finally {
+        if (!silent) {
+          setLoading(false)
+        }
       }
-    }
-  }, [apiHost, sessionName])
+    },
+    [apiHost, sessionName]
+  )
 
   // Reset state when session changes
   useEffect(() => {
@@ -203,7 +209,7 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
   }
 
   const toggleDir = (path: string) => {
-    setExpandedDirs(prev => {
+    setExpandedDirs((prev) => {
       const next = new Set(prev)
       if (next.has(path)) {
         next.delete(path)
@@ -243,7 +249,7 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
       return a.path.localeCompare(b.path)
     })
 
-    return sorted.map(entry => {
+    return sorted.map((entry) => {
       const name = entry.path.split('/').pop() || entry.path
       const isExpanded = expandedDirs.has(entry.path)
 
@@ -255,9 +261,7 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
               className="w-full flex items-center gap-2 px-2 py-1 hover:bg-gray-800 text-left"
               style={{ paddingLeft: `${depth * 16 + 8}px` }}
             >
-              <span className="text-gray-500 text-xs">
-                {isExpanded ? '▼' : '▶'}
-              </span>
+              <span className="text-gray-500 text-xs">{isExpanded ? '▼' : '▶'}</span>
               <span className="text-yellow-400">📁</span>
               <span className="text-gray-300 truncate">{name}</span>
             </button>
@@ -279,9 +283,7 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
           <span className="text-gray-500">📄</span>
           <span className="text-gray-300 truncate">{name}</span>
           {entry.size !== null && (
-            <span className="text-gray-600 text-xs ml-auto">
-              {formatSize(entry.size)}
-            </span>
+            <span className="text-gray-600 text-xs ml-auto">{formatSize(entry.size)}</span>
           )}
         </button>
       )
@@ -321,45 +323,46 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
   }, [])
 
   // Render breadcrumb for current file path
-  const renderBreadcrumb = useCallback((path: string) => {
-    const parts = path.split('/')
-    const segments: { name: string; path: string }[] = []
+  const renderBreadcrumb = useCallback(
+    (path: string) => {
+      const parts = path.split('/')
+      const segments: { name: string; path: string }[] = []
 
-    let currentPath = ''
-    for (let i = 0; i < parts.length; i++) {
-      currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i]
-      segments.push({ name: parts[i], path: currentPath })
-    }
+      let currentPath = ''
+      for (let i = 0; i < parts.length; i++) {
+        currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i]
+        segments.push({ name: parts[i], path: currentPath })
+      }
 
-    return (
-      <div className="flex items-center gap-1 flex-wrap">
-        <span className="text-yellow-400">📁</span>
-        {segments.map((segment, i) => (
-          <span key={segment.path} className="flex items-center">
-            {i < segments.length - 1 ? (
-              <>
-                <button
-                  onClick={() => navigateToDir(segment.path)}
-                  className="text-blue-400 hover:text-blue-300 hover:underline"
-                >
-                  {segment.name}
-                </button>
-                <span className="text-gray-500 mx-1">›</span>
-              </>
-            ) : (
-              <span className="text-gray-300">{segment.name}</span>
-            )}
-          </span>
-        ))}
-      </div>
-    )
-  }, [navigateToDir])
+      return (
+        <div className="flex items-center gap-1 flex-wrap">
+          <span className="text-yellow-400">📁</span>
+          {segments.map((segment, i) => (
+            <span key={segment.path} className="flex items-center">
+              {i < segments.length - 1 ? (
+                <>
+                  <button
+                    onClick={() => navigateToDir(segment.path)}
+                    className="text-blue-400 hover:text-blue-300 hover:underline"
+                  >
+                    {segment.name}
+                  </button>
+                  <span className="text-gray-500 mx-1">›</span>
+                </>
+              ) : (
+                <span className="text-gray-300">{segment.name}</span>
+              )}
+            </span>
+          ))}
+        </div>
+      )
+    },
+    [navigateToDir]
+  )
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-500">
-        Loading files...
-      </div>
+      <div className="flex items-center justify-center h-full text-gray-500">Loading files...</div>
     )
   }
 
@@ -403,9 +406,7 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
               </button>
             </div>
           </div>
-          <div className="py-1">
-            {renderTree(tree, '', 0)}
-          </div>
+          <div className="py-1">{renderTree(tree, '', 0)}</div>
         </div>
       )}
 
@@ -447,14 +448,12 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
                   <button
                     onClick={() => setShowMarkdownPreview(!showMarkdownPreview)}
                     className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-white"
-                    title={showMarkdownPreview ? "Show code" : "Preview markdown"}
+                    title={showMarkdownPreview ? 'Show code' : 'Preview markdown'}
                   >
                     {showMarkdownPreview ? 'Code' : 'Preview'}
                   </button>
                 )}
-                <span className="text-gray-500 text-xs">
-                  {selectedFile.language}
-                </span>
+                <span className="text-gray-500 text-xs">{selectedFile.language}</span>
               </div>
             </div>
             {showMarkdownPreview && selectedFile.path.endsWith('.md') ? (
@@ -480,7 +479,7 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
                 <code
                   className="hljs"
                   dangerouslySetInnerHTML={{
-                    __html: getHighlightedCode(selectedFile.content, selectedFile.language)
+                    __html: getHighlightedCode(selectedFile.content, selectedFile.language),
                   }}
                 />
               </pre>
@@ -505,7 +504,6 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
           </div>
         )}
       </div>
-
     </div>
   )
 }

@@ -69,9 +69,7 @@ export default function FileDiff({ file, onBack, apiHost, sessionName, onFocusTe
           ← Back
         </button>
         <span className="text-gray-500">/</span>
-        <span className="font-mono text-sm text-blue-400 truncate flex-1">
-          {file.path}
-        </span>
+        <span className="font-mono text-sm text-blue-400 truncate flex-1">{file.path}</span>
         {isMarkdown && (
           <button
             onClick={() => setShowMarkdownPreview(true)}

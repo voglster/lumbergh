@@ -39,15 +39,18 @@ function MermaidDiagram({ code }: { code: string }) {
   useEffect(() => {
     if (ref.current && code) {
       const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`
-      mermaid.render(id, code).then(({ svg }) => {
-        if (ref.current) {
-          ref.current.innerHTML = svg
-        }
-      }).catch((err) => {
-        if (ref.current) {
-          ref.current.innerHTML = `<pre class="text-red-400 p-4">Mermaid error: ${err.message}</pre>`
-        }
-      })
+      mermaid
+        .render(id, code)
+        .then(({ svg }) => {
+          if (ref.current) {
+            ref.current.innerHTML = svg
+          }
+        })
+        .catch((err) => {
+          if (ref.current) {
+            ref.current.innerHTML = `<pre class="text-red-400 p-4">Mermaid error: ${err.message}</pre>`
+          }
+        })
     }
   }, [code])
 
@@ -68,11 +71,14 @@ function Code({ children, className }: { children?: React.ReactNode; className?:
 }
 
 export default function MarkdownViewer({ content, filePath, onClose }: Props) {
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      onClose()
-    }
-  }, [onClose])
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    },
+    [onClose]
+  )
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown)
@@ -103,9 +109,7 @@ export default function MarkdownViewer({ content, filePath, onClose }: Props) {
           <span className="font-mono text-sm text-gray-300 truncate" title={filePath}>
             {fileName}
           </span>
-          <span className="text-gray-600 text-xs hidden sm:inline">
-            ({filePath})
-          </span>
+          <span className="text-gray-600 text-xs hidden sm:inline">({filePath})</span>
         </div>
         <button
           onClick={onClose}
@@ -113,7 +117,12 @@ export default function MarkdownViewer({ content, filePath, onClose }: Props) {
           title="Close (Esc)"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </button>
       </div>

@@ -21,7 +21,11 @@ interface PromptTemplatesProps {
   onFocusTerminal?: () => void
 }
 
-export default function PromptTemplates({ apiHost, sessionName, onFocusTerminal }: PromptTemplatesProps) {
+export default function PromptTemplates({
+  apiHost,
+  sessionName,
+  onFocusTerminal,
+}: PromptTemplatesProps) {
   const [projectTemplates, setProjectTemplates] = useState<PromptTemplate[]>([])
   const [globalTemplates, setGlobalTemplates] = useState<PromptTemplate[]>([])
   const [loading, setLoading] = useState(true)
@@ -37,15 +41,15 @@ export default function PromptTemplates({ apiHost, sessionName, onFocusTerminal 
 
   useEffect(() => {
     Promise.all([
-      fetch(`http://${apiHost}/api/prompts`).then(res => res.json()),
-      fetch(`http://${apiHost}/api/global/prompts`).then(res => res.json()),
+      fetch(`http://${apiHost}/api/prompts`).then((res) => res.json()),
+      fetch(`http://${apiHost}/api/global/prompts`).then((res) => res.json()),
     ])
       .then(([projectData, globalData]) => {
         setProjectTemplates(projectData.templates || [])
         setGlobalTemplates(globalData.templates || [])
         setLoading(false)
       })
-      .catch(err => {
+      .catch((err) => {
         console.error('Failed to fetch prompts:', err)
         setLoading(false)
       })
@@ -104,13 +108,13 @@ export default function PromptTemplates({ apiHost, sessionName, onFocusTerminal 
 
     if (showForm === 'project') {
       const updated = editingTemplate
-        ? projectTemplates.map(t => t.id === editingTemplate.id ? newTemplate : t)
+        ? projectTemplates.map((t) => (t.id === editingTemplate.id ? newTemplate : t))
         : [...projectTemplates, newTemplate]
       setProjectTemplates(updated)
       saveProjectTemplates(updated)
     } else {
       const updated = editingTemplate
-        ? globalTemplates.map(t => t.id === editingTemplate.id ? newTemplate : t)
+        ? globalTemplates.map((t) => (t.id === editingTemplate.id ? newTemplate : t))
         : [...globalTemplates, newTemplate]
       setGlobalTemplates(updated)
       saveGlobalTemplates(updated)
@@ -146,11 +150,11 @@ export default function PromptTemplates({ apiHost, sessionName, onFocusTerminal 
 
   const handleDelete = (id: string, scope: 'project' | 'global') => {
     if (scope === 'project') {
-      const updated = projectTemplates.filter(t => t.id !== id)
+      const updated = projectTemplates.filter((t) => t.id !== id)
       setProjectTemplates(updated)
       saveProjectTemplates(updated)
     } else {
-      const updated = globalTemplates.filter(t => t.id !== id)
+      const updated = globalTemplates.filter((t) => t.id !== id)
       setGlobalTemplates(updated)
       saveGlobalTemplates(updated)
     }
@@ -166,8 +170,8 @@ export default function PromptTemplates({ apiHost, sessionName, onFocusTerminal 
       })
       // Refresh both lists
       const [projectData, globalData] = await Promise.all([
-        fetch(`http://${apiHost}/api/prompts`).then(res => res.json()),
-        fetch(`http://${apiHost}/api/global/prompts`).then(res => res.json()),
+        fetch(`http://${apiHost}/api/prompts`).then((res) => res.json()),
+        fetch(`http://${apiHost}/api/global/prompts`).then((res) => res.json()),
       ])
       setProjectTemplates(projectData.templates || [])
       setGlobalTemplates(globalData.templates || [])
@@ -182,7 +186,7 @@ export default function PromptTemplates({ apiHost, sessionName, onFocusTerminal 
         method: 'POST',
       })
       // Refresh project list
-      const projectData = await fetch(`http://${apiHost}/api/prompts`).then(res => res.json())
+      const projectData = await fetch(`http://${apiHost}/api/prompts`).then((res) => res.json())
       setProjectTemplates(projectData.templates || [])
     } catch (err) {
       console.error('Failed to copy to project:', err)
@@ -225,14 +229,14 @@ export default function PromptTemplates({ apiHost, sessionName, onFocusTerminal 
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full text-gray-500">
-        Loading...
-      </div>
-    )
+    return <div className="flex items-center justify-center h-full text-gray-500">Loading...</div>
   }
 
-  const renderTemplateItem = (template: PromptTemplate, index: number, scope: 'project' | 'global') => {
+  const renderTemplateItem = (
+    template: PromptTemplate,
+    index: number,
+    scope: 'project' | 'global'
+  ) => {
     const isDragging = dragScope === scope && dragIndex === index
     const isDragOver = dragScope === scope && dragOverIndex === index && dragIndex !== index
 
@@ -350,7 +354,7 @@ export default function PromptTemplates({ apiHost, sessionName, onFocusTerminal 
                 <input
                   type="text"
                   value={formName}
-                  onChange={e => setFormName(e.target.value)}
+                  onChange={(e) => setFormName(e.target.value)}
                   placeholder="Template name"
                   autoFocus
                   className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500"
@@ -359,7 +363,7 @@ export default function PromptTemplates({ apiHost, sessionName, onFocusTerminal 
               <div className="mb-2">
                 <textarea
                   value={formPrompt}
-                  onChange={e => setFormPrompt(e.target.value)}
+                  onChange={(e) => setFormPrompt(e.target.value)}
                   placeholder="Prompt text..."
                   rows={3}
                   className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500 resize-none"
@@ -385,9 +389,7 @@ export default function PromptTemplates({ apiHost, sessionName, onFocusTerminal 
             </div>
           )}
           {projectTemplates.length === 0 && showForm !== 'project' ? (
-            <div className="text-gray-500 text-sm py-2">
-              No project templates yet.
-            </div>
+            <div className="text-gray-500 text-sm py-2">No project templates yet.</div>
           ) : (
             <div className="space-y-2">
               {projectTemplates.map((template, index) =>
@@ -417,7 +419,7 @@ export default function PromptTemplates({ apiHost, sessionName, onFocusTerminal 
                 <input
                   type="text"
                   value={formName}
-                  onChange={e => setFormName(e.target.value)}
+                  onChange={(e) => setFormName(e.target.value)}
                   placeholder="Template name"
                   autoFocus
                   className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500"
@@ -426,7 +428,7 @@ export default function PromptTemplates({ apiHost, sessionName, onFocusTerminal 
               <div className="mb-2">
                 <textarea
                   value={formPrompt}
-                  onChange={e => setFormPrompt(e.target.value)}
+                  onChange={(e) => setFormPrompt(e.target.value)}
                   placeholder="Prompt text..."
                   rows={3}
                   className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500 resize-none"
@@ -452,9 +454,7 @@ export default function PromptTemplates({ apiHost, sessionName, onFocusTerminal 
             </div>
           )}
           {globalTemplates.length === 0 && showForm !== 'global' ? (
-            <div className="text-gray-500 text-sm py-2">
-              No global templates yet.
-            </div>
+            <div className="text-gray-500 text-sm py-2">No global templates yet.</div>
           ) : (
             <div className="space-y-2">
               {globalTemplates.map((template, index) =>
@@ -466,11 +466,7 @@ export default function PromptTemplates({ apiHost, sessionName, onFocusTerminal 
       </div>
 
       {/* Saving indicator */}
-      {saving && (
-        <div className="text-gray-500 text-sm text-center py-2">
-          Saving...
-        </div>
-      )}
+      {saving && <div className="text-gray-500 text-sm text-center py-2">Saving...</div>}
     </div>
   )
 }

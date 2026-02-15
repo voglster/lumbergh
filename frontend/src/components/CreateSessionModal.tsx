@@ -14,9 +14,9 @@ function toSlug(text: string): string {
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9\s_-]/g, '') // Remove invalid characters
-    .replace(/\s+/g, '-')          // Replace spaces with hyphens
-    .replace(/-+/g, '-')           // Collapse multiple hyphens
-    .replace(/^-|-$/g, '')         // Trim leading/trailing hyphens
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Collapse multiple hyphens
+    .replace(/^-|-$/g, '') // Trim leading/trailing hyphens
 }
 
 export default function CreateSessionModal({ apiHost, onClose, onCreated }: Props) {
@@ -75,12 +75,14 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
       <div className="bg-gray-800 rounded-lg w-full max-w-md border border-gray-700">
         <div className="flex items-center justify-between p-4 border-b border-gray-700">
           <h2 className="text-lg font-semibold text-white">New Session</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -91,7 +93,7 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
             <input
               type="text"
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Auth Feature, fix-login-bug"
               className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500"
               required
@@ -110,7 +112,7 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
                 <input
                   type="text"
                   value={workdir}
-                  onChange={e => setWorkdir(e.target.value)}
+                  onChange={(e) => setWorkdir(e.target.value)}
                   placeholder="e.g., /home/user/myproject"
                   className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500 font-mono text-sm"
                   required
@@ -141,15 +143,13 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
             <input
               type="text"
               value={description}
-              onChange={e => setDescription(e.target.value)}
+              onChange={(e) => setDescription(e.target.value)}
               placeholder="e.g., Working on user authentication"
               className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500"
             />
           </div>
 
-          {error && (
-            <div className="text-red-400 text-sm">{error}</div>
-          )}
+          {error && <div className="text-red-400 text-sm">{error}</div>}
 
           <div className="flex justify-end gap-3 pt-2">
             <button

@@ -17,7 +17,14 @@ type ViewState =
   | { level: 'changes'; commit: string | null }
   | { level: 'file'; commit: string | null; file: string }
 
-export default function DiffViewer({ apiHost, sessionName, diffData: externalDiffData, onRefreshDiff, onCommitSuccess, onFocusTerminal }: Props) {
+export default function DiffViewer({
+  apiHost,
+  sessionName,
+  diffData: externalDiffData,
+  onRefreshDiff,
+  onCommitSuccess,
+  onFocusTerminal,
+}: Props) {
   // Build base URL for git endpoints
   const gitBaseUrl = sessionName
     ? `http://${apiHost}/api/sessions/${sessionName}/git`
@@ -38,14 +45,10 @@ export default function DiffViewer({ apiHost, sessionName, diffData: externalDif
 
   // Internal fetch for working changes (used when no external data provided)
   const fetchWorkingChangesInternal = useCallback(async () => {
-    try {
-      const res = await fetch(`${gitBaseUrl}/diff`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const json = await res.json()
-      setInternalWorkingData(json)
-    } catch (e) {
-      throw e
-    }
+    const res = await fetch(`${gitBaseUrl}/diff`)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const json = await res.json()
+    setInternalWorkingData(json)
   }, [gitBaseUrl])
 
   // Refresh working changes - use external callback if provided
@@ -58,26 +61,21 @@ export default function DiffViewer({ apiHost, sessionName, diffData: externalDif
   }, [onRefreshDiff, fetchWorkingChangesInternal])
 
   const fetchCommits = useCallback(async () => {
-    try {
-      const res = await fetch(`${gitBaseUrl}/log`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const json = await res.json()
-      setCommits(json.commits)
-    } catch (e) {
-      throw e
-    }
+    const res = await fetch(`${gitBaseUrl}/log`)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const json = await res.json()
+    setCommits(json.commits)
   }, [gitBaseUrl])
 
-  const fetchCommitDiff = useCallback(async (hash: string) => {
-    try {
+  const fetchCommitDiff = useCallback(
+    async (hash: string) => {
       const res = await fetch(`${gitBaseUrl}/commit/${hash}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       setCommitData(json)
-    } catch (e) {
-      throw e
-    }
-  }, [gitBaseUrl])
+    },
+    [gitBaseUrl]
+  )
 
   // Initial load - fetch working changes only if no external data provided
   const loadInitialData = useCallback(async () => {
@@ -107,7 +105,7 @@ export default function DiffViewer({ apiHost, sessionName, diffData: externalDif
       setLoading(true)
       setError(null)
       fetchCommitDiff(view.commit)
-        .catch(e => setError(e instanceof Error ? e.message : 'Failed to fetch commit'))
+        .catch((e) => setError(e instanceof Error ? e.message : 'Failed to fetch commit'))
         .finally(() => setLoading(false))
     }
   }, [view, fetchCommitDiff])
@@ -133,7 +131,7 @@ export default function DiffViewer({ apiHost, sessionName, diffData: externalDif
   }
 
   const handleSelectFile = (file: string) => {
-    setView(prev => {
+    setView((prev) => {
       if (prev.level === 'changes') {
         return { level: 'file', commit: prev.commit, file }
       }
@@ -142,7 +140,7 @@ export default function DiffViewer({ apiHost, sessionName, diffData: externalDif
   }
 
   const handleBackToChanges = () => {
-    setView(prev => {
+    setView((prev) => {
       if (prev.level === 'file') {
         return { level: 'changes', commit: prev.commit }
       }
@@ -191,7 +189,7 @@ export default function DiffViewer({ apiHost, sessionName, diffData: externalDif
         message: commitData.message,
       }
     }
-    const commit = commits.find(c => c.hash === commitHash)
+    const commit = commits.find((c) => c.hash === commitHash)
     if (commit) {
       return {
         hash: commit.hash,
@@ -205,9 +203,7 @@ export default function DiffViewer({ apiHost, sessionName, diffData: externalDif
   // Loading state
   if (loading && view.level !== 'history') {
     return (
-      <div className="flex items-center justify-center h-full text-gray-500">
-        Loading diff...
-      </div>
+      <div className="flex items-center justify-center h-full text-gray-500">Loading diff...</div>
     )
   }
 
@@ -260,10 +256,7 @@ export default function DiffViewer({ apiHost, sessionName, diffData: externalDif
               <span className="text-gray-500">›</span>
               <span className="text-sm text-gray-300">Working Changes</span>
               {sessionName && (
-                <BranchSelector
-                  gitBaseUrl={gitBaseUrl}
-                  onBranchChange={handleRefresh}
-                />
+                <BranchSelector gitBaseUrl={gitBaseUrl} onBranchChange={handleRefresh} />
               )}
             </div>
             <button
@@ -289,9 +282,17 @@ export default function DiffViewer({ apiHost, sessionName, diffData: externalDif
 
   // Single file diff view
   if (view.level === 'file') {
-    const file = data.files.find(f => f.path === view.file)
+    const file = data.files.find((f) => f.path === view.file)
     if (file) {
-      return <FileDiff file={file} onBack={handleBackToChanges} apiHost={apiHost} sessionName={sessionName} onFocusTerminal={onFocusTerminal} />
+      return (
+        <FileDiff
+          file={file}
+          onBack={handleBackToChanges}
+          apiHost={apiHost}
+          sessionName={sessionName}
+          onFocusTerminal={onFocusTerminal}
+        />
+      )
     }
     // File not found, go back to changes
     handleBackToChanges()

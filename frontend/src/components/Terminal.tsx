@@ -13,7 +13,13 @@ interface TerminalProps {
   onBack?: () => void
 }
 
-export default function Terminal({ sessionName, apiHost, onSendReady, onFocusReady, onBack }: TerminalProps) {
+export default function Terminal({
+  sessionName,
+  apiHost,
+  onSendReady,
+  onFocusReady,
+  onBack,
+}: TerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<XTerm | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
@@ -28,6 +34,9 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
     return saved ? parseInt(saved, 10) : 16
   })
 
+  // Store initial font size in ref for terminal initialization (intentionally not reactive)
+  const initialFontSizeRef = useRef(fontSize)
+
   // Expanded header state
   const [headerExpanded, setHeaderExpanded] = useState(false)
 
@@ -38,45 +47,52 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
   const [hasFocus, setHasFocus] = useState(false)
 
   // Detect touch device (hide scroll controls on desktop)
-  const [isTouchDevice] = useState(() =>
-    typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+  const [isTouchDevice] = useState(
+    () =>
+      typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
   )
 
   // Toggle scroll mode (tmux copy-mode)
   const toggleScrollMode = useCallback(() => {
     if (scrollMode) {
-      sendRef.current('q')  // Exit copy-mode
+      sendRef.current('q') // Exit copy-mode
     } else {
-      sendRef.current('\x01[')  // Ctrl-A + [ to enter copy-mode
+      sendRef.current('\x01[') // Ctrl-A + [ to enter copy-mode
     }
     setScrollMode(!scrollMode)
   }, [scrollMode])
 
   // Send text via backend API (uses tmux send-keys which works better with Claude Code)
-  const sendViaApi = useCallback(async (text: string, sendEnter: boolean = true) => {
-    try {
-      await fetch(`http://${apiHost}/api/session/${sessionName}/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, send_enter: sendEnter }),
-      })
-    } catch (err) {
-      console.error('Failed to send to terminal:', err)
-    }
-  }, [apiHost, sessionName])
+  const sendViaApi = useCallback(
+    async (text: string, sendEnter: boolean = true) => {
+      try {
+        await fetch(`http://${apiHost}/api/session/${sessionName}/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, send_enter: sendEnter }),
+        })
+      } catch (err) {
+        console.error('Failed to send to terminal:', err)
+      }
+    },
+    [apiHost, sessionName]
+  )
 
   // Send tmux window navigation commands
-  const sendTmuxCommand = useCallback(async (command: string) => {
-    try {
-      await fetch(`http://${apiHost}/api/session/${sessionName}/tmux-command`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command }),
-      })
-    } catch (err) {
-      console.error('Failed to send tmux command:', err)
-    }
-  }, [apiHost, sessionName])
+  const sendTmuxCommand = useCallback(
+    async (command: string) => {
+      try {
+        await fetch(`http://${apiHost}/api/session/${sessionName}/tmux-command`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command }),
+        })
+      } catch (err) {
+        console.error('Failed to send tmux command:', err)
+      }
+    },
+    [apiHost, sessionName]
+  )
 
   const handleData = useCallback((data: string) => {
     termRef.current?.write(data)
@@ -137,9 +153,9 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
 
     const term = new XTerm({
       cursorBlink: true,
-      fontSize: fontSize,
+      fontSize: initialFontSizeRef.current,
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-      scrollback: 10000,  // Enable native scrollback for touch scrolling
+      scrollback: 10000, // Enable native scrollback for touch scrolling
       theme: {
         background: '#1a1a1a',
         foreground: '#d4d4d4',
@@ -280,7 +296,6 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
     }
   }, [fontSize, handleFit])
 
-
   return (
     <div className="h-full w-full relative flex flex-col">
       {/* Header bar */}
@@ -296,7 +311,12 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
                   title="Back to Dashboard"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                    />
                   </svg>
                 </button>
                 {/* Separator */}
@@ -324,11 +344,9 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
                 onClick={toggleScrollMode}
                 disabled={!isConnected}
                 className={`px-2 py-1 text-xs rounded ${
-                  scrollMode
-                    ? 'bg-yellow-600 hover:bg-yellow-500'
-                    : 'bg-gray-700 hover:bg-gray-600'
+                  scrollMode ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-gray-700 hover:bg-gray-600'
                 } disabled:bg-gray-600 disabled:opacity-50`}
-                title={scrollMode ? "Exit scroll mode (q)" : "Enter scroll mode (copy-mode)"}
+                title={scrollMode ? 'Exit scroll mode (q)' : 'Enter scroll mode (copy-mode)'}
               >
                 {scrollMode ? 'Exit' : 'Scroll'}
               </button>
@@ -410,7 +428,7 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
               {isTouchDevice && (
                 <button
                   onClick={() => {
-                    sendRef.current('q')  // Exit copy-mode (sends 'q' which exits tmux copy-mode)
+                    sendRef.current('q') // Exit copy-mode (sends 'q' which exits tmux copy-mode)
                     setScrollMode(false)
                     setHeaderExpanded(false)
                   }}
@@ -440,23 +458,19 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
 
       {/* Error display (only show if session is not dead - dead sessions have their own overlay) */}
       {error && !sessionDead && (
-        <div className="bg-red-900/80 text-red-200 px-2 py-1 text-sm">
-          {error}
-        </div>
+        <div className="bg-red-900/80 text-red-200 px-2 py-1 text-sm">{error}</div>
       )}
 
       {/* Session death overlay */}
       {sessionDead && (
         <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-20">
-          <div className="text-red-400 text-lg font-semibold mb-2">
-            Session Terminated
-          </div>
+          <div className="text-red-400 text-lg font-semibold mb-2">Session Terminated</div>
           <p className="text-gray-400 text-sm mb-4 text-center px-4">
             The tmux session has ended or was killed
           </p>
           <div className="flex gap-3">
             <button
-              onClick={() => window.location.href = '/'}
+              onClick={() => (window.location.href = '/')}
               className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm"
             >
               Dashboard
@@ -475,14 +489,14 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
       {isTouchDevice && scrollMode && (
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-10">
           <button
-            onClick={() => sendRef.current('\x1b[5~')}  // Page Up
+            onClick={() => sendRef.current('\x1b[5~')} // Page Up
             className="w-14 h-14 bg-yellow-600/90 hover:bg-yellow-500 rounded-lg text-xl font-bold shadow-lg"
             title="Page Up"
           >
             ▲
           </button>
           <button
-            onClick={() => sendRef.current('\x1b[6~')}  // Page Down
+            onClick={() => sendRef.current('\x1b[6~')} // Page Down
             className="w-14 h-14 bg-yellow-600/90 hover:bg-yellow-500 rounded-lg text-xl font-bold shadow-lg"
             title="Page Down"
           >

@@ -68,9 +68,14 @@ export function extractNewContent(diff: string): string {
 
   for (const line of lines) {
     // Skip diff metadata
-    if (line.startsWith('diff ') || line.startsWith('index ') ||
-        line.startsWith('--- ') || line.startsWith('+++ ') ||
-        line.startsWith('new file') || line.startsWith('deleted file')) {
+    if (
+      line.startsWith('diff ') ||
+      line.startsWith('index ') ||
+      line.startsWith('--- ') ||
+      line.startsWith('+++ ') ||
+      line.startsWith('new file') ||
+      line.startsWith('deleted file')
+    ) {
       continue
     }
 

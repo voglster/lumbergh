@@ -23,12 +23,12 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal }: Todo
 
   useEffect(() => {
     fetch(`http://${apiHost}/api/sessions/${sessionName}/todos`)
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         setTodos(data.todos || [])
         setLoading(false)
       })
-      .catch(err => {
+      .catch((err) => {
         console.error('Failed to fetch todos:', err)
         setLoading(false)
       })
@@ -49,12 +49,10 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal }: Todo
   }
 
   const handleToggle = (index: number) => {
-    const updated = todos.map((t, i) =>
-      i === index ? { ...t, done: !t.done } : t
-    )
+    const updated = todos.map((t, i) => (i === index ? { ...t, done: !t.done } : t))
     // Sort: unchecked first, then checked
-    const unchecked = updated.filter(t => !t.done)
-    const checked = updated.filter(t => t.done)
+    const unchecked = updated.filter((t) => !t.done)
+    const checked = updated.filter((t) => t.done)
     const reordered = [...unchecked, ...checked]
     setTodos(reordered)
     saveTodos(reordered)
@@ -76,7 +74,7 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal }: Todo
   void _handleDelete // keep for future use
 
   const handleDeleteAllDone = () => {
-    const updated = todos.filter(t => !t.done)
+    const updated = todos.filter((t) => !t.done)
     setTodos(updated)
     saveTodos(updated)
   }
@@ -96,9 +94,7 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal }: Todo
     if (editingIndex === null) return
     const trimmed = editingText.trim()
     if (trimmed && trimmed !== todos[editingIndex].text) {
-      const updated = todos.map((t, i) =>
-        i === editingIndex ? { ...t, text: trimmed } : t
-      )
+      const updated = todos.map((t, i) => (i === editingIndex ? { ...t, text: trimmed } : t))
       setTodos(updated)
       saveTodos(updated)
     }
@@ -125,11 +121,9 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal }: Todo
         body: JSON.stringify({ text: todo.text, send_enter: sendEnter }),
       })
       // Mark as done and move to bottom (with other done items)
-      const updated = todos.map((t, i) =>
-        i === index ? { ...t, done: true } : t
-      )
-      const unchecked = updated.filter(t => !t.done)
-      const checked = updated.filter(t => t.done)
+      const updated = todos.map((t, i) => (i === index ? { ...t, done: true } : t))
+      const unchecked = updated.filter((t) => !t.done)
+      const checked = updated.filter((t) => t.done)
       const reordered = [...unchecked, ...checked]
       setTodos(reordered)
       saveTodos(reordered)
@@ -161,11 +155,7 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal }: Todo
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full text-gray-500">
-        Loading...
-      </div>
-    )
+    return <div className="flex items-center justify-center h-full text-gray-500">Loading...</div>
   }
 
   return (
@@ -175,7 +165,7 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal }: Todo
         <input
           type="text"
           value={newTodo}
-          onChange={e => setNewTodo(e.target.value)}
+          onChange={(e) => setNewTodo(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Add a task... (press Enter)"
           className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500"
@@ -185,9 +175,7 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal }: Todo
       {/* Todo list */}
       <div className="flex-1 overflow-y-auto">
         {todos.length === 0 ? (
-          <div className="text-gray-500 text-center py-8">
-            No tasks yet. Add one above!
-          </div>
+          <div className="text-gray-500 text-center py-8">No tasks yet. Add one above!</div>
         ) : (
           <ul className="space-y-2">
             {todos.map((todo, index) => {
@@ -198,7 +186,9 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal }: Todo
                   {showCompletedSeparator && (
                     <div className="flex items-center gap-2 py-2 mb-2">
                       <div className="flex-1 border-t border-gray-700" />
-                      <span className="text-xs text-gray-500 uppercase tracking-wide">Completed</span>
+                      <span className="text-xs text-gray-500 uppercase tracking-wide">
+                        Completed
+                      </span>
                       <button
                         onClick={handleDeleteAllDone}
                         className="text-xs text-gray-500 hover:text-red-400 transition-colors"
@@ -229,7 +219,7 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal }: Todo
                       <input
                         type="text"
                         value={editingText}
-                        onChange={e => setEditingText(e.target.value)}
+                        onChange={(e) => setEditingText(e.target.value)}
                         onBlur={handleSaveEdit}
                         onKeyDown={handleEditKeyDown}
                         autoFocus
@@ -272,11 +262,7 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal }: Todo
       </div>
 
       {/* Saving indicator */}
-      {saving && (
-        <div className="text-gray-500 text-sm text-center py-2">
-          Saving...
-        </div>
-      )}
+      {saving && <div className="text-gray-500 text-sm text-center py-2">Saving...</div>}
     </div>
   )
 }

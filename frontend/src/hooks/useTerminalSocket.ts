@@ -29,6 +29,7 @@ export function useTerminalSocket({
   const [sessionDead, setSessionDead] = useState(false)
   const reconnectTimeoutRef = useRef<number | null>(null)
   const sessionDeadRef = useRef(false)
+  const connectRef = useRef<() => void>(() => {})
 
   // Store callbacks in refs to avoid recreating connect() on every render
   const onDataRef = useRef(onData)
@@ -96,7 +97,7 @@ export function useTerminalSocket({
       // Attempt reconnect only if session is not dead
       if (!sessionDeadRef.current) {
         reconnectTimeoutRef.current = window.setTimeout(() => {
-          connect()
+          connectRef.current()
         }, 2000)
       }
     }
@@ -109,6 +110,11 @@ export function useTerminalSocket({
 
     wsRef.current = ws
   }, [sessionName, apiHost])
+
+  // Keep connectRef updated
+  useEffect(() => {
+    connectRef.current = connect
+  }, [connect])
 
   const send = useCallback((data: string) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {

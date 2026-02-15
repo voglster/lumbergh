@@ -8,7 +8,13 @@ interface Props {
   onRefresh: () => void
 }
 
-export default function CommitList({ commits, workingChanges, loading, onSelectCommit, onRefresh }: Props) {
+export default function CommitList({
+  commits,
+  workingChanges,
+  loading,
+  onSelectCommit,
+  onRefresh,
+}: Props) {
   const hasWorkingChanges = workingChanges && workingChanges.files.length > 0
 
   return (
@@ -51,7 +57,7 @@ export default function CommitList({ commits, workingChanges, loading, onSelectC
         </button>
 
         {/* Commit entries */}
-        {commits.map(commit => (
+        {commits.map((commit) => (
           <button
             key={commit.hash}
             onClick={() => onSelectCommit(commit.hash)}
