@@ -2,7 +2,15 @@
 Shared Pydantic models for the Lumbergh backend.
 """
 
+from typing import Literal
+
 from pydantic import BaseModel
+
+
+class TmuxCommand(BaseModel):
+    """A tmux window navigation command."""
+
+    command: Literal["next-window", "prev-window", "new-window"]
 
 
 class SendInput(BaseModel):

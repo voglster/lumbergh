@@ -43,6 +43,19 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
     }
   }, [apiHost, sessionName])
 
+  // Send tmux window navigation commands
+  const sendTmuxCommand = useCallback(async (command: string) => {
+    try {
+      await fetch(`http://${apiHost}/api/session/${sessionName}/tmux-command`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command }),
+      })
+    } catch (err) {
+      console.error('Failed to send tmux command:', err)
+    }
+  }, [apiHost, sessionName])
+
   const handleData = useCallback((data: string) => {
     termRef.current?.write(data)
   }, [])
@@ -225,6 +238,20 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
             <span className="text-xs text-gray-400">
               {isConnected ? 'Connected' : 'Disconnected'}
             </span>
+            <button
+              onClick={() => sendTmuxCommand('prev-window')}
+              className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
+              title="Previous tmux window"
+            >
+              &lt;
+            </button>
+            <button
+              onClick={() => sendTmuxCommand('next-window')}
+              className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
+              title="Next tmux window"
+            >
+              &gt;
+            </button>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -282,6 +309,16 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
             </div>
             {/* Quick buttons - right aligned */}
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  sendTmuxCommand('new-window')
+                  setHeaderExpanded(false)
+                }}
+                className="px-2 py-1 text-xs bg-green-700 hover:bg-green-600 rounded"
+                title="Create new tmux window"
+              >
+                + Window
+              </button>
               {['1', '2', '3', '4', 'yes', '/clear'].map((text) => (
                 <button
                   key={text}

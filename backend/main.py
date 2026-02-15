@@ -19,7 +19,7 @@ from git_utils import (
     get_porcelain_status,
     stage_all_and_commit,
 )
-from models import CommitInput, SendInput
+from models import CommitInput, SendInput, TmuxCommand
 from routers import notes, sessions, settings
 
 app = FastAPI(title="Lumbergh", description="Tmux session supervisor")
@@ -171,6 +171,22 @@ async def send_to_session(session_name: str, body: SendInput):
             raise HTTPException(status_code=500, detail=result.stderr)
 
     return {"status": "sent"}
+
+
+@app.post("/api/session/{session_name}/tmux-command")
+async def send_tmux_command(session_name: str, cmd: TmuxCommand):
+    """Send a tmux window navigation command to a session."""
+    import subprocess
+
+    tmux_commands = {
+        "next-window": ["tmux", "next-window", "-t", session_name],
+        "prev-window": ["tmux", "previous-window", "-t", session_name],
+        "new-window": ["tmux", "new-window", "-t", session_name],
+    }
+    result = subprocess.run(tmux_commands[cmd.command], capture_output=True, text=True)
+    if result.returncode != 0:
+        raise HTTPException(status_code=500, detail=result.stderr)
+    return {"status": "ok"}
 
 
 @app.websocket("/api/session/{session_name}/stream")
