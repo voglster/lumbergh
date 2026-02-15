@@ -728,3 +728,80 @@ async def save_session_scratchpad(name: str, data: ScratchpadContent):
         return {"content": data.content}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Session-scoped File Endpoints ---
+
+# Directories to skip when listing files
+FILE_IGNORE_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", "dist", "build"}
+
+# Extension to language mapping
+EXT_TO_LANG = {
+    ".py": "python",
+    ".js": "javascript",
+    ".ts": "typescript",
+    ".tsx": "tsx",
+    ".jsx": "jsx",
+    ".json": "json",
+    ".md": "markdown",
+    ".sh": "bash",
+    ".css": "css",
+    ".html": "html",
+    ".yaml": "yaml",
+    ".yml": "yaml",
+    ".toml": "toml",
+}
+
+
+@router.get("/{name}/files")
+async def session_list_files(name: str):
+    """List files in the session's working directory."""
+    workdir = get_session_workdir(name)
+
+    try:
+        files = []
+        for item in sorted(workdir.rglob("*")):
+            # Skip ignored directories
+            if any(ignored in item.parts for ignored in FILE_IGNORE_DIRS):
+                continue
+
+            rel_path = item.relative_to(workdir)
+            files.append({
+                "path": str(rel_path),
+                "type": "directory" if item.is_dir() else "file",
+                "size": item.stat().st_size if item.is_file() else None,
+            })
+
+        return {"files": files, "root": str(workdir)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{name}/files/{file_path:path}")
+async def session_get_file(name: str, file_path: str):
+    """Get contents of a file in the session's working directory."""
+    workdir = get_session_workdir(name)
+
+    try:
+        full_path = workdir / file_path
+
+        # Security: ensure path doesn't escape workdir
+        if not full_path.resolve().is_relative_to(workdir.resolve()):
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        if not full_path.exists():
+            raise HTTPException(status_code=404, detail="File not found")
+
+        if not full_path.is_file():
+            raise HTTPException(status_code=400, detail="Path is not a file")
+
+        # Determine language from extension
+        ext = full_path.suffix.lower()
+        language = EXT_TO_LANG.get(ext, "text")
+
+        content = full_path.read_text(errors="replace")
+        return {"content": content, "language": language, "path": file_path}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

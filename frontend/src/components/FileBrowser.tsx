@@ -136,7 +136,11 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
       setError(null)
     }
     try {
-      const res = await fetch(`http://${apiHost}/api/files`)
+      // Use session-scoped endpoint if sessionName is provided
+      const url = sessionName
+        ? `http://${apiHost}/api/sessions/${sessionName}/files`
+        : `http://${apiHost}/api/files`
+      const res = await fetch(url)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       setFiles(json.files)
@@ -149,7 +153,13 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
         setLoading(false)
       }
     }
-  }, [apiHost])
+  }, [apiHost, sessionName])
+
+  // Reset state when session changes
+  useEffect(() => {
+    setSelectedFile(null)
+    setExpandedDirs(new Set())
+  }, [sessionName])
 
   useEffect(() => {
     fetchFiles()
@@ -173,7 +183,11 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
     }
 
     try {
-      const res = await fetch(`http://${apiHost}/api/files/${encodeURIComponent(path)}`)
+      // Use session-scoped endpoint if sessionName is provided
+      const url = sessionName
+        ? `http://${apiHost}/api/sessions/${sessionName}/files/${encodeURIComponent(path)}`
+        : `http://${apiHost}/api/files/${encodeURIComponent(path)}`
+      const res = await fetch(url)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       setSelectedFile(json)
