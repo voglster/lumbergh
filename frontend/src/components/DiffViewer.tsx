@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import '@git-diff-view/react/styles/diff-view.css'
-import { FileList, FileDiff, CommitList } from './diff'
+import { FileList, FileDiff, CommitList, BranchSelector } from './diff'
 import type { DiffData, Commit, CommitDiff } from './diff'
 
 interface Props {
@@ -248,24 +248,32 @@ export default function DiffViewer({ apiHost, sessionName, diffData: externalDif
       return (
         <div className="h-full flex flex-col">
           {/* Breadcrumb header */}
-          <div className="flex items-center gap-2 p-3 bg-gray-800 border-b border-gray-700">
+          <div className="flex items-center justify-between p-3 bg-gray-800 border-b border-gray-700">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleNavigateToHistory}
+                className="text-sm text-blue-400 hover:text-blue-300"
+              >
+                History
+              </button>
+              <span className="text-gray-500">›</span>
+              <span className="text-sm text-gray-300">Working Changes</span>
+              {sessionName && (
+                <BranchSelector
+                  gitBaseUrl={gitBaseUrl}
+                  onBranchChange={handleRefresh}
+                />
+              )}
+            </div>
             <button
-              onClick={handleNavigateToHistory}
-              className="text-sm text-blue-400 hover:text-blue-300"
+              onClick={handleRefresh}
+              className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
             >
-              History
+              ↻
             </button>
-            <span className="text-gray-500">›</span>
-            <span className="text-sm text-gray-300">Working Changes</span>
           </div>
           <div className="flex flex-col items-center justify-center flex-1 gap-4 text-gray-500">
             <span>No changes detected</span>
-            <button
-              onClick={handleRefresh}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white"
-            >
-              Refresh
-            </button>
           </div>
         </div>
       )
