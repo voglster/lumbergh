@@ -406,6 +406,20 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
               >
                 + Window
               </button>
+              {/* Exit scroll mode button - always available on touch devices as escape hatch */}
+              {isTouchDevice && (
+                <button
+                  onClick={() => {
+                    sendRef.current('q')  // Exit copy-mode (sends 'q' which exits tmux copy-mode)
+                    setScrollMode(false)
+                    setHeaderExpanded(false)
+                  }}
+                  className="px-2 py-1 text-xs bg-yellow-600 hover:bg-yellow-500 rounded"
+                  title="Exit scroll mode (press if stuck in scroll)"
+                >
+                  Exit Scroll
+                </button>
+              )}
               {['1', '2', '3', '4', 'yes', '/clear'].map((text) => (
                 <button
                   key={text}
