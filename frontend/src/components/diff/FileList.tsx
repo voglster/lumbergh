@@ -165,9 +165,20 @@ export default function FileList({ data, apiHost, sessionName, onSelectFile, onR
           <button
             onClick={onRefresh}
             className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+            title="Refresh"
           >
             ↻
           </button>
+          {isWorkingChanges && hasChanges && (
+            <button
+              onClick={handleReset}
+              disabled={isResetting || isCommitting || isGenerating}
+              className="px-2 py-1 text-gray-400 hover:text-red-400 disabled:text-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
+              title="Revert all changes"
+            >
+              {isResetting ? '...' : '⟲'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -179,12 +190,20 @@ export default function FileList({ data, apiHost, sessionName, onSelectFile, onR
             value={commitMessage}
             onChange={e => setCommitMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Commit message... (Cmd/Ctrl+Enter to commit)"
+            placeholder="Commit message..."
             rows={commitMessage.includes('\n') ? 3 : 1}
             className="flex-1 px-3 py-2 bg-gray-700 text-white text-sm rounded border border-gray-600 focus:outline-none focus:border-blue-500 resize-none"
             disabled={isCommitting || isGenerating}
           />
           <div className="flex flex-col gap-2 shrink-0">
+            <button
+              onClick={handleCommit}
+              disabled={!commitMessage.trim() || isCommitting || isGenerating || isResetting}
+              className="px-3 py-2 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
+              title="Commit changes (Ctrl/Cmd+Enter)"
+            >
+              {isCommitting ? '...' : 'Commit'}
+            </button>
             {generateUrl && hasChanges && (
               <button
                 onClick={handleGenerate}
@@ -193,16 +212,6 @@ export default function FileList({ data, apiHost, sessionName, onSelectFile, onR
                 title="Generate commit message with AI"
               >
                 {isGenerating ? '...' : 'AI'}
-              </button>
-            )}
-            {hasChanges && (
-              <button
-                onClick={handleReset}
-                disabled={isResetting || isCommitting || isGenerating}
-                className="px-3 py-2 bg-red-600 hover:bg-red-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
-                title="Revert all changes to last commit"
-              >
-                {isResetting ? '...' : 'Revert'}
               </button>
             )}
           </div>
