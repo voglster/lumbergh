@@ -33,6 +33,9 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
   // Scroll mode state (tmux copy-mode)
   const [scrollMode, setScrollMode] = useState(false)
 
+  // Track terminal focus (for click shield on desktop)
+  const [hasFocus, setHasFocus] = useState(false)
+
   // Detect touch device (hide scroll controls on desktop)
   const [isTouchDevice] = useState(() =>
     typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
@@ -244,6 +247,20 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
     }
   }, [fontSize, handleFit])
 
+  // Track terminal focus state (for click shield that prevents tmux selection on focus click)
+  useEffect(() => {
+    const term = termRef.current
+    if (!term) return
+
+    const focusDisp = term.onFocus?.(() => setHasFocus(true))
+    const blurDisp = term.onBlur?.(() => setHasFocus(false))
+
+    return () => {
+      focusDisp?.dispose()
+      blurDisp?.dispose()
+    }
+  }, [sessionName])
+
   return (
     <div className="h-full w-full relative flex flex-col">
       {/* Header bar */}
@@ -405,8 +422,20 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
         </div>
       )}
 
-      {/* Terminal container */}
-      <div ref={containerRef} className="flex-1 overflow-hidden" />
+      {/* Terminal container with focus click shield */}
+      <div className="flex-1 overflow-hidden relative">
+        {/* Focus click shield - intercepts first click to focus without triggering tmux selection */}
+        {!isTouchDevice && !hasFocus && (
+          <div
+            className="absolute inset-0 z-10 cursor-text"
+            onMouseDown={(e) => {
+              e.preventDefault()
+              termRef.current?.focus()
+            }}
+          />
+        )}
+        <div ref={containerRef} className="h-full w-full" />
+      </div>
     </div>
   )
 }
