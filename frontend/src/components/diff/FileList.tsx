@@ -92,7 +92,8 @@ export default function FileList({ data, apiHost, sessionName, onSelectFile, onR
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && commitMessage.trim()) {
+    // Cmd/Ctrl+Enter to commit
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && commitMessage.trim()) {
       e.preventDefault()
       handleCommit()
     }
@@ -174,35 +175,37 @@ export default function FileList({ data, apiHost, sessionName, onSelectFile, onR
       {isWorkingChanges && (
       <div className="p-3 bg-gray-800 border-b border-gray-700">
         <div className="flex gap-2">
-          <input
-            type="text"
+          <textarea
             value={commitMessage}
             onChange={e => setCommitMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Commit message... (Enter to commit)"
-            className="flex-1 px-3 py-2 bg-gray-700 text-white text-sm rounded border border-gray-600 focus:outline-none focus:border-blue-500"
+            placeholder="Commit message... (Cmd/Ctrl+Enter to commit)"
+            rows={commitMessage.includes('\n') ? 3 : 1}
+            className="flex-1 px-3 py-2 bg-gray-700 text-white text-sm rounded border border-gray-600 focus:outline-none focus:border-blue-500 resize-none"
             disabled={isCommitting || isGenerating}
           />
-          {generateUrl && hasChanges && (
-            <button
-              onClick={handleGenerate}
-              disabled={isGenerating || isCommitting || isResetting}
-              className="px-3 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded transition-colors shrink-0"
-              title="Generate commit message with AI"
-            >
-              {isGenerating ? '...' : 'AI'}
-            </button>
-          )}
-          {hasChanges && (
-            <button
-              onClick={handleReset}
-              disabled={isResetting || isCommitting || isGenerating}
-              className="px-3 py-2 bg-red-600 hover:bg-red-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded transition-colors shrink-0"
-              title="Revert all changes to last commit"
-            >
-              {isResetting ? '...' : 'Revert'}
-            </button>
-          )}
+          <div className="flex flex-col gap-2 shrink-0">
+            {generateUrl && hasChanges && (
+              <button
+                onClick={handleGenerate}
+                disabled={isGenerating || isCommitting || isResetting}
+                className="px-3 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
+                title="Generate commit message with AI"
+              >
+                {isGenerating ? '...' : 'AI'}
+              </button>
+            )}
+            {hasChanges && (
+              <button
+                onClick={handleReset}
+                disabled={isResetting || isCommitting || isGenerating}
+                className="px-3 py-2 bg-red-600 hover:bg-red-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
+                title="Revert all changes to last commit"
+              >
+                {isResetting ? '...' : 'Revert'}
+              </button>
+            )}
+          </div>
         </div>
         {commitResult && (
           <div className={`mt-2 text-sm ${commitResult.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>

@@ -17,6 +17,7 @@ interface AISettings {
     ollama: AIProviderConfig
     openai: AIProviderConfig
     anthropic: AIProviderConfig
+    google: AIProviderConfig
     openai_compatible: AIProviderConfig
   }
 }
@@ -45,6 +46,8 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
   const [openaiModel, setOpenaiModel] = useState('gpt-4o')
   const [anthropicApiKey, setAnthropicApiKey] = useState('')
   const [anthropicModel, setAnthropicModel] = useState('claude-sonnet-4-20250514')
+  const [googleApiKey, setGoogleApiKey] = useState('')
+  const [googleModel, setGoogleModel] = useState('gemini-3-flash-preview')
   const [compatibleBaseUrl, setCompatibleBaseUrl] = useState('')
   const [compatibleApiKey, setCompatibleApiKey] = useState('')
   const [compatibleModel, setCompatibleModel] = useState('')
@@ -75,6 +78,10 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
           if (data.ai.providers?.anthropic) {
             setAnthropicApiKey(data.ai.providers.anthropic.apiKey || '')
             setAnthropicModel(data.ai.providers.anthropic.model || 'claude-sonnet-4-20250514')
+          }
+          if (data.ai.providers?.google) {
+            setGoogleApiKey(data.ai.providers.google.apiKey || '')
+            setGoogleModel(data.ai.providers.google.model || 'gemini-3-flash-preview')
           }
           if (data.ai.providers?.openai_compatible) {
             setCompatibleBaseUrl(data.ai.providers.openai_compatible.baseUrl || '')
@@ -141,6 +148,10 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
           anthropic: {
             apiKey: anthropicApiKey,
             model: anthropicModel,
+          },
+          google: {
+            apiKey: googleApiKey,
+            model: googleModel,
           },
           openai_compatible: {
             baseUrl: compatibleBaseUrl,
@@ -253,6 +264,7 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
                     <option value="ollama">Ollama (Local)</option>
                     <option value="openai">OpenAI</option>
                     <option value="anthropic">Anthropic</option>
+                    <option value="google">Google AI</option>
                     <option value="openai_compatible">OpenAI Compatible</option>
                   </select>
                 </div>
@@ -365,6 +377,38 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
                         <option value="claude-opus-4-20250514">claude-opus-4-20250514</option>
                         <option value="claude-3-5-sonnet-20241022">claude-3-5-sonnet-20241022</option>
                         <option value="claude-3-5-haiku-20241022">claude-3-5-haiku-20241022</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {/* Google AI settings */}
+                {aiProvider === 'google' && (
+                  <div className="space-y-3 p-3 bg-gray-700/50 rounded">
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">
+                        API Key
+                      </label>
+                      <input
+                        type="password"
+                        value={googleApiKey}
+                        onChange={e => setGoogleApiKey(e.target.value)}
+                        placeholder="AIza..."
+                        className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500 font-mono text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">
+                        Model
+                      </label>
+                      <select
+                        value={googleModel}
+                        onChange={e => setGoogleModel(e.target.value)}
+                        className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500 text-sm"
+                      >
+                        <option value="gemini-3-flash-preview">gemini-3-flash-preview (1M context)</option>
+                        <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                        <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
                       </select>
                     </div>
                   </div>

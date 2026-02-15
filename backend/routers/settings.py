@@ -34,6 +34,10 @@ DEFAULTS = {
                 "apiKey": "",
                 "model": "claude-sonnet-4-20250514",
             },
+            "google": {
+                "apiKey": "",
+                "model": "gemini-3-flash-preview",
+            },
             "openai_compatible": {
                 "baseUrl": "",
                 "apiKey": "",

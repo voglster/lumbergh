@@ -135,6 +135,34 @@ class AnthropicProvider(AIProvider):
         return bool(self.api_key)
 
 
+class GoogleAIProvider(AIProvider):
+    """Google AI (Gemini) API provider."""
+
+    def __init__(self, api_key: str, model: str = "gemini-3-flash-preview"):
+        self.api_key = api_key
+        self.model = model
+        self.base_url = "https://generativelanguage.googleapis.com/v1beta"
+
+    async def complete(self, prompt: str) -> str:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            response = await client.post(
+                f"{self.base_url}/models/{self.model}:generateContent",
+                headers={
+                    "x-goog-api-key": self.api_key,
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "contents": [{"parts": [{"text": prompt}]}],
+                },
+            )
+            response.raise_for_status()
+            return response.json()["candidates"][0]["content"]["parts"][0]["text"]
+
+    async def health_check(self) -> bool:
+        # Google AI doesn't have a simple health endpoint, so just check if key exists
+        return bool(self.api_key)
+
+
 class OpenAICompatibleProvider(AIProvider):
     """OpenAI-compatible API provider (e.g., local vLLM, text-generation-inference)."""
 
@@ -202,6 +230,11 @@ def get_provider(ai_settings: dict) -> AIProvider:
         return AnthropicProvider(
             api_key=config.get("apiKey", ""),
             model=config.get("model", "claude-sonnet-4-20250514"),
+        )
+    elif provider_name == "google":
+        return GoogleAIProvider(
+            api_key=config.get("apiKey", ""),
+            model=config.get("model", "gemini-3-flash-preview"),
         )
     elif provider_name == "openai_compatible":
         return OpenAICompatibleProvider(
