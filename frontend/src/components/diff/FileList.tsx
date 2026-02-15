@@ -17,12 +17,18 @@ interface Props {
 export default function FileList({ data, apiHost, sessionName, onSelectFile, onRefresh, commit, onNavigateToHistory, onCommitSuccess }: Props) {
   const [commitMessage, setCommitMessage] = useState('')
   const [isCommitting, setIsCommitting] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
   const [commitResult, setCommitResult] = useState<{ type: 'success' | 'error', message: string } | null>(null)
 
   // Build commit URL based on whether we have a session
   const commitUrl = sessionName
     ? `http://${apiHost}/api/sessions/${sessionName}/git/commit`
     : `http://${apiHost}/api/git/commit`
+
+  // Build AI generate URL (only works with sessions)
+  const generateUrl = sessionName
+    ? `http://${apiHost}/api/sessions/${sessionName}/ai/generate-commit-message`
+    : null
 
   const handleCommit = async () => {
     if (!commitMessage.trim()) return
@@ -61,7 +67,31 @@ export default function FileList({ data, apiHost, sessionName, onSelectFile, onR
     }
   }
 
+  const handleGenerate = async () => {
+    if (!generateUrl) return
+    setIsGenerating(true)
+    setCommitResult(null)
+    try {
+      const res = await fetch(generateUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const result = await res.json()
+      if (!res.ok) {
+        setCommitResult({ type: 'error', message: result.detail || 'Failed to generate' })
+      } else {
+        setCommitMessage(result.message)
+      }
+    } catch (err) {
+      setCommitResult({ type: 'error', message: 'Failed to generate commit message' })
+    } finally {
+      setIsGenerating(false)
+      setTimeout(() => setCommitResult(null), 3000)
+    }
+  }
+
   const isWorkingChanges = !commit
+  const hasChanges = data.files.length > 0
 
   return (
     <div className="h-full flex flex-col">
@@ -112,15 +142,27 @@ export default function FileList({ data, apiHost, sessionName, onSelectFile, onR
       {/* Commit input - only show for working changes */}
       {isWorkingChanges && (
       <div className="p-3 bg-gray-800 border-b border-gray-700">
-        <input
-          type="text"
-          value={commitMessage}
-          onChange={e => setCommitMessage(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Commit message... (Enter to commit)"
-          className="w-full px-3 py-2 bg-gray-700 text-white text-sm rounded border border-gray-600 focus:outline-none focus:border-blue-500"
-          disabled={isCommitting}
-        />
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={commitMessage}
+            onChange={e => setCommitMessage(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Commit message... (Enter to commit)"
+            className="flex-1 px-3 py-2 bg-gray-700 text-white text-sm rounded border border-gray-600 focus:outline-none focus:border-blue-500"
+            disabled={isCommitting || isGenerating}
+          />
+          {generateUrl && hasChanges && (
+            <button
+              onClick={handleGenerate}
+              disabled={isGenerating || isCommitting}
+              className="px-3 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded transition-colors shrink-0"
+              title="Generate commit message with AI"
+            >
+              {isGenerating ? '...' : 'AI'}
+            </button>
+          )}
+        </div>
         {commitResult && (
           <div className={`mt-2 text-sm ${commitResult.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
             {commitResult.message}
