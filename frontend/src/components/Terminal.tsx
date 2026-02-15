@@ -30,6 +30,19 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
   // Expanded header state
   const [headerExpanded, setHeaderExpanded] = useState(false)
 
+  // Scroll mode state (tmux copy-mode)
+  const [scrollMode, setScrollMode] = useState(false)
+
+  // Toggle scroll mode (tmux copy-mode)
+  const toggleScrollMode = useCallback(() => {
+    if (scrollMode) {
+      sendRef.current('q')  // Exit copy-mode
+    } else {
+      sendRef.current('\x01[')  // Ctrl-A + [ to enter copy-mode
+    }
+    setScrollMode(!scrollMode)
+  }, [scrollMode])
+
   // Send text via backend API (uses tmux send-keys which works better with Claude Code)
   const sendViaApi = useCallback(async (text: string, sendEnter: boolean = true) => {
     try {
@@ -111,6 +124,7 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
       cursorBlink: true,
       fontSize: fontSize,
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      scrollback: 10000,  // Enable native scrollback for touch scrolling
       theme: {
         background: '#1a1a1a',
         foreground: '#d4d4d4',
@@ -255,6 +269,18 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={toggleScrollMode}
+              disabled={!isConnected}
+              className={`px-2 py-1 text-xs rounded ${
+                scrollMode
+                  ? 'bg-yellow-600 hover:bg-yellow-500'
+                  : 'bg-gray-700 hover:bg-gray-600'
+              } disabled:bg-gray-600 disabled:opacity-50`}
+              title={scrollMode ? "Exit scroll mode (q)" : "Enter scroll mode (copy-mode)"}
+            >
+              {scrollMode ? 'Exit' : 'Scroll'}
+            </button>
+            <button
               onClick={() => sendRef.current('\x1b')}
               disabled={!isConnected}
               className="px-2 py-1 text-xs bg-red-700 hover:bg-red-600 disabled:bg-gray-600 disabled:opacity-50 rounded"
@@ -349,6 +375,26 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
       {error && (
         <div className="bg-red-900/80 text-red-200 px-2 py-1 text-sm">
           {error}
+        </div>
+      )}
+
+      {/* Scroll controls overlay - shown when in scroll mode */}
+      {scrollMode && (
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-10">
+          <button
+            onClick={() => sendRef.current('\x1b[5~')}  // Page Up
+            className="w-14 h-14 bg-yellow-600/90 hover:bg-yellow-500 rounded-lg text-xl font-bold shadow-lg"
+            title="Page Up"
+          >
+            ▲
+          </button>
+          <button
+            onClick={() => sendRef.current('\x1b[6~')}  // Page Down
+            className="w-14 h-14 bg-yellow-600/90 hover:bg-yellow-500 rounded-lg text-xl font-bold shadow-lg"
+            title="Page Down"
+          >
+            ▼
+          </button>
         </div>
       )}
 

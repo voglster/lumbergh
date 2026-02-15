@@ -41,6 +41,18 @@ def get_current_branch(cwd: Path) -> str:
         return "unknown"
 
 
+def _get_diff_status(diff, *, staged: bool = True) -> str:
+    """Determine the status string for a git diff object."""
+    if staged:
+        if diff.new_file:
+            return "added"
+        if diff.renamed:
+            return "renamed"
+    if diff.deleted_file:
+        return "deleted"
+    return "modified"
+
+
 def get_porcelain_status(cwd: Path) -> list[dict]:
     """
     Get git status parsed into a list of file status dicts.
@@ -54,28 +66,20 @@ def get_porcelain_status(cwd: Path) -> list[dict]:
         return []
 
     files = []
+    seen_paths: set[str] = set()
 
     # Staged changes (index vs HEAD)
     if repo.head.is_valid():
         for diff in repo.index.diff(repo.head.commit):
-            status = "modified"
-            if diff.new_file:
-                status = "added"
-            elif diff.deleted_file:
-                status = "deleted"
-            elif diff.renamed:
-                status = "renamed"
-            files.append({"path": diff.b_path or diff.a_path, "status": status})
+            path = diff.b_path or diff.a_path
+            files.append({"path": path, "status": _get_diff_status(diff, staged=True)})
+            seen_paths.add(path)
 
     # Unstaged changes (working tree vs index)
     for diff in repo.index.diff(None):
-        status = "modified"
-        if diff.deleted_file:
-            status = "deleted"
         path = diff.a_path or diff.b_path
-        # Avoid duplicates
-        if not any(f["path"] == path for f in files):
-            files.append({"path": path, "status": status})
+        if path not in seen_paths:
+            files.append({"path": path, "status": _get_diff_status(diff, staged=False)})
 
     # Untracked files
     for path in repo.untracked_files:
