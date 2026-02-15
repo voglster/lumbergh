@@ -226,7 +226,10 @@ export default function SessionDetail() {
         </div>
         {/* Tab content */}
         <div className="flex-1 min-h-0 overflow-hidden">
-          {mobileTab === 'terminal' && renderTerminal()}
+          {/* Terminal stays mounted to preserve WebSocket connection and buffer */}
+          <div className={`h-full ${mobileTab === 'terminal' ? '' : 'hidden'}`}>
+            {renderTerminal()}
+          </div>
           {mobileTab === 'diff' && <DiffViewer key={diffKey} apiHost={apiHost} sessionName={name} diffData={diffData} onRefreshDiff={fetchDiffData} onCommitSuccess={handleCommitSuccess} />}
           {mobileTab === 'files' && <FileBrowser apiHost={apiHost} />}
           {mobileTab === 'todos' && name && (

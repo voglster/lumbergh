@@ -174,6 +174,35 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
     }
   }, [handleFit])
 
+  // Refresh terminal when it becomes visible (handles tab switching on mobile)
+  // The canvas doesn't repaint existing content when hidden/shown, so we force a refresh
+  useEffect(() => {
+    if (!containerRef.current) return
+
+    const intersectionObserver = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+        if (entry?.isIntersecting && termRef.current) {
+          // Small delay to ensure layout is settled
+          setTimeout(() => {
+            if (termRef.current) {
+              // Force full redraw of all terminal content
+              termRef.current.refresh(0, termRef.current.rows - 1)
+              handleFit()
+            }
+          }, 50)
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    intersectionObserver.observe(containerRef.current)
+
+    return () => {
+      intersectionObserver.disconnect()
+    }
+  }, [handleFit])
+
   // Update terminal font size when it changes
   useEffect(() => {
     if (termRef.current) {
