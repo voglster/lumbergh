@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import DirectoryPicker from './DirectoryPicker'
 
 interface Props {
@@ -19,6 +20,7 @@ function toSlug(text: string): string {
 }
 
 export default function CreateSessionModal({ apiHost, onClose, onCreated }: Props) {
+  const navigate = useNavigate()
   const [name, setName] = useState('')
   const [workdir, setWorkdir] = useState('')
   const [description, setDescription] = useState('')
@@ -49,6 +51,14 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
       if (!res.ok) {
         const data = await res.json()
         throw new Error(data.detail || 'Failed to create session')
+      }
+
+      const data = await res.json()
+      if (data.existing) {
+        // Session already exists for this repo - navigate to it
+        navigate(`/session/${data.name}`)
+        onClose()
+        return
       }
 
       onCreated()

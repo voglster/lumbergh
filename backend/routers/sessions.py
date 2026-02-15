@@ -185,7 +185,24 @@ async def create_session(body):
     if not workdir.is_dir():
         raise HTTPException(status_code=400, detail=f"Path is not a directory: {body.workdir}")
 
+    # Check for existing session with same workdir
+    workdir_str = str(workdir)
+    stored = get_stored_sessions()
     live = get_live_sessions()
+
+    for session_name, meta in stored.items():
+        if meta.get("workdir") == workdir_str and session_name in live:
+            # Session already exists for this workdir - return existing session info
+            return {
+                "existing": True,
+                "name": session_name,
+                "workdir": workdir_str,
+                "description": meta.get("description", ""),
+                "alive": True,
+                "attached": live[session_name].get("attached", False),
+                "windows": live[session_name].get("windows", 1),
+            }
+
     if body.name in live:
         raise HTTPException(status_code=409, detail=f"Session '{body.name}' already exists")
 
