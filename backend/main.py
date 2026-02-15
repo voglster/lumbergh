@@ -17,6 +17,7 @@ from git_utils import (
     get_current_branch,
     get_full_diff_with_untracked,
     get_porcelain_status,
+    reset_to_head,
     stage_all_and_commit,
 )
 from models import CommitInput, SendInput, TmuxCommand
@@ -101,6 +102,20 @@ async def git_commit(body: CommitInput):
     """Stage all changes and create a commit."""
     try:
         result = stage_all_and_commit(PROJECT_ROOT, body.message)
+        if "error" in result:
+            raise HTTPException(status_code=500, detail=result["error"])
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/git/reset")
+async def git_reset():
+    """Reset all changes to HEAD (discard all uncommitted changes)."""
+    try:
+        result = reset_to_head(PROJECT_ROOT)
         if "error" in result:
             raise HTTPException(status_code=500, detail=result["error"])
         return result

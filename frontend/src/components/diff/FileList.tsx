@@ -18,6 +18,7 @@ export default function FileList({ data, apiHost, sessionName, onSelectFile, onR
   const [commitMessage, setCommitMessage] = useState('')
   const [isCommitting, setIsCommitting] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
   const [commitResult, setCommitResult] = useState<{ type: 'success' | 'error', message: string } | null>(null)
 
   // Build commit URL based on whether we have a session
@@ -29,6 +30,36 @@ export default function FileList({ data, apiHost, sessionName, onSelectFile, onR
   const generateUrl = sessionName
     ? `http://${apiHost}/api/sessions/${sessionName}/ai/generate-commit-message`
     : null
+
+  // Build reset URL
+  const resetUrl = sessionName
+    ? `http://${apiHost}/api/sessions/${sessionName}/git/reset`
+    : `http://${apiHost}/api/git/reset`
+
+  const handleReset = async () => {
+    if (!confirm('Revert all changes? This will discard all uncommitted changes and cannot be undone.')) {
+      return
+    }
+    setIsResetting(true)
+    setCommitResult(null)
+    try {
+      const res = await fetch(resetUrl, { method: 'POST' })
+      const result = await res.json()
+      if (!res.ok) {
+        setCommitResult({ type: 'error', message: result.detail || 'Reset failed' })
+      } else if (result.status === 'nothing_to_reset') {
+        setCommitResult({ type: 'error', message: 'Nothing to reset' })
+      } else {
+        setCommitResult({ type: 'success', message: 'All changes reverted' })
+        onRefresh()
+      }
+    } catch (err) {
+      setCommitResult({ type: 'error', message: 'Failed to reset changes' })
+    } finally {
+      setIsResetting(false)
+      setTimeout(() => setCommitResult(null), 3000)
+    }
+  }
 
   const handleCommit = async () => {
     if (!commitMessage.trim()) return
@@ -155,11 +186,21 @@ export default function FileList({ data, apiHost, sessionName, onSelectFile, onR
           {generateUrl && hasChanges && (
             <button
               onClick={handleGenerate}
-              disabled={isGenerating || isCommitting}
+              disabled={isGenerating || isCommitting || isResetting}
               className="px-3 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded transition-colors shrink-0"
               title="Generate commit message with AI"
             >
               {isGenerating ? '...' : 'AI'}
+            </button>
+          )}
+          {hasChanges && (
+            <button
+              onClick={handleReset}
+              disabled={isResetting || isCommitting || isGenerating}
+              className="px-3 py-2 bg-red-600 hover:bg-red-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded transition-colors shrink-0"
+              title="Revert all changes to last commit"
+            >
+              {isResetting ? '...' : 'Revert'}
             </button>
           )}
         </div>

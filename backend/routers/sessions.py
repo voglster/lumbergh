@@ -29,6 +29,7 @@ from git_utils import (
     get_current_branch,
     get_full_diff_with_untracked,
     get_porcelain_status,
+    reset_to_head,
     stage_all_and_commit,
 )
 from models import CheckoutInput, CommitInput, ScratchpadContent, TodoList
@@ -356,6 +357,22 @@ async def session_git_checkout(name: str, body: CheckoutInput):
         if "error" in result:
             status_code = 409 if "pending changes" in result["error"] else 400
             raise HTTPException(status_code=status_code, detail=result["error"])
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{name}/git/reset")
+async def session_git_reset(name: str):
+    """Reset all changes to HEAD in a session's workdir."""
+    workdir = get_session_workdir(name)
+
+    try:
+        result = reset_to_head(workdir)
+        if "error" in result:
+            raise HTTPException(status_code=500, detail=result["error"])
         return result
     except HTTPException:
         raise

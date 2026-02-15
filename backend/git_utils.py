@@ -409,3 +409,38 @@ def checkout_branch(cwd: Path, branch: str) -> dict:
         }
     except GitCommandError as e:
         return {"error": str(e)}
+
+
+def reset_to_head(cwd: Path) -> dict:
+    """
+    Reset all changes to HEAD (discard all uncommitted changes).
+
+    This performs:
+    - git reset --hard HEAD (discard staged and unstaged changes)
+    - git clean -fd (remove untracked files and directories)
+
+    Returns:
+        Dict with status and message
+    """
+    try:
+        repo = get_repo(cwd)
+    except InvalidGitRepositoryError:
+        return {"error": "Not a git repository"}
+
+    # Check if there are any changes to reset
+    if not repo.is_dirty(untracked_files=True):
+        return {"status": "nothing_to_reset", "message": "No changes to reset"}
+
+    try:
+        # Reset tracked files to HEAD
+        repo.git.reset("--hard", "HEAD")
+
+        # Remove untracked files and directories
+        repo.git.clean("-fd")
+
+        return {
+            "status": "reset",
+            "message": "All changes have been reverted to last commit",
+        }
+    except GitCommandError as e:
+        return {"error": f"git reset failed: {e}"}
