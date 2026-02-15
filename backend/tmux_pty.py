@@ -106,15 +106,29 @@ class TmuxPtySession:
             os.write(self.master_fd, data)
 
     def read(self) -> bytes | None:
-        """Read available data from the PTY (non-blocking)."""
+        """Read available data from the PTY (non-blocking).
+
+        Returns:
+            bytes: Data read from PTY
+            b'': EOF/PTY died (session terminated)
+            None: No data available yet (non-blocking)
+        """
         if self.master_fd is None:
-            return None
+            return b''  # Already closed
         try:
             return os.read(self.master_fd, 4096)
         except BlockingIOError:
-            return None
+            return None  # No data yet
         except OSError:
-            return None
+            return b''  # PTY died
+
+    def is_alive(self) -> bool:
+        """Check if the underlying tmux session still exists."""
+        try:
+            server = libtmux.Server()
+            return server.sessions.get(session_name=self.session_name) is not None
+        except Exception:
+            return False
 
     def close(self) -> None:
         """Close the PTY connection."""

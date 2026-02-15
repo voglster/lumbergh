@@ -13,6 +13,7 @@ interface UseTerminalSocketResult {
   sendResize: (cols: number, rows: number) => void
   isConnected: boolean
   error: string | null
+  sessionDead: boolean
 }
 
 export function useTerminalSocket({
@@ -25,7 +26,9 @@ export function useTerminalSocket({
   const wsRef = useRef<WebSocket | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sessionDead, setSessionDead] = useState(false)
   const reconnectTimeoutRef = useRef<number | null>(null)
+  const sessionDeadRef = useRef(false)
 
   // Store callbacks in refs to avoid recreating connect() on every render
   const onDataRef = useRef(onData)
@@ -66,6 +69,16 @@ export function useTerminalSocket({
           onDataRef.current(message.data)
         } else if (message.type === 'error') {
           setError(message.message)
+        } else if (message.type === 'session_dead' || message.type === 'session_not_found') {
+          // Session has terminated - stop reconnection attempts
+          setSessionDead(true)
+          sessionDeadRef.current = true
+          setError(message.message)
+          // Cancel any pending reconnection
+          if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current)
+            reconnectTimeoutRef.current = null
+          }
         }
       } catch {
         // If not JSON, treat as raw output
@@ -80,10 +93,12 @@ export function useTerminalSocket({
       onDisconnectRef.current?.()
       wsRef.current = null
 
-      // Attempt reconnect
-      reconnectTimeoutRef.current = window.setTimeout(() => {
-        connect()
-      }, 2000)
+      // Attempt reconnect only if session is not dead
+      if (!sessionDeadRef.current) {
+        reconnectTimeoutRef.current = window.setTimeout(() => {
+          connect()
+        }, 2000)
+      }
     }
 
     ws.onerror = () => {
@@ -124,5 +139,5 @@ export function useTerminalSocket({
     }
   }, [connect])
 
-  return { send, sendResize, isConnected, error }
+  return { send, sendResize, isConnected, error, sessionDead }
 }

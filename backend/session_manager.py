@@ -106,6 +106,7 @@ class SessionManager:
     async def _broadcast_loop(self, session_name: str) -> None:
         """Read from PTY and broadcast to all connected clients."""
         loop = asyncio.get_event_loop()
+        consecutive_eof = 0
 
         while True:
             try:
@@ -117,6 +118,20 @@ class SessionManager:
 
                 await asyncio.sleep(0.01)  # Prevent busy loop
                 data = await loop.run_in_executor(None, managed.pty.read)
+
+                # Handle EOF (empty bytes) - possible session death
+                if data == b'':
+                    consecutive_eof += 1
+                    if consecutive_eof >= 3:
+                        # Verify session is actually dead
+                        is_alive = await loop.run_in_executor(None, managed.pty.is_alive)
+                        if not is_alive:
+                            logger.warning(f"Session {session_name} died, notifying clients")
+                            await self._notify_session_dead(session_name)
+                            break
+                    continue
+
+                consecutive_eof = 0  # Reset on successful read
 
                 if data:
                     message = {
@@ -141,6 +156,21 @@ class SessionManager:
             except Exception as e:
                 logger.error(f"Broadcast loop error: {e}")
                 break
+
+    async def _notify_session_dead(self, session_name: str) -> None:
+        """Send session_dead message to all connected clients."""
+        if session_name not in self._sessions:
+            return
+        managed = self._sessions[session_name]
+        message = {
+            "type": "session_dead",
+            "message": f"Session '{session_name}' has terminated",
+        }
+        for client in list(managed.clients):
+            try:
+                await client.send_json(message)
+            except Exception:
+                pass
 
     async def handle_client_message(self, session_name: str, message: dict) -> None:
         """Handle a message from a WebSocket client."""

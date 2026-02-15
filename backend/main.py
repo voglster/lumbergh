@@ -4,6 +4,8 @@ Lumbergh Backend - FastAPI server for tmux terminal streaming.
 Run with: uv run python main.py
 """
 
+import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
@@ -23,7 +25,24 @@ from git_utils import (
 from models import CommitInput, SendInput, TmuxCommand
 from routers import ai, notes, sessions, settings
 
-app = FastAPI(title="Lumbergh", description="Tmux session supervisor")
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """App lifespan handler - runs on startup/shutdown."""
+    # Log any orphaned sessions (stored in TinyDB but no longer in tmux)
+    from routers.sessions import get_live_sessions, get_stored_sessions
+
+    live = set(get_live_sessions().keys())
+    stored = set(get_stored_sessions().keys())
+    orphaned = stored - live
+    if orphaned:
+        logger.info(f"Found {len(orphaned)} stored session(s) without tmux: {orphaned}")
+    yield
+
+
+app = FastAPI(title="Lumbergh", description="Tmux session supervisor", lifespan=lifespan)
 app.include_router(ai.router)
 app.include_router(notes.router)
 app.include_router(sessions.router)
@@ -236,6 +255,16 @@ async def session_stream(websocket: WebSocket, session_name: str):
             message = await websocket.receive_json()
             await session_manager.handle_client_message(session_name, message)
 
+    except ValueError as e:
+        # Session doesn't exist (e.g., killed externally)
+        try:
+            await websocket.send_json({
+                "type": "session_not_found",
+                "message": str(e)
+            })
+        except Exception:
+            pass
+        return
     except WebSocketDisconnect:
         pass
     except Exception as e:

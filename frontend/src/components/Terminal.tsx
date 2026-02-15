@@ -103,7 +103,7 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
     })
   }, [handleFit])
 
-  const { send, sendResize, isConnected, error } = useTerminalSocket({
+  const { send, sendResize, isConnected, error, sessionDead } = useTerminalSocket({
     sessionName,
     apiHost,
     onData: handleData,
@@ -414,10 +414,36 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
         )}
       </div>
 
-      {/* Error display */}
-      {error && (
+      {/* Error display (only show if session is not dead - dead sessions have their own overlay) */}
+      {error && !sessionDead && (
         <div className="bg-red-900/80 text-red-200 px-2 py-1 text-sm">
           {error}
+        </div>
+      )}
+
+      {/* Session death overlay */}
+      {sessionDead && (
+        <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-20">
+          <div className="text-red-400 text-lg font-semibold mb-2">
+            Session Terminated
+          </div>
+          <p className="text-gray-400 text-sm mb-4 text-center px-4">
+            The tmux session has ended or was killed
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => window.location.href = '/'}
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+            >
+              Dashboard
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-sm"
+            >
+              Retry
+            </button>
+          </div>
         </div>
       )}
 
