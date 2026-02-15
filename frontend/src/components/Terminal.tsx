@@ -33,6 +33,11 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
   // Scroll mode state (tmux copy-mode)
   const [scrollMode, setScrollMode] = useState(false)
 
+  // Detect touch device (hide scroll controls on desktop)
+  const [isTouchDevice] = useState(() =>
+    typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+  )
+
   // Toggle scroll mode (tmux copy-mode)
   const toggleScrollMode = useCallback(() => {
     if (scrollMode) {
@@ -268,18 +273,20 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
             </button>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={toggleScrollMode}
-              disabled={!isConnected}
-              className={`px-2 py-1 text-xs rounded ${
-                scrollMode
-                  ? 'bg-yellow-600 hover:bg-yellow-500'
-                  : 'bg-gray-700 hover:bg-gray-600'
-              } disabled:bg-gray-600 disabled:opacity-50`}
-              title={scrollMode ? "Exit scroll mode (q)" : "Enter scroll mode (copy-mode)"}
-            >
-              {scrollMode ? 'Exit' : 'Scroll'}
-            </button>
+            {isTouchDevice && (
+              <button
+                onClick={toggleScrollMode}
+                disabled={!isConnected}
+                className={`px-2 py-1 text-xs rounded ${
+                  scrollMode
+                    ? 'bg-yellow-600 hover:bg-yellow-500'
+                    : 'bg-gray-700 hover:bg-gray-600'
+                } disabled:bg-gray-600 disabled:opacity-50`}
+                title={scrollMode ? "Exit scroll mode (q)" : "Enter scroll mode (copy-mode)"}
+              >
+                {scrollMode ? 'Exit' : 'Scroll'}
+              </button>
+            )}
             <button
               onClick={() => sendRef.current('\x1b')}
               disabled={!isConnected}
@@ -378,8 +385,8 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
         </div>
       )}
 
-      {/* Scroll controls overlay - shown when in scroll mode */}
-      {scrollMode && (
+      {/* Scroll controls overlay - shown when in scroll mode on touch devices */}
+      {isTouchDevice && scrollMode && (
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-10">
           <button
             onClick={() => sendRef.current('\x1b[5~')}  // Page Up
