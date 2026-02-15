@@ -19,19 +19,66 @@ settings_table = settings_db.table("settings")
 # Default settings
 DEFAULTS = {
     "repoSearchDir": str(Path.home() / "src"),
+    "ai": {
+        "provider": "ollama",
+        "providers": {
+            "ollama": {
+                "baseUrl": "http://localhost:11434",
+                "model": "gemma3:latest",
+            },
+            "openai": {
+                "apiKey": "",
+                "model": "gpt-4o",
+            },
+            "anthropic": {
+                "apiKey": "",
+                "model": "claude-sonnet-4-20250514",
+            },
+            "openai_compatible": {
+                "baseUrl": "",
+                "apiKey": "",
+                "model": "",
+            },
+        },
+    },
 }
+
+
+class AIProviderConfig(BaseModel):
+    baseUrl: str | None = None
+    apiKey: str | None = None
+    model: str | None = None
+
+
+class AISettings(BaseModel):
+    provider: str | None = None
+    providers: dict[str, AIProviderConfig] | None = None
 
 
 class SettingsUpdate(BaseModel):
     repoSearchDir: str | None = None
-    # Add future settings here
+    ai: AISettings | None = None
+
+
+def deep_merge(base: dict, override: dict) -> dict:
+    """
+    Deep merge two dicts. Values in override take precedence.
+    Nested dicts are merged recursively.
+    """
+    result = base.copy()
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result
 
 
 def get_settings() -> dict:
-    """Get current settings, merged with defaults."""
+    """Get current settings, deep merged with defaults."""
     all_settings = settings_table.all()
     stored = all_settings[0] if all_settings else {}
-    return {**DEFAULTS, **stored}
+    return deep_merge(DEFAULTS, stored)
 
 
 @router.get("")
@@ -61,14 +108,21 @@ async def update_settings(updates: SettingsUpdate):
 
         update_data["repoSearchDir"] = str(path)
 
+    if updates.ai is not None:
+        ai_update = updates.ai.model_dump(exclude_none=True)
+        # Convert nested pydantic models to dicts
+        if "providers" in ai_update:
+            ai_update["providers"] = {
+                k: v.model_dump(exclude_none=True) if hasattr(v, "model_dump") else v
+                for k, v in ai_update["providers"].items()
+            }
+        update_data["ai"] = ai_update
+
     current = get_settings()
-    merged = {**current, **update_data}
+    merged = deep_merge(current, update_data)
 
-    # Remove defaults from stored data (only store overrides)
-    to_store = {k: v for k, v in merged.items() if k not in DEFAULTS or v != DEFAULTS[k]}
-
+    # Store the merged settings (we store everything since AI settings are complex)
     settings_table.truncate()
-    if to_store:
-        settings_table.insert(to_store)
+    settings_table.insert(merged)
 
     return get_settings()

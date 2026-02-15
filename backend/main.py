@@ -20,9 +20,10 @@ from git_utils import (
     stage_all_and_commit,
 )
 from models import CommitInput, SendInput, TmuxCommand
-from routers import notes, sessions, settings
+from routers import ai, notes, sessions, settings
 
 app = FastAPI(title="Lumbergh", description="Tmux session supervisor")
+app.include_router(ai.router)
 app.include_router(notes.router)
 app.include_router(sessions.router)
 app.include_router(sessions.directories_router)

@@ -9,6 +9,7 @@ dependencies = [
     "libtmux",
     "tinydb",
     "gitpython>=3.1",
+    "httpx>=0.27",
 ]
 
 [project.optional-dependencies]

@@ -454,3 +454,74 @@ async def session_get_file(name: str, file_path: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Session-scoped AI Endpoints ---
+
+
+@router.post("/{name}/ai/generate-commit-message")
+async def session_generate_commit_message(name: str):
+    """Generate a commit message using AI for the session's current changes."""
+    from ai.prompts import get_ai_prompt, render_prompt
+    from ai.providers import get_provider
+    from routers.settings import get_settings
+
+    workdir = get_session_workdir(name)
+
+    try:
+        # Get the diff and file list
+        diff_data = get_full_diff_with_untracked(workdir)
+        files = diff_data.get("files", [])
+
+        if not files:
+            raise HTTPException(status_code=400, detail="No changes to commit")
+
+        # Build file summary
+        file_summary = "\n".join(
+            f"- {f['path']} ({f.get('additions', 0)}+/{f.get('deletions', 0)}-)"
+            for f in files
+        )
+
+        # Combine all diffs (truncate if too long)
+        all_diffs = "\n\n".join(f["diff"] for f in files if f.get("diff"))
+        max_diff_length = 8000  # Limit to avoid token limits
+        if len(all_diffs) > max_diff_length:
+            all_diffs = all_diffs[:max_diff_length] + "\n\n... (truncated)"
+
+        # Get the prompt template
+        template = get_ai_prompt("commit_message", workdir)
+        if not template:
+            raise HTTPException(status_code=500, detail="No commit message prompt template found")
+
+        # Render the prompt
+        prompt = render_prompt(
+            template,
+            {
+                "git_diff": all_diffs,
+                "file_summary": file_summary,
+            },
+        )
+
+        # Get AI provider and generate
+        settings = get_settings()
+        ai_settings = settings.get("ai", {})
+        provider = get_provider(ai_settings)
+
+        message = await provider.complete(prompt)
+
+        # Clean up response
+        message = message.strip()
+        if message.startswith("```"):
+            lines = message.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            message = "\n".join(lines).strip()
+
+        return {"message": message}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"AI generation failed: {e}")
