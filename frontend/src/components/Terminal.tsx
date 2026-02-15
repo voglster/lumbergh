@@ -165,7 +165,15 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
       return true // Allow default handling for other keys
     })
 
+    // Track focus state for click shield (desktop only)
+    const handleFocus = () => setHasFocus(true)
+    const handleBlur = () => setHasFocus(false)
+    term.element?.addEventListener('focusin', handleFocus)
+    term.element?.addEventListener('focusout', handleBlur)
+
     return () => {
+      term.element?.removeEventListener('focusin', handleFocus)
+      term.element?.removeEventListener('focusout', handleBlur)
       term.dispose()
       termRef.current = null
       fitAddonRef.current = null
@@ -247,19 +255,6 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
     }
   }, [fontSize, handleFit])
 
-  // Track terminal focus state (for click shield that prevents tmux selection on focus click)
-  useEffect(() => {
-    const term = termRef.current
-    if (!term) return
-
-    const focusDisp = term.onFocus?.(() => setHasFocus(true))
-    const blurDisp = term.onBlur?.(() => setHasFocus(false))
-
-    return () => {
-      focusDisp?.dispose()
-      blurDisp?.dispose()
-    }
-  }, [sessionName])
 
   return (
     <div className="h-full w-full relative flex flex-col">
