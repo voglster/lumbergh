@@ -11,7 +11,7 @@ import uvicorn
 from fastapi import FastAPI, WebSocket, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from routers import notes, sessions
+from routers import notes, sessions, settings
 
 
 class SendInput(BaseModel):
@@ -26,6 +26,7 @@ app = FastAPI(title="Lumbergh", description="Tmux session supervisor")
 app.include_router(notes.router)
 app.include_router(sessions.router)
 app.include_router(sessions.directories_router)
+app.include_router(settings.router)
 
 # Project root (parent of backend/)
 PROJECT_ROOT = Path(__file__).parent.parent

@@ -94,8 +94,11 @@ class ScratchpadContent(BaseModel):
 
 @directories_router.get("/search")
 async def search_directories(query: str = ""):
-    """Search for git repositories in ~/src/."""
-    base_dir = Path.home() / "src"
+    """Search for git repositories in the configured search directory."""
+    from routers.settings import get_settings
+
+    settings = get_settings()
+    base_dir = Path(settings.get("repoSearchDir", str(Path.home() / "src")))
     if not base_dir.exists():
         return {"directories": []}
 
