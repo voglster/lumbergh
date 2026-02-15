@@ -86,7 +86,7 @@ export default function FileDiff({ file, onBack, apiHost, sessionName, onFocusTe
       </div>
 
       {/* Diff viewer */}
-      <div className="flex-1 overflow-auto relative" ref={contentRef}>
+      <div className="flex-1 overflow-auto relative" ref={contentRef} style={{ color: 'unset' }}>
         {hasSelection && sessionName && (
           <button
             onMouseDown={(e) => {
