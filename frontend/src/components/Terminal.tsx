@@ -255,6 +255,14 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => sendRef.current('\x1b')}
+              disabled={!isConnected}
+              className="px-2 py-1 text-xs bg-red-700 hover:bg-red-600 disabled:bg-gray-600 disabled:opacity-50 rounded"
+              title="Send Escape key"
+            >
+              Esc
+            </button>
+            <button
               onClick={() => sendRef.current('\x1b[Z')}
               disabled={!isConnected}
               className="px-2 py-1 text-xs bg-blue-700 hover:bg-blue-600 disabled:bg-gray-600 disabled:opacity-50 rounded"
