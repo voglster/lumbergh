@@ -10,9 +10,10 @@ interface TerminalProps {
   apiHost: string
   onSendReady?: (send: ((data: string) => void) | null) => void
   onFocusReady?: (focus: () => void) => void
+  onBack?: () => void
 }
 
-export default function Terminal({ sessionName, apiHost, onSendReady, onFocusReady }: TerminalProps) {
+export default function Terminal({ sessionName, apiHost, onSendReady, onFocusReady, onBack }: TerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<XTerm | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
@@ -287,12 +288,21 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
         {/* Main row */}
         <div className="flex items-center justify-between p-2">
           <div className="flex items-center gap-2">
-            <span
-              className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
-            />
-            <span className="text-xs text-gray-400">
-              {isConnected ? 'Connected' : 'Disconnected'}
-            </span>
+            {onBack && (
+              <>
+                <button
+                  onClick={onBack}
+                  className="text-gray-400 hover:text-white transition-colors"
+                  title="Back to Dashboard"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                </button>
+                {/* Separator */}
+                <div className="w-px h-4 bg-gray-600 mx-1" />
+              </>
+            )}
             <button
               onClick={() => sendTmuxCommand('prev-window')}
               className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
@@ -469,6 +479,13 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
 
       {/* Terminal container with focus click shield */}
       <div className="flex-1 overflow-hidden relative">
+        {/* Floating connection indicator */}
+        <div
+          className={`absolute top-1 right-1 w-2 h-2 rounded-full z-10 ${
+            isConnected ? 'bg-green-500' : 'bg-red-500'
+          }`}
+          title={isConnected ? 'Connected' : 'Disconnected'}
+        />
         {/* Focus click shield - intercepts first click to focus without triggering tmux selection */}
         {!isTouchDevice && !hasFocus && (
           <div

@@ -91,6 +91,7 @@ export default function SessionDetail() {
           sessionName={name}
           apiHost={apiHost}
           onFocusReady={handleFocusReady}
+          onBack={() => navigate('/')}
         />
       ) : (
         <div className="flex items-center justify-center h-full text-gray-500">
@@ -175,20 +176,6 @@ export default function SessionDetail() {
 
   return (
     <div className="h-full flex flex-col bg-gray-900 text-white">
-      {/* Header */}
-      <header className="flex items-center gap-4 p-2 bg-gray-800 border-b border-gray-700">
-        <button
-          onClick={() => navigate('/')}
-          className="text-gray-400 hover:text-white transition-colors"
-          title="Back to Dashboard"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-        </button>
-        <h1 className="text-lg font-semibold text-gray-200">{name}</h1>
-      </header>
-
       {/* Conditionally render only desktop OR mobile layout (not both) */}
       {isDesktop ? (
         <main className="flex-1 min-h-0">
@@ -203,8 +190,20 @@ export default function SessionDetail() {
         </main>
       ) : (
         <div className="flex-1 min-h-0 flex flex-col">
-          {/* Tab navigation */}
+          {/* Tab navigation with back button */}
           <div className="flex gap-1 px-2 py-1 bg-gray-800 border-b border-gray-700">
+            {/* Back button */}
+            <button
+              onClick={() => navigate('/')}
+              className="px-2 py-1.5 text-gray-400 hover:text-white transition-colors"
+              title="Back to Dashboard"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+            </button>
+            {/* Separator */}
+            <div className="w-px bg-gray-700 my-1" />
             {mobileTabs.map(tab => (
               <button
                 key={tab.id}
