@@ -140,7 +140,6 @@ class TmuxPtySession:
         Reads from PTY and sends to WebSocket.
         Receives from WebSocket and writes to PTY.
         """
-        from fastapi import WebSocketDisconnect
 
         self.spawn()
 
@@ -175,10 +174,12 @@ class TmuxPtySession:
                 await asyncio.sleep(0.01)  # Small delay to prevent busy loop
                 data = await loop.run_in_executor(None, self.read)
                 if data:
-                    await websocket.send_json({
-                        "type": "output",
-                        "data": data.decode("utf-8", errors="replace"),
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "output",
+                            "data": data.decode("utf-8", errors="replace"),
+                        }
+                    )
             except Exception:
                 break
 

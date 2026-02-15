@@ -7,14 +7,13 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from tinydb import TinyDB
+
+from db_utils import get_settings_db
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 # Database setup
-CONFIG_DIR = Path.home() / ".config" / "lumbergh"
-CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-settings_db = TinyDB(CONFIG_DIR / "settings.json")
+settings_db = get_settings_db()
 settings_table = settings_db.table("settings")
 
 # Default settings
@@ -44,28 +43,24 @@ async def read_settings():
 @router.patch("")
 async def update_settings(updates: SettingsUpdate):
     """Update settings. Only provided fields are updated."""
-    # Build updates dict from non-None fields
     update_data = {}
 
     if updates.repoSearchDir is not None:
-        # Expand ~ and resolve path
         path = Path(updates.repoSearchDir).expanduser().resolve()
 
-        # Validate directory exists
         if not path.exists():
             raise HTTPException(
                 status_code=400,
-                detail=f"Directory does not exist: {updates.repoSearchDir}"
+                detail=f"Directory does not exist: {updates.repoSearchDir}",
             )
         if not path.is_dir():
             raise HTTPException(
                 status_code=400,
-                detail=f"Path is not a directory: {updates.repoSearchDir}"
+                detail=f"Path is not a directory: {updates.repoSearchDir}",
             )
 
         update_data["repoSearchDir"] = str(path)
 
-    # Merge with existing settings and save
     current = get_settings()
     merged = {**current, **update_data}
 

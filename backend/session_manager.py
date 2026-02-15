@@ -8,6 +8,7 @@ tmux attach-session processes for the same session.
 import asyncio
 import logging
 from dataclasses import dataclass, field
+
 from fastapi import WebSocket
 
 from tmux_pty import TmuxPtySession
@@ -44,16 +45,12 @@ class SessionManager:
 
     def __init__(self):
         # Only initialize once
-        if not hasattr(self, '_initialized'):
+        if not hasattr(self, "_initialized"):
             self._sessions: dict[str, ManagedSession] = {}
             self._lock: asyncio.Lock = asyncio.Lock()
             self._initialized = True
 
-    async def register_client(
-        self,
-        session_name: str,
-        websocket: WebSocket
-    ) -> ManagedSession:
+    async def register_client(self, session_name: str, websocket: WebSocket) -> ManagedSession:
         """
         Register a WebSocket client for a tmux session.
         Creates the PTY if this is the first client.
@@ -69,24 +66,16 @@ class SessionManager:
                 self._sessions[session_name] = managed
 
                 # Start the read loop task
-                managed.read_task = asyncio.create_task(
-                    self._broadcast_loop(session_name)
-                )
+                managed.read_task = asyncio.create_task(self._broadcast_loop(session_name))
             else:
                 logger.info(f"Reusing existing PTY for session: {session_name}")
                 managed = self._sessions[session_name]
 
             managed.clients.add(websocket)
-            logger.info(
-                f"Session {session_name}: {len(managed.clients)} client(s) connected"
-            )
+            logger.info(f"Session {session_name}: {len(managed.clients)} client(s) connected")
             return managed
 
-    async def unregister_client(
-        self,
-        session_name: str,
-        websocket: WebSocket
-    ) -> None:
+    async def unregister_client(self, session_name: str, websocket: WebSocket) -> None:
         """
         Unregister a WebSocket client.
         Closes the PTY if this was the last client.
@@ -98,9 +87,7 @@ class SessionManager:
             managed = self._sessions[session_name]
             managed.clients.discard(websocket)
 
-            logger.info(
-                f"Session {session_name}: {len(managed.clients)} client(s) remaining"
-            )
+            logger.info(f"Session {session_name}: {len(managed.clients)} client(s) remaining")
 
             if not managed.clients:
                 # Last client disconnected, cleanup
@@ -155,11 +142,7 @@ class SessionManager:
                 logger.error(f"Broadcast loop error: {e}")
                 break
 
-    async def handle_client_message(
-        self,
-        session_name: str,
-        message: dict
-    ) -> None:
+    async def handle_client_message(self, session_name: str, message: dict) -> None:
         """Handle a message from a WebSocket client."""
         if session_name not in self._sessions:
             return
