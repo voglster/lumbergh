@@ -83,18 +83,24 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
 
   // Fit terminal and send resize - used on connect and container resize
   const handleFit = useCallback(() => {
-    if (fitAddonRef.current && termRef.current) {
+    if (fitAddonRef.current && termRef.current && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect()
+
+      // Skip fitting if container has no meaningful dimensions (hidden tab, collapsed pane, etc.)
+      if (rect.width < 50 || rect.height < 50) {
+        return
+      }
+
       fitAddonRef.current.fit()
       sendResizeRef.current(termRef.current.cols, termRef.current.rows)
     }
   }, [])
 
-  // Handle connection - immediately fit to ensure correct size is sent
+  // Handle connection - fit to ensure correct size is sent
   const handleConnect = useCallback(() => {
-    // Small delay to ensure terminal is ready
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       handleFit()
-    }, 50)
+    })
   }, [handleFit])
 
   const { send, sendResize, isConnected, error } = useTerminalSocket({
@@ -151,6 +157,24 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
     termRef.current = term
     fitAddonRef.current = fitAddon
 
+    // Initial fit using ResizeObserver to ensure container has valid dimensions
+    // This handles percentage-based layouts where parent dimensions may still be settling
+    const initialFitObserver = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (!entry) return
+
+      const { width, height } = entry.contentRect
+
+      // Only fit when we have meaningful dimensions (not collapsed)
+      if (width > 50 && height > 50) {
+        fitAddon.fit()
+        // Disconnect after successful initial fit
+        initialFitObserver.disconnect()
+      }
+    })
+
+    initialFitObserver.observe(containerRef.current)
+
     term.onData((data) => {
       sendRef.current(data)
     })
@@ -172,6 +196,7 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
     term.element?.addEventListener('focusout', handleBlur)
 
     return () => {
+      initialFitObserver.disconnect()
       term.element?.removeEventListener('focusin', handleFocus)
       term.element?.removeEventListener('focusout', handleBlur)
       term.dispose()
@@ -226,14 +251,13 @@ export default function Terminal({ sessionName, apiHost, onSendReady, onFocusRea
       (entries) => {
         const entry = entries[0]
         if (entry?.isIntersecting && termRef.current) {
-          // Small delay to ensure layout is settled
-          setTimeout(() => {
+          requestAnimationFrame(() => {
             if (termRef.current) {
               // Force full redraw of all terminal content
               termRef.current.refresh(0, termRef.current.rows - 1)
               handleFit()
             }
-          }, 50)
+          })
         }
       },
       { threshold: 0.1 }

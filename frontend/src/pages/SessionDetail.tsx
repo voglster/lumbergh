@@ -8,6 +8,7 @@ import VerticalResizablePanes from '../components/VerticalResizablePanes'
 import TodoList from '../components/TodoList'
 import Scratchpad from '../components/Scratchpad'
 import PromptTemplates from '../components/PromptTemplates'
+import { useIsDesktop } from '../hooks/useMediaQuery'
 
 type RightPanel = 'diff' | 'files' | 'todos' | 'prompts'
 type MobileTab = 'terminal' | 'diff' | 'files' | 'todos' | 'prompts'
@@ -15,6 +16,7 @@ type MobileTab = 'terminal' | 'diff' | 'files' | 'todos' | 'prompts'
 export default function SessionDetail() {
   const { name } = useParams<{ name: string }>()
   const navigate = useNavigate()
+  const isDesktop = useIsDesktop()
 
   const [rightPanel, setRightPanel] = useState<RightPanel>(() => {
     const saved = localStorage.getItem('lumbergh:rightPanel')
@@ -187,66 +189,67 @@ export default function SessionDetail() {
         <h1 className="text-lg font-semibold text-gray-200">{name}</h1>
       </header>
 
-      {/* Desktop layout: resizable side-by-side panes */}
-      <main className="flex-1 min-h-0 hidden md:block">
-        <ResizablePanes
-          left={renderTerminal()}
-          right={renderRightPanel()}
-          defaultLeftWidth={50}
-          minLeftWidth={25}
-          maxLeftWidth={75}
-          storageKey="lumbergh:mainSplitWidth"
-        />
-      </main>
-
-      {/* Mobile layout: tabs */}
-      <div className="flex-1 min-h-0 flex flex-col md:hidden">
-        {/* Tab navigation */}
-        <div className="flex gap-1 px-2 py-1 bg-gray-800 border-b border-gray-700">
-          {mobileTabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => { setMobileTab(tab.id); if (tab.id === 'diff') setDiffKey(k => k + 1) }}
-              className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
-                mobileTab === tab.id
-                  ? 'bg-gray-600 text-white'
-                  : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'
-              }`}
-            >
-              {tab.label}
-              {tab.id === 'diff' && diffStats && diffStats.files > 0 && (
-                <span className="ml-1 text-xs">
-                  ({diffStats.files})
-                  <span className="text-green-400 ml-1">+{diffStats.additions}</span>
-                  <span className="text-red-400 ml-1">-{diffStats.deletions}</span>
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-        {/* Tab content */}
-        <div className="flex-1 min-h-0 overflow-hidden">
-          {/* Terminal stays mounted to preserve WebSocket connection and buffer */}
-          <div className={`h-full ${mobileTab === 'terminal' ? '' : 'hidden'}`}>
-            {renderTerminal()}
+      {/* Conditionally render only desktop OR mobile layout (not both) */}
+      {isDesktop ? (
+        <main className="flex-1 min-h-0">
+          <ResizablePanes
+            left={renderTerminal()}
+            right={renderRightPanel()}
+            defaultLeftWidth={50}
+            minLeftWidth={25}
+            maxLeftWidth={75}
+            storageKey="lumbergh:mainSplitWidth"
+          />
+        </main>
+      ) : (
+        <div className="flex-1 min-h-0 flex flex-col">
+          {/* Tab navigation */}
+          <div className="flex gap-1 px-2 py-1 bg-gray-800 border-b border-gray-700">
+            {mobileTabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => { setMobileTab(tab.id); if (tab.id === 'diff') setDiffKey(k => k + 1) }}
+                className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
+                  mobileTab === tab.id
+                    ? 'bg-gray-600 text-white'
+                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'
+                }`}
+              >
+                {tab.label}
+                {tab.id === 'diff' && diffStats && diffStats.files > 0 && (
+                  <span className="ml-1 text-xs">
+                    ({diffStats.files})
+                    <span className="text-green-400 ml-1">+{diffStats.additions}</span>
+                    <span className="text-red-400 ml-1">-{diffStats.deletions}</span>
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
-          {mobileTab === 'diff' && <DiffViewer key={diffKey} apiHost={apiHost} sessionName={name} diffData={diffData} onRefreshDiff={fetchDiffData} onCommitSuccess={handleCommitSuccess} onFocusTerminal={handleFocusTerminal} />}
-          {mobileTab === 'files' && <FileBrowser apiHost={apiHost} sessionName={name} onFocusTerminal={handleFocusTerminal} />}
-          {mobileTab === 'todos' && name && (
-            <VerticalResizablePanes
-              top={<TodoList apiHost={apiHost} sessionName={name} onFocusTerminal={handleFocusTerminal} />}
-              bottom={<Scratchpad apiHost={apiHost} sessionName={name} onFocusTerminal={handleFocusTerminal} />}
-              defaultTopHeight={50}
-              minTopHeight={20}
-              maxTopHeight={80}
-              storageKey="lumbergh:todoSplitHeight"
-            />
-          )}
-          {mobileTab === 'prompts' && (
-            <PromptTemplates apiHost={apiHost} sessionName={name} onFocusTerminal={handleFocusTerminal} />
-          )}
+          {/* Tab content */}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {/* Terminal stays mounted to preserve WebSocket connection and buffer */}
+            <div className={`h-full ${mobileTab === 'terminal' ? '' : 'hidden'}`}>
+              {renderTerminal()}
+            </div>
+            {mobileTab === 'diff' && <DiffViewer key={diffKey} apiHost={apiHost} sessionName={name} diffData={diffData} onRefreshDiff={fetchDiffData} onCommitSuccess={handleCommitSuccess} onFocusTerminal={handleFocusTerminal} />}
+            {mobileTab === 'files' && <FileBrowser apiHost={apiHost} sessionName={name} onFocusTerminal={handleFocusTerminal} />}
+            {mobileTab === 'todos' && name && (
+              <VerticalResizablePanes
+                top={<TodoList apiHost={apiHost} sessionName={name} onFocusTerminal={handleFocusTerminal} />}
+                bottom={<Scratchpad apiHost={apiHost} sessionName={name} onFocusTerminal={handleFocusTerminal} />}
+                defaultTopHeight={50}
+                minTopHeight={20}
+                maxTopHeight={80}
+                storageKey="lumbergh:todoSplitHeight"
+              />
+            )}
+            {mobileTab === 'prompts' && (
+              <PromptTemplates apiHost={apiHost} sessionName={name} onFocusTerminal={handleFocusTerminal} />
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
