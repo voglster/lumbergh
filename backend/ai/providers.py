@@ -153,6 +153,11 @@ class GoogleAIProvider(AIProvider):
                 },
                 json={
                     "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {
+                        "thinkingConfig": {
+                            "thinkingLevel": "minimal"
+                        }
+                    },
                 },
             )
             response.raise_for_status()
