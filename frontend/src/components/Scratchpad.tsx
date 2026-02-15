@@ -3,13 +3,17 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 interface ScratchpadProps {
   apiHost: string
   sessionName: string
+  onFocusTerminal?: () => void
 }
 
-export default function Scratchpad({ apiHost, sessionName }: ScratchpadProps) {
+export default function Scratchpad({ apiHost, sessionName, onFocusTerminal }: ScratchpadProps) {
   const [content, setContent] = useState('')
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [loading, setLoading] = useState(true)
+  const [hasSelection, setHasSelection] = useState(false)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const selectedTextRef = useRef('')
 
   // Fetch content on mount
   useEffect(() => {
@@ -58,6 +62,37 @@ export default function Scratchpad({ apiHost, sessionName }: ScratchpadProps) {
     }, 500)
   }
 
+  const handleSelect = () => {
+    const textarea = textareaRef.current
+    if (textarea) {
+      const selected = textarea.value.substring(
+        textarea.selectionStart,
+        textarea.selectionEnd
+      )
+      selectedTextRef.current = selected
+      setHasSelection(selected.length > 0)
+    }
+  }
+
+  const handleSendToTerminal = async () => {
+    const text = selectedTextRef.current
+    if (!text) return
+
+    try {
+      const response = await fetch(`http://${apiHost}/api/session/${sessionName}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, send_enter: false }),
+      })
+      if (!response.ok) {
+        console.error('Failed to send to terminal:', await response.text())
+      }
+      onFocusTerminal?.()
+    } catch (err) {
+      console.error('Failed to send to terminal:', err)
+    }
+  }
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -77,6 +112,18 @@ export default function Scratchpad({ apiHost, sessionName }: ScratchpadProps) {
 
   return (
     <div className="h-full p-2 relative">
+      {hasSelection && (
+        <button
+          onMouseDown={(e) => {
+            e.preventDefault() // Prevent blur from firing
+            handleSendToTerminal()
+          }}
+          className="absolute top-3 right-20 px-2 py-1 text-xs bg-blue-600 hover:bg-blue-500 rounded"
+          title="Send selected text to terminal (no Enter)"
+        >
+          Send to Terminal
+        </button>
+      )}
       <span className={`absolute top-3 right-3 text-xs ${
         status === 'saving' ? 'text-yellow-400' :
         status === 'saved' ? 'text-green-400' :
@@ -88,8 +135,11 @@ export default function Scratchpad({ apiHost, sessionName }: ScratchpadProps) {
         {status === 'error' && 'Error saving'}
       </span>
       <textarea
+        ref={textareaRef}
         value={content}
         onChange={handleChange}
+        onSelect={handleSelect}
+        onBlur={() => setHasSelection(false)}
         placeholder="Type your notes here..."
         className="h-full w-full bg-gray-800 text-gray-100 border border-gray-700 rounded p-3 resize-none focus:outline-none focus:border-gray-500 font-mono text-sm"
       />

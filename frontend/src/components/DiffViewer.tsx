@@ -9,6 +9,7 @@ interface Props {
   diffData?: DiffData | null
   onRefreshDiff?: () => void
   onCommitSuccess?: () => void
+  onFocusTerminal?: () => void
 }
 
 type ViewState =
@@ -16,7 +17,7 @@ type ViewState =
   | { level: 'changes'; commit: string | null }
   | { level: 'file'; commit: string | null; file: string }
 
-export default function DiffViewer({ apiHost, sessionName, diffData: externalDiffData, onRefreshDiff, onCommitSuccess }: Props) {
+export default function DiffViewer({ apiHost, sessionName, diffData: externalDiffData, onRefreshDiff, onCommitSuccess, onFocusTerminal }: Props) {
   // Build base URL for git endpoints
   const gitBaseUrl = sessionName
     ? `http://${apiHost}/api/sessions/${sessionName}/git`
@@ -290,7 +291,7 @@ export default function DiffViewer({ apiHost, sessionName, diffData: externalDif
   if (view.level === 'file') {
     const file = data.files.find(f => f.path === view.file)
     if (file) {
-      return <FileDiff file={file} onBack={handleBackToChanges} />
+      return <FileDiff file={file} onBack={handleBackToChanges} apiHost={apiHost} sessionName={sessionName} onFocusTerminal={onFocusTerminal} />
     }
     // File not found, go back to changes
     handleBackToChanges()

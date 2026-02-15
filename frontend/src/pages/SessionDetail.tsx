@@ -152,12 +152,12 @@ export default function SessionDetail() {
       </div>
       {/* Panel content */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        {rightPanel === 'diff' && <DiffViewer key={diffKey} apiHost={apiHost} sessionName={name} diffData={diffData} onRefreshDiff={fetchDiffData} onCommitSuccess={handleCommitSuccess} />}
-        {rightPanel === 'files' && <FileBrowser apiHost={apiHost} />}
+        {rightPanel === 'diff' && <DiffViewer key={diffKey} apiHost={apiHost} sessionName={name} diffData={diffData} onRefreshDiff={fetchDiffData} onCommitSuccess={handleCommitSuccess} onFocusTerminal={handleFocusTerminal} />}
+        {rightPanel === 'files' && <FileBrowser apiHost={apiHost} sessionName={name} onFocusTerminal={handleFocusTerminal} />}
         {rightPanel === 'todos' && name && (
           <VerticalResizablePanes
             top={<TodoList apiHost={apiHost} sessionName={name} onFocusTerminal={handleFocusTerminal} />}
-            bottom={<Scratchpad apiHost={apiHost} sessionName={name} />}
+            bottom={<Scratchpad apiHost={apiHost} sessionName={name} onFocusTerminal={handleFocusTerminal} />}
             defaultTopHeight={50}
             minTopHeight={20}
             maxTopHeight={80}
@@ -230,12 +230,12 @@ export default function SessionDetail() {
           <div className={`h-full ${mobileTab === 'terminal' ? '' : 'hidden'}`}>
             {renderTerminal()}
           </div>
-          {mobileTab === 'diff' && <DiffViewer key={diffKey} apiHost={apiHost} sessionName={name} diffData={diffData} onRefreshDiff={fetchDiffData} onCommitSuccess={handleCommitSuccess} />}
-          {mobileTab === 'files' && <FileBrowser apiHost={apiHost} />}
+          {mobileTab === 'diff' && <DiffViewer key={diffKey} apiHost={apiHost} sessionName={name} diffData={diffData} onRefreshDiff={fetchDiffData} onCommitSuccess={handleCommitSuccess} onFocusTerminal={handleFocusTerminal} />}
+          {mobileTab === 'files' && <FileBrowser apiHost={apiHost} sessionName={name} onFocusTerminal={handleFocusTerminal} />}
           {mobileTab === 'todos' && name && (
             <VerticalResizablePanes
               top={<TodoList apiHost={apiHost} sessionName={name} onFocusTerminal={handleFocusTerminal} />}
-              bottom={<Scratchpad apiHost={apiHost} sessionName={name} />}
+              bottom={<Scratchpad apiHost={apiHost} sessionName={name} onFocusTerminal={handleFocusTerminal} />}
               defaultTopHeight={50}
               minTopHeight={20}
               maxTopHeight={80}
