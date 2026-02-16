@@ -307,27 +307,57 @@ const DiffViewer = memo(function DiffViewer({
                 <BranchSelector gitBaseUrl={gitBaseUrl} onBranchChange={handleRefresh} />
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleRefresh}
-                className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
-              >
-                ↻
-              </button>
-              {remoteStatus && remoteStatus.ahead > 0 && (
+            <button
+              onClick={handleRefresh}
+              className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+            >
+              ↻
+            </button>
+          </div>
+          <div className="flex flex-col items-center justify-center flex-1 gap-6 p-6">
+            {remoteStatus && remoteStatus.ahead > 0 ? (
+              <>
+                <div className="text-center">
+                  <div className="text-lg text-gray-300 mb-1">No local changes</div>
+                  <div className="text-gray-500">
+                    You have {remoteStatus.ahead} unpushed commit{remoteStatus.ahead > 1 ? 's' : ''} on{' '}
+                    <span className="text-blue-400 font-mono">{remoteStatus.branch}</span>
+                  </div>
+                </div>
                 <button
                   onClick={handlePush}
                   disabled={isPushing}
-                  className="px-2 py-1 text-blue-400 hover:text-blue-300 disabled:text-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
-                  title={`Push ${remoteStatus.ahead} commit${remoteStatus.ahead > 1 ? 's' : ''} to ${remoteStatus.remote || 'remote'}`}
+                  className="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center gap-2"
                 >
-                  {isPushing ? '...' : `↑${remoteStatus.ahead}`}
+                  {isPushing ? (
+                    <>Pushing...</>
+                  ) : (
+                    <>
+                      <span>↑</span>
+                      <span>Push to {remoteStatus.remote || 'origin'}</span>
+                    </>
+                  )}
                 </button>
-              )}
-            </div>
-          </div>
-          <div className="flex flex-col items-center justify-center flex-1 gap-4 text-gray-500">
-            <span>No changes detected</span>
+              </>
+            ) : remoteStatus && remoteStatus.behind > 0 ? (
+              <div className="text-center">
+                <div className="text-lg text-gray-300 mb-1">No local changes</div>
+                <div className="text-yellow-500">
+                  {remoteStatus.behind} commit{remoteStatus.behind > 1 ? 's' : ''} behind{' '}
+                  <span className="font-mono">{remoteStatus.remote || 'origin'}</span>
+                </div>
+              </div>
+            ) : remoteStatus ? (
+              <div className="text-center">
+                <div className="text-lg text-gray-300 mb-1">All caught up</div>
+                <div className="text-gray-500">
+                  No local changes, in sync with{' '}
+                  <span className="font-mono">{remoteStatus.remote || 'origin'}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="text-gray-500">No changes detected</div>
+            )}
           </div>
         </div>
       )
