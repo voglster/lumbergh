@@ -60,23 +60,23 @@ export default function Dashboard() {
     }
   }
 
-  const handleRename = async (name: string, displayName: string) => {
+  const handleUpdate = async (name: string, updates: { displayName?: string; description?: string }) => {
     try {
       const res = await fetch(`http://${apiHost}/api/sessions/${name}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ displayName }),
+        body: JSON.stringify(updates),
       })
       if (!res.ok) {
         const data = await res.json()
-        throw new Error(data.detail || 'Failed to rename session')
+        throw new Error(data.detail || 'Failed to update session')
       }
       // Refresh sessions list
       fetchSessions()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to rename session')
+      alert(err instanceof Error ? err.message : 'Failed to update session')
     }
   }
 
@@ -173,7 +173,7 @@ export default function Dashboard() {
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {aliveSessions.map((session) => (
-                    <SessionCard key={session.name} session={session} onDelete={handleDelete} onRename={handleRename} />
+                    <SessionCard key={session.name} session={session} onDelete={handleDelete} onUpdate={handleUpdate} />
                   ))}
                 </div>
               </section>
@@ -187,7 +187,7 @@ export default function Dashboard() {
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {deadSessions.map((session) => (
-                    <SessionCard key={session.name} session={session} onDelete={handleDelete} onRename={handleRename} />
+                    <SessionCard key={session.name} session={session} onDelete={handleDelete} onUpdate={handleUpdate} />
                   ))}
                 </div>
               </section>

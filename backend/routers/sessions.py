@@ -185,6 +185,8 @@ async def update_session(name: str, body: SessionUpdate):
     # Update fields
     if body.displayName is not None:
         existing["displayName"] = body.displayName
+    if body.description is not None:
+        existing["description"] = body.description
 
     sessions_table.upsert(existing, Session.name == name)
 

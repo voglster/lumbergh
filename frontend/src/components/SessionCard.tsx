@@ -11,16 +11,22 @@ interface Session {
   windows: number
 }
 
+interface SessionUpdate {
+  displayName?: string
+  description?: string
+}
+
 interface Props {
   session: Session
   onDelete: (name: string) => void
-  onRename: (name: string, displayName: string) => void
+  onUpdate: (name: string, updates: SessionUpdate) => void
 }
 
-export default function SessionCard({ session, onDelete, onRename }: Props) {
+export default function SessionCard({ session, onDelete, onUpdate }: Props) {
   const navigate = useNavigate()
   const [isEditing, setIsEditing] = useState(false)
-  const [editValue, setEditValue] = useState(session.displayName || '')
+  const [editName, setEditName] = useState(session.displayName || '')
+  const [editDescription, setEditDescription] = useState(session.description || '')
 
   const handleClick = () => {
     if (!isEditing) {
@@ -37,25 +43,37 @@ export default function SessionCard({ session, onDelete, onRename }: Props) {
 
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation()
-    setEditValue(session.displayName || session.name)
+    setEditName(session.displayName || session.name)
+    setEditDescription(session.description || '')
     setIsEditing(true)
   }
 
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    const trimmedValue = editValue.trim()
-    // Only save if different from current displayName (or name if no displayName)
-    if (trimmedValue !== (session.displayName || '')) {
-      onRename(session.name, trimmedValue)
+
+    const updates: SessionUpdate = {}
+    const trimmedName = editName.trim()
+    const trimmedDesc = editDescription.trim()
+
+    // Only include changed fields
+    if (trimmedName !== (session.displayName || '')) {
+      updates.displayName = trimmedName
+    }
+    if (trimmedDesc !== (session.description || '')) {
+      updates.description = trimmedDesc
+    }
+
+    if (Object.keys(updates).length > 0) {
+      onUpdate(session.name, updates)
     }
     setIsEditing(false)
   }
 
-  const handleEditCancel = (e?: React.MouseEvent) => {
-    e?.stopPropagation()
+  const handleEditCancel = () => {
     setIsEditing(false)
-    setEditValue(session.displayName || '')
+    setEditName(session.displayName || '')
+    setEditDescription(session.description || '')
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -67,6 +85,56 @@ export default function SessionCard({ session, onDelete, onRename }: Props) {
   const displayTitle = session.displayName || session.name
   const showOriginalName = session.displayName && session.displayName !== session.name
 
+  if (isEditing) {
+    return (
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-gray-800 rounded-lg p-4 border border-blue-500"
+      >
+        <form onSubmit={handleEditSubmit} className="space-y-3">
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Display Name</label>
+            <input
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onKeyDown={handleKeyDown}
+              autoFocus
+              className="w-full bg-gray-700 text-white px-2 py-1.5 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-sm"
+              placeholder={session.name}
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Description</label>
+            <input
+              type="text"
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="w-full bg-gray-700 text-white px-2 py-1.5 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-sm"
+              placeholder="Optional description"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={handleEditCancel}
+              className="px-3 py-1 text-sm text-gray-400 hover:text-white transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
+            >
+              Save
+            </button>
+          </div>
+        </form>
+      </div>
+    )
+  }
+
   return (
     <div
       onClick={handleClick}
@@ -77,45 +145,28 @@ export default function SessionCard({ session, onDelete, onRename }: Props) {
           <span
             className={`w-2 h-2 rounded-full flex-shrink-0 ${session.alive ? 'bg-green-500' : 'bg-gray-500'}`}
           />
-          {isEditing ? (
-            <form onSubmit={handleEditSubmit} className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
-              <input
-                type="text"
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onBlur={() => handleEditCancel()}
-                autoFocus
-                className="w-full bg-gray-700 text-white px-2 py-1 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-sm"
-                placeholder={session.name}
-              />
-            </form>
-          ) : (
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-white truncate">{displayTitle}</h3>
-              {showOriginalName && (
-                <p className="text-xs text-gray-500 truncate">{session.name}</p>
-              )}
-            </div>
-          )}
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-white truncate">{displayTitle}</h3>
+            {showOriginalName && (
+              <p className="text-xs text-gray-500 truncate">{session.name}</p>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
-          {!isEditing && (
-            <button
-              onClick={handleEditClick}
-              className="text-gray-500 hover:text-blue-400 transition-colors p-1"
-              title="Rename session"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                />
-              </svg>
-            </button>
-          )}
+          <button
+            onClick={handleEditClick}
+            className="text-gray-500 hover:text-blue-400 transition-colors p-1"
+            title="Edit session"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+              />
+            </svg>
+          </button>
           <button
             onClick={handleDelete}
             className="text-gray-500 hover:text-red-400 transition-colors p-1"

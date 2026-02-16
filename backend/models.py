@@ -77,3 +77,4 @@ class SessionUpdate(BaseModel):
     """Request to update session metadata."""
 
     displayName: str | None = None
+    description: str | None = None
