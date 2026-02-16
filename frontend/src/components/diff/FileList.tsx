@@ -1,7 +1,15 @@
-import { useState, memo } from 'react'
+import { useState, useEffect, useCallback, memo } from 'react'
 import type { DiffData } from './types'
 import { getFileStats } from './utils'
 import BranchSelector from './BranchSelector'
+
+interface RemoteStatus {
+  branch?: string
+  remote?: string
+  ahead: number
+  behind: number
+  error?: string
+}
 
 interface Props {
   data: DiffData
@@ -29,6 +37,7 @@ const FileList = memo(function FileList({
   const [isGenerating, setIsGenerating] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
   const [isPushing, setIsPushing] = useState(false)
+  const [remoteStatus, setRemoteStatus] = useState<RemoteStatus | null>(null)
   const [commitResult, setCommitResult] = useState<{
     type: 'success' | 'error'
     message: string
@@ -53,6 +62,33 @@ const FileList = memo(function FileList({
   const pushUrl = sessionName
     ? `http://${apiHost}/api/sessions/${sessionName}/git/push`
     : `http://${apiHost}/api/git/push`
+
+  // Build remote status URL
+  const remoteStatusUrl = sessionName
+    ? `http://${apiHost}/api/sessions/${sessionName}/git/remote-status`
+    : null
+
+  // Fetch remote status (ahead/behind) when there are no pending changes
+  const fetchRemoteStatus = useCallback(async () => {
+    if (!remoteStatusUrl) return
+    try {
+      const res = await fetch(remoteStatusUrl)
+      const data = await res.json()
+      setRemoteStatus(data)
+    } catch {
+      setRemoteStatus(null)
+    }
+  }, [remoteStatusUrl])
+
+  // Fetch remote status when there are no changes (clean working directory)
+  const isWorkingChanges = !commit
+  const hasChanges = data.files.length > 0
+
+  useEffect(() => {
+    if (isWorkingChanges && !hasChanges) {
+      fetchRemoteStatus()
+    }
+  }, [isWorkingChanges, hasChanges, fetchRemoteStatus])
 
   const handleReset = async () => {
     if (
@@ -96,6 +132,8 @@ const FileList = memo(function FileList({
           type: 'success',
           message: `Pushed ${result.branch} to ${result.remote}`,
         })
+        // Refetch remote status after successful push
+        fetchRemoteStatus()
       }
     } catch {
       setCommitResult({ type: 'error', message: 'Failed to push' })
@@ -166,9 +204,6 @@ const FileList = memo(function FileList({
     }
   }
 
-  const isWorkingChanges = !commit
-  const hasChanges = data.files.length > 0
-
   return (
     <div className="h-full flex flex-col">
       {/* Breadcrumb header */}
@@ -213,14 +248,14 @@ const FileList = memo(function FileList({
           >
             ↻
           </button>
-          {isWorkingChanges && (
+          {isWorkingChanges && !hasChanges && remoteStatus && remoteStatus.ahead > 0 && (
             <button
               onClick={handlePush}
-              disabled={isPushing || isResetting || isCommitting || isGenerating}
-              className="px-2 py-1 text-gray-400 hover:text-blue-400 disabled:text-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
-              title="Push to remote"
+              disabled={isPushing}
+              className="px-2 py-1 text-blue-400 hover:text-blue-300 disabled:text-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
+              title={`Push ${remoteStatus.ahead} commit${remoteStatus.ahead > 1 ? 's' : ''} to ${remoteStatus.remote || 'remote'}`}
             >
-              {isPushing ? '...' : '↑'}
+              {isPushing ? '...' : `↑${remoteStatus.ahead}`}
             </button>
           )}
           {isWorkingChanges && hasChanges && (

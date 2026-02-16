@@ -29,6 +29,7 @@ from git_utils import (
     get_current_branch,
     get_full_diff_with_untracked,
     get_porcelain_status,
+    get_remote_status,
     git_push,
     reset_to_head,
     stage_all_and_commit,
@@ -410,6 +411,18 @@ async def session_git_push(name: str):
         return result
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{name}/git/remote-status")
+async def session_git_remote_status(name: str, fetch: bool = True):
+    """Get ahead/behind status relative to remote tracking branch."""
+    workdir = get_session_workdir(name)
+
+    try:
+        result = get_remote_status(workdir, fetch=fetch)
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

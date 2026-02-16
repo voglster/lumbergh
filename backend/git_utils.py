@@ -446,6 +446,83 @@ def reset_to_head(cwd: Path) -> dict:
         return {"error": f"git reset failed: {e}"}
 
 
+def get_remote_status(cwd: Path, fetch: bool = True) -> dict:
+    """
+    Get ahead/behind status relative to remote tracking branch.
+
+    Args:
+        cwd: Repository working directory
+        fetch: Whether to fetch from remote first (default True)
+
+    Returns:
+        Dict with ahead, behind counts, branch info, and any errors
+    """
+    try:
+        repo = get_repo(cwd)
+    except InvalidGitRepositoryError:
+        return {"error": "Not a git repository"}
+
+    # Check for detached HEAD
+    if repo.head.is_detached:
+        return {"error": "HEAD is detached", "ahead": 0, "behind": 0}
+
+    branch = repo.active_branch
+    tracking = branch.tracking_branch()
+
+    if not tracking:
+        # No tracking branch - check if origin exists
+        try:
+            remote = repo.remote("origin")
+            remote_ref = f"origin/{branch.name}"
+            # Check if remote branch exists
+            try:
+                repo.git.rev_parse("--verify", remote_ref)
+            except GitCommandError:
+                return {
+                    "branch": branch.name,
+                    "remote": "origin",
+                    "ahead": 0,
+                    "behind": 0,
+                    "noTracking": True,
+                    "noRemoteBranch": True,
+                }
+        except ValueError:
+            return {"error": "No remote configured", "ahead": 0, "behind": 0}
+
+        tracking_ref = remote_ref
+        remote_name = "origin"
+    else:
+        tracking_ref = tracking.name
+        remote_name = tracking.remote_name
+
+    # Fetch from remote if requested
+    if fetch:
+        try:
+            remote = repo.remote(remote_name)
+            remote.fetch()
+        except GitCommandError:
+            # Fetch failed, continue with stale data
+            pass
+
+    # Count commits ahead/behind
+    try:
+        # Commits in local but not in remote (ahead)
+        ahead = int(repo.git.rev_list("--count", f"{tracking_ref}..{branch.name}"))
+        # Commits in remote but not in local (behind)
+        behind = int(repo.git.rev_list("--count", f"{branch.name}..{tracking_ref}"))
+    except GitCommandError:
+        ahead = 0
+        behind = 0
+
+    return {
+        "branch": branch.name,
+        "remote": remote_name,
+        "tracking": tracking_ref,
+        "ahead": ahead,
+        "behind": behind,
+    }
+
+
 def git_push(cwd: Path) -> dict:
     """
     Push commits to the remote repository.
