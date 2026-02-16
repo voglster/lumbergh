@@ -67,7 +67,7 @@ export default function SessionDetail() {
     focusFnRef.current?.()
   }, [])
 
-  const handleCommitSuccess = useCallback(() => {
+  const handleJumpToTodos = useCallback(() => {
     setRightPanel('todos')
     setMobileTab('todos')
   }, [])
@@ -193,7 +193,7 @@ export default function SessionDetail() {
             sessionName={name}
             diffData={diffData}
             onRefreshDiff={fetchDiffData}
-            onCommitSuccess={handleCommitSuccess}
+            onJumpToTodos={handleJumpToTodos}
             onFocusTerminal={handleFocusTerminal}
           />
         )}
@@ -305,7 +305,7 @@ export default function SessionDetail() {
                 sessionName={name}
                 diffData={diffData}
                 onRefreshDiff={fetchDiffData}
-                onCommitSuccess={handleCommitSuccess}
+                onJumpToTodos={handleJumpToTodos}
                 onFocusTerminal={handleFocusTerminal}
               />
             )}

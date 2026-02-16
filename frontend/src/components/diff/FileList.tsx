@@ -11,7 +11,6 @@ interface Props {
   onRefresh: () => void
   commit?: { hash: string; shortHash: string; message: string } | null
   onNavigateToHistory?: () => void
-  onCommitSuccess?: () => void
 }
 
 const FileList = memo(function FileList({
@@ -22,7 +21,6 @@ const FileList = memo(function FileList({
   onRefresh,
   commit,
   onNavigateToHistory,
-  onCommitSuccess,
 }: Props) {
   const [commitMessage, setCommitMessage] = useState('')
   const [isCommitting, setIsCommitting] = useState(false)
@@ -99,7 +97,6 @@ const FileList = memo(function FileList({
         setCommitResult({ type: 'success', message: `Committed: ${result.hash}` })
         setCommitMessage('')
         onRefresh()
-        onCommitSuccess?.()
       }
     } catch {
       setCommitResult({ type: 'error', message: 'Failed to commit' })

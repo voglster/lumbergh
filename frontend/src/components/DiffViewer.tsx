@@ -8,8 +8,8 @@ interface Props {
   sessionName?: string
   diffData?: DiffData | null
   onRefreshDiff?: () => void
-  onCommitSuccess?: () => void
   onFocusTerminal?: () => void
+  onJumpToTodos?: () => void
 }
 
 interface RemoteStatus {
@@ -30,8 +30,8 @@ const DiffViewer = memo(function DiffViewer({
   sessionName,
   diffData: externalDiffData,
   onRefreshDiff,
-  onCommitSuccess,
   onFocusTerminal,
+  onJumpToTodos,
 }: Props) {
   // Build base URL for git endpoints
   const gitBaseUrl = sessionName
@@ -324,37 +324,67 @@ const DiffViewer = memo(function DiffViewer({
                     <span className="text-blue-400 font-mono">{remoteStatus.branch}</span>
                   </div>
                 </div>
-                <button
-                  onClick={handlePush}
-                  disabled={isPushing}
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center gap-2"
-                >
-                  {isPushing ? (
-                    <>Pushing...</>
-                  ) : (
-                    <>
-                      <span>↑</span>
-                      <span>Push to {remoteStatus.remote || 'origin'}</span>
-                    </>
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={handlePush}
+                    disabled={isPushing}
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    {isPushing ? (
+                      <>Pushing...</>
+                    ) : (
+                      <>
+                        <span>↑</span>
+                        <span>Push to {remoteStatus.remote || 'origin'}</span>
+                      </>
+                    )}
+                  </button>
+                  {onJumpToTodos && (
+                    <button
+                      onClick={onJumpToTodos}
+                      className="px-4 py-2 text-gray-400 hover:text-gray-200 text-sm transition-colors"
+                    >
+                      Something else to work on? Jump to Todos →
+                    </button>
                   )}
-                </button>
+                </div>
               </>
             ) : remoteStatus && remoteStatus.behind > 0 ? (
-              <div className="text-center">
-                <div className="text-lg text-gray-300 mb-1">No local changes</div>
-                <div className="text-yellow-500">
-                  {remoteStatus.behind} commit{remoteStatus.behind > 1 ? 's' : ''} behind{' '}
-                  <span className="font-mono">{remoteStatus.remote || 'origin'}</span>
+              <>
+                <div className="text-center">
+                  <div className="text-lg text-gray-300 mb-1">No local changes</div>
+                  <div className="text-yellow-500">
+                    {remoteStatus.behind} commit{remoteStatus.behind > 1 ? 's' : ''} behind{' '}
+                    <span className="font-mono">{remoteStatus.remote || 'origin'}</span>
+                  </div>
                 </div>
-              </div>
+                {onJumpToTodos && (
+                  <button
+                    onClick={onJumpToTodos}
+                    className="px-4 py-2 text-gray-400 hover:text-gray-200 text-sm transition-colors"
+                  >
+                    Something else to work on? Jump to Todos →
+                  </button>
+                )}
+              </>
             ) : remoteStatus ? (
-              <div className="text-center">
-                <div className="text-lg text-gray-300 mb-1">All caught up</div>
-                <div className="text-gray-500">
-                  No local changes, in sync with{' '}
-                  <span className="font-mono">{remoteStatus.remote || 'origin'}</span>
+              <>
+                <div className="text-center">
+                  <div className="text-lg text-gray-300 mb-1">All caught up</div>
+                  <div className="text-gray-500">
+                    No local changes, in sync with{' '}
+                    <span className="font-mono">{remoteStatus.remote || 'origin'}</span>
+                  </div>
                 </div>
-              </div>
+                {onJumpToTodos && (
+                  <button
+                    onClick={onJumpToTodos}
+                    className="px-4 py-2 text-gray-400 hover:text-gray-200 text-sm transition-colors"
+                  >
+                    Something else to work on? Jump to Todos →
+                  </button>
+                )}
+              </>
             ) : (
               <div className="text-gray-500">No changes detected</div>
             )}
@@ -399,7 +429,6 @@ const DiffViewer = memo(function DiffViewer({
       onRefresh={handleRefresh}
       commit={getCurrentCommitInfo()}
       onNavigateToHistory={handleNavigateToHistory}
-      onCommitSuccess={onCommitSuccess}
     />
   )
 })
