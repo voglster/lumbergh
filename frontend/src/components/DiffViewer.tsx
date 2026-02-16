@@ -12,6 +12,14 @@ interface Props {
   onFocusTerminal?: () => void
 }
 
+interface RemoteStatus {
+  branch?: string
+  remote?: string
+  ahead: number
+  behind: number
+  error?: string
+}
+
 type ViewState =
   | { level: 'history' }
   | { level: 'changes'; commit: string | null }
@@ -39,6 +47,10 @@ const DiffViewer = memo(function DiffViewer({
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Remote status for push button (when no changes)
+  const [remoteStatus, setRemoteStatus] = useState<RemoteStatus | null>(null)
+  const [isPushing, setIsPushing] = useState(false)
 
   // Navigation state - default to working changes view
   const [view, setView] = useState<ViewState>({ level: 'changes', commit: null })
@@ -77,6 +89,34 @@ const DiffViewer = memo(function DiffViewer({
     [gitBaseUrl]
   )
 
+  // Fetch remote status (for push button when no changes)
+  const fetchRemoteStatus = useCallback(async () => {
+    if (!sessionName) return
+    try {
+      const res = await fetch(`${gitBaseUrl}/remote-status`)
+      const data = await res.json()
+      setRemoteStatus(data)
+    } catch {
+      setRemoteStatus(null)
+    }
+  }, [gitBaseUrl, sessionName])
+
+  // Handle push
+  const handlePush = async () => {
+    if (!sessionName) return
+    setIsPushing(true)
+    try {
+      const res = await fetch(`${gitBaseUrl}/push`, { method: 'POST' })
+      if (res.ok) {
+        fetchRemoteStatus()
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsPushing(false)
+    }
+  }
+
   // Initial load - fetch working changes only if no external data provided
   const loadInitialData = useCallback(async () => {
     // If external data is being used, no need to fetch
@@ -109,6 +149,14 @@ const DiffViewer = memo(function DiffViewer({
         .finally(() => setLoading(false))
     }
   }, [view, fetchCommitDiff])
+
+  // Fetch remote status when there are no changes (for push button)
+  const hasNoChanges = !workingData || workingData.files.length === 0
+  useEffect(() => {
+    if (hasNoChanges && view.level === 'changes' && !view.commit) {
+      fetchRemoteStatus()
+    }
+  }, [hasNoChanges, view, fetchRemoteStatus])
 
   // Fetch history and working changes when viewing history
   const loadHistory = useCallback(async () => {
@@ -259,12 +307,24 @@ const DiffViewer = memo(function DiffViewer({
                 <BranchSelector gitBaseUrl={gitBaseUrl} onBranchChange={handleRefresh} />
               )}
             </div>
-            <button
-              onClick={handleRefresh}
-              className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
-            >
-              ↻
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleRefresh}
+                className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+              >
+                ↻
+              </button>
+              {remoteStatus && remoteStatus.ahead > 0 && (
+                <button
+                  onClick={handlePush}
+                  disabled={isPushing}
+                  className="px-2 py-1 text-blue-400 hover:text-blue-300 disabled:text-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
+                  title={`Push ${remoteStatus.ahead} commit${remoteStatus.ahead > 1 ? 's' : ''} to ${remoteStatus.remote || 'remote'}`}
+                >
+                  {isPushing ? '...' : `↑${remoteStatus.ahead}`}
+                </button>
+              )}
+            </div>
           </div>
           <div className="flex flex-col items-center justify-center flex-1 gap-4 text-gray-500">
             <span>No changes detected</span>
