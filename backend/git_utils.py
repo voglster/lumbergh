@@ -160,12 +160,20 @@ def generate_untracked_file_diff(workdir: Path, path: str) -> tuple[FileDiff | N
         return None, stats
 
 
+def get_file_content_at_ref(repo: Repo, ref: str, path: str) -> str | None:
+    """Get file content at a specific git ref (commit, HEAD, etc.)."""
+    try:
+        return repo.git.show(f"{ref}:{path}")
+    except GitCommandError:
+        return None
+
+
 def get_full_diff_with_untracked(cwd: Path) -> dict:
     """
     Get git diff for all changed files, including untracked files.
 
     Returns:
-        Dict with 'files' (list of file diffs) and 'stats' (additions/deletions)
+        Dict with 'files' (list of file diffs with old/new content) and 'stats'
     """
     try:
         repo = get_repo(cwd)
@@ -174,6 +182,7 @@ def get_full_diff_with_untracked(cwd: Path) -> dict:
 
     files = []
     total_stats = DiffStats()
+    workdir = Path(repo.working_dir)
 
     # Get diff of working tree against HEAD
     if repo.head.is_valid():
@@ -181,18 +190,39 @@ def get_full_diff_with_untracked(cwd: Path) -> dict:
             diff_text = repo.git.diff("HEAD")
             if diff_text:
                 parsed_files, stats = parse_diff_output(diff_text)
-                files.extend({"path": f.path, "diff": f.diff} for f in parsed_files)
+                for f in parsed_files:
+                    # Get old content from HEAD
+                    old_content = get_file_content_at_ref(repo, "HEAD", f.path)
+                    # Get new content from working directory
+                    try:
+                        new_content = (workdir / f.path).read_text(errors="replace")
+                    except Exception:
+                        new_content = None
+                    files.append({
+                        "path": f.path,
+                        "diff": f.diff,
+                        "oldContent": old_content,
+                        "newContent": new_content,
+                    })
                 total_stats.additions += stats.additions
                 total_stats.deletions += stats.deletions
         except GitCommandError:
             pass
 
-    # Add untracked files
-    workdir = Path(repo.working_dir)
+    # Add untracked files (new files - no old content)
     for untracked_path in repo.untracked_files:
         file_diff, stats = generate_untracked_file_diff(workdir, untracked_path)
         if file_diff:
-            files.append({"path": file_diff.path, "diff": file_diff.diff})
+            try:
+                new_content = (workdir / untracked_path).read_text(errors="replace")
+            except Exception:
+                new_content = None
+            files.append({
+                "path": file_diff.path,
+                "diff": file_diff.diff,
+                "oldContent": None,
+                "newContent": new_content,
+            })
             total_stats.additions += stats.additions
 
     return {
@@ -260,7 +290,7 @@ def get_commit_diff(cwd: Path, commit_hash: str) -> dict | None:
     Get diff for a specific commit.
 
     Returns:
-        Dict with commit info, files, and stats, or None if commit not found
+        Dict with commit info, files (with old/new content), and stats, or None if not found
     """
     try:
         repo = get_repo(cwd)
@@ -274,6 +304,9 @@ def get_commit_diff(cwd: Path, commit_hash: str) -> dict | None:
         "author": commit.author.name,
         "relativeDate": commit.committed_datetime.strftime("%Y-%m-%d %H:%M"),
     }
+
+    # Determine parent ref for getting old content
+    parent_ref = f"{commit_hash}^" if commit.parents else None
 
     # Get the diff
     try:
@@ -290,7 +323,17 @@ def get_commit_diff(cwd: Path, commit_hash: str) -> dict | None:
 
     if diff_text:
         parsed_files, parsed_stats = parse_diff_output(diff_text)
-        files = [{"path": f.path, "diff": f.diff} for f in parsed_files]
+        for f in parsed_files:
+            # Get old content from parent commit (if exists)
+            old_content = get_file_content_at_ref(repo, parent_ref, f.path) if parent_ref else None
+            # Get new content from this commit
+            new_content = get_file_content_at_ref(repo, commit_hash, f.path)
+            files.append({
+                "path": f.path,
+                "diff": f.diff,
+                "oldContent": old_content,
+                "newContent": new_content,
+            })
         stats = parsed_stats
 
     return {

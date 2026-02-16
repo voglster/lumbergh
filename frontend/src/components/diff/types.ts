@@ -1,6 +1,8 @@
 export interface DiffFile {
   path: string
   diff: string
+  oldContent?: string | null
+  newContent?: string | null
 }
 
 export interface Commit {

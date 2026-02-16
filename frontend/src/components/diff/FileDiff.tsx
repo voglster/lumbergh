@@ -1,13 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react'
 import { DiffView, DiffModeEnum } from '@git-diff-view/react'
 import type { DiffFile } from './types'
-import {
-  extractDiffContent,
-  getFileStats,
-  getLangFromPath,
-  extractNewContent,
-  extractOldContent,
-} from './utils'
+import { extractDiffContent, getFileStats, getLangFromPath } from './utils'
 import MarkdownViewer from '../MarkdownViewer'
 
 interface Props {
@@ -34,8 +28,9 @@ const FileDiff = memo(function FileDiff({
   const hunks = useMemo(() => extractDiffContent(file.diff), [file.diff])
   const lang = useMemo(() => getLangFromPath(file.path), [file.path])
   const stats = useMemo(() => getFileStats(file.diff), [file.diff])
-  const oldContent = useMemo(() => extractOldContent(file.diff), [file.diff])
-  const newContent = useMemo(() => extractNewContent(file.diff), [file.diff])
+  // Use content from backend (full file content for proper syntax highlighting)
+  const oldContent = file.oldContent ?? ''
+  const newContent = file.newContent ?? ''
   const isMarkdown = file.path.endsWith('.md')
 
   // Memoize the data prop to prevent re-renders of DiffView
