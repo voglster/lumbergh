@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, memo } from 'react'
 import '@git-diff-view/react/styles/diff-view.css'
 import { FileList, FileDiff, CommitList, BranchSelector } from './diff'
 import type { DiffData, Commit, CommitDiff } from './diff'
@@ -17,7 +17,7 @@ type ViewState =
   | { level: 'changes'; commit: string | null }
   | { level: 'file'; commit: string | null; file: string }
 
-export default function DiffViewer({
+const DiffViewer = memo(function DiffViewer({
   apiHost,
   sessionName,
   diffData: externalDiffData,
@@ -312,4 +312,6 @@ export default function DiffViewer({
       onCommitSuccess={onCommitSuccess}
     />
   )
-}
+})
+
+export default DiffViewer

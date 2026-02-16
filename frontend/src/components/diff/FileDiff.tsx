@@ -1,7 +1,13 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react'
 import { DiffView, DiffModeEnum } from '@git-diff-view/react'
 import type { DiffFile } from './types'
-import { extractDiffContent, getFileStats, getLangFromPath, extractNewContent } from './utils'
+import {
+  extractDiffContent,
+  getFileStats,
+  getLangFromPath,
+  extractNewContent,
+  extractOldContent,
+} from './utils'
 import MarkdownViewer from '../MarkdownViewer'
 
 interface Props {
@@ -12,15 +18,35 @@ interface Props {
   onFocusTerminal?: () => void
 }
 
-export default function FileDiff({ file, onBack, apiHost, sessionName, onFocusTerminal }: Props) {
+const FileDiff = memo(function FileDiff({
+  file,
+  onBack,
+  apiHost,
+  sessionName,
+  onFocusTerminal,
+}: Props) {
   const [showMarkdownPreview, setShowMarkdownPreview] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
   const selectedTextRef = useRef('')
   const contentRef = useRef<HTMLDivElement>(null)
-  const hunks = extractDiffContent(file.diff)
-  const lang = getLangFromPath(file.path)
-  const stats = getFileStats(file.diff)
+
+  // Memoize computed values to prevent recalculation on every render
+  const hunks = useMemo(() => extractDiffContent(file.diff), [file.diff])
+  const lang = useMemo(() => getLangFromPath(file.path), [file.path])
+  const stats = useMemo(() => getFileStats(file.diff), [file.diff])
+  const oldContent = useMemo(() => extractOldContent(file.diff), [file.diff])
+  const newContent = useMemo(() => extractNewContent(file.diff), [file.diff])
   const isMarkdown = file.path.endsWith('.md')
+
+  // Memoize the data prop to prevent re-renders of DiffView
+  const diffViewData = useMemo(
+    () => ({
+      oldFile: { fileName: file.path, fileLang: lang, content: oldContent },
+      newFile: { fileName: file.path, fileLang: lang, content: newContent },
+      hunks: hunks,
+    }),
+    [file.path, lang, oldContent, newContent, hunks]
+  )
 
   // Track text selection in the diff area
   const handleSelectionChange = useCallback(() => {
@@ -99,11 +125,7 @@ export default function FileDiff({ file, onBack, apiHost, sessionName, onFocusTe
         )}
         {hunks.length > 0 ? (
           <DiffView
-            data={{
-              oldFile: { fileName: file.path, fileLang: lang },
-              newFile: { fileName: file.path, fileLang: lang },
-              hunks: hunks,
-            }}
+            data={diffViewData}
             diffViewMode={DiffModeEnum.Unified}
             diffViewTheme="dark"
             diffViewHighlight
@@ -119,11 +141,13 @@ export default function FileDiff({ file, onBack, apiHost, sessionName, onFocusTe
       {/* Markdown preview modal */}
       {showMarkdownPreview && isMarkdown && (
         <MarkdownViewer
-          content={extractNewContent(file.diff)}
+          content={newContent}
           filePath={file.path}
           onClose={() => setShowMarkdownPreview(false)}
         />
       )}
     </div>
   )
-}
+})
+
+export default FileDiff

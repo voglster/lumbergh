@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import type { DiffData } from './types'
 import { getFileStats } from './utils'
 import BranchSelector from './BranchSelector'
@@ -14,7 +14,7 @@ interface Props {
   onCommitSuccess?: () => void
 }
 
-export default function FileList({
+const FileList = memo(function FileList({
   data,
   apiHost,
   sessionName,
@@ -300,4 +300,6 @@ export default function FileList({
       </div>
     </div>
   )
-}
+})
+
+export default FileList

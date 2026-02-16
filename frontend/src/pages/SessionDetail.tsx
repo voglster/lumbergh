@@ -13,6 +13,27 @@ import { useIsDesktop } from '../hooks/useMediaQuery'
 type RightPanel = 'diff' | 'files' | 'todos' | 'prompts'
 type MobileTab = 'terminal' | 'diff' | 'files' | 'todos' | 'prompts'
 
+type DiffData = {
+  files: Array<{ path: string; diff: string }>
+  stats: { additions: number; deletions: number }
+}
+
+// Compare diff data to avoid unnecessary re-renders
+function diffDataEquals(a: DiffData | null, b: DiffData | null): boolean {
+  if (a === b) return true
+  if (!a || !b) return false
+  if (a.stats.additions !== b.stats.additions || a.stats.deletions !== b.stats.deletions) {
+    return false
+  }
+  if (a.files.length !== b.files.length) return false
+  for (let i = 0; i < a.files.length; i++) {
+    if (a.files[i].path !== b.files[i].path || a.files[i].diff !== b.files[i].diff) {
+      return false
+    }
+  }
+  return true
+}
+
 export default function SessionDetail() {
   const { name } = useParams<{ name: string }>()
   const navigate = useNavigate()
@@ -26,10 +47,7 @@ export default function SessionDetail() {
     return 'diff'
   })
   const [mobileTab, setMobileTab] = useState<MobileTab>('terminal')
-  const [diffData, setDiffData] = useState<{
-    files: Array<{ path: string; diff: string }>
-    stats: { additions: number; deletions: number }
-  } | null>(null)
+  const [diffData, setDiffData] = useState<DiffData | null>(null)
   const [diffKey, setDiffKey] = useState(0)
   const focusFnRef = useRef<(() => void) | null>(null)
 
@@ -59,7 +77,8 @@ export default function SessionDetail() {
     try {
       const res = await fetch(`http://${apiHost}/api/sessions/${name}/git/diff`)
       const data = await res.json()
-      setDiffData(data)
+      // Only update state if data actually changed to prevent scroll resets
+      setDiffData((prev) => (diffDataEquals(prev, data) ? prev : data))
     } catch (err) {
       console.error('Failed to fetch diff data:', err)
     }
