@@ -228,12 +228,21 @@ async def send_tmux_command(session_name: str, cmd: TmuxCommand):
     """Send a tmux window navigation command to a session."""
     import subprocess
 
+    from routers.sessions import get_session_workdir
+
     tmux_commands = {
         "next-window": ["tmux", "next-window", "-t", session_name],
         "prev-window": ["tmux", "previous-window", "-t", session_name],
-        "new-window": ["tmux", "new-window", "-t", session_name],
     }
-    result = subprocess.run(tmux_commands[cmd.command], capture_output=True, text=True)
+
+    if cmd.command == "new-window":
+        # Get the session's working directory so new windows start there
+        workdir = get_session_workdir(session_name)
+        tmux_cmd = ["tmux", "new-window", "-t", session_name, "-c", str(workdir)]
+    else:
+        tmux_cmd = tmux_commands[cmd.command]
+
+    result = subprocess.run(tmux_cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise HTTPException(status_code=500, detail=result.stderr)
     return {"status": "ok"}

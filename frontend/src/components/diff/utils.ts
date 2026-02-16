@@ -59,12 +59,24 @@ export function getLangFromPath(path: string): string {
   return extMap[ext] || 'plaintext'
 }
 
+// Parse hunk header to get starting line numbers
+// Format: @@ -oldStart,oldCount +newStart,newCount @@
+function parseHunkHeader(line: string): { oldStart: number; newStart: number } | null {
+  const match = line.match(/@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/)
+  if (match) {
+    return { oldStart: parseInt(match[1], 10), newStart: parseInt(match[2], 10) }
+  }
+  return null
+}
+
 // Extract the new file content from a unified diff
 // This reconstructs what the file looks like after the changes
+// Pads with empty lines to preserve line numbers for syntax highlighting
 export function extractNewContent(diff: string): string {
   const lines = diff.split('\n')
   const result: string[] = []
   let inHunk = false
+  let currentLine = 1
 
   for (const line of lines) {
     // Skip diff metadata
@@ -79,8 +91,16 @@ export function extractNewContent(diff: string): string {
       continue
     }
 
-    // Start of a hunk
+    // Start of a hunk - pad to reach the correct line number
     if (line.startsWith('@@')) {
+      const header = parseHunkHeader(line)
+      if (header && header.newStart > currentLine) {
+        // Pad with empty lines to reach the hunk's starting line
+        while (currentLine < header.newStart) {
+          result.push('')
+          currentLine++
+        }
+      }
       inHunk = true
       continue
     }
@@ -93,9 +113,11 @@ export function extractNewContent(diff: string): string {
       // Lines starting with '+' are added (include without the +)
       if (line.startsWith('+')) {
         result.push(line.slice(1))
+        currentLine++
       } else if (line.startsWith(' ') || line === '') {
         // Context lines (start with space) or empty lines
         result.push(line.startsWith(' ') ? line.slice(1) : line)
+        currentLine++
       }
     }
   }
@@ -105,10 +127,12 @@ export function extractNewContent(diff: string): string {
 
 // Extract the old file content from a unified diff
 // This reconstructs what the file looked like before the changes
+// Pads with empty lines to preserve line numbers for syntax highlighting
 export function extractOldContent(diff: string): string {
   const lines = diff.split('\n')
   const result: string[] = []
   let inHunk = false
+  let currentLine = 1
 
   for (const line of lines) {
     // Skip diff metadata
@@ -123,8 +147,16 @@ export function extractOldContent(diff: string): string {
       continue
     }
 
-    // Start of a hunk
+    // Start of a hunk - pad to reach the correct line number
     if (line.startsWith('@@')) {
+      const header = parseHunkHeader(line)
+      if (header && header.oldStart > currentLine) {
+        // Pad with empty lines to reach the hunk's starting line
+        while (currentLine < header.oldStart) {
+          result.push('')
+          currentLine++
+        }
+      }
       inHunk = true
       continue
     }
@@ -137,9 +169,11 @@ export function extractOldContent(diff: string): string {
       // Lines starting with '-' are removed (include without the -)
       if (line.startsWith('-')) {
         result.push(line.slice(1))
+        currentLine++
       } else if (line.startsWith(' ') || line === '') {
         // Context lines (start with space) or empty lines
         result.push(line.startsWith(' ') ? line.slice(1) : line)
+        currentLine++
       }
     }
   }
