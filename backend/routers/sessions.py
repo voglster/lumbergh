@@ -34,7 +34,7 @@ from git_utils import (
     reset_to_head,
     stage_all_and_commit,
 )
-from models import CheckoutInput, CommitInput, ScratchpadContent, SessionUpdate, TodoList
+from models import CheckoutInput, CommitInput, CreateSessionRequest, ScratchpadContent, SessionUpdate, TodoList
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 directories_router = APIRouter(prefix="/api/directories", tags=["directories"])
@@ -192,13 +192,8 @@ async def update_session(name: str, body: SessionUpdate):
 
 
 @router.post("")
-async def create_session(body):
+async def create_session(body: CreateSessionRequest):
     """Create a new tmux session."""
-    from models import CreateSessionRequest
-
-    # Validate input
-    if not isinstance(body, CreateSessionRequest):
-        body = CreateSessionRequest(**body.dict() if hasattr(body, "dict") else body)
 
     if not SESSION_NAME_PATTERN.match(body.name):
         raise HTTPException(
