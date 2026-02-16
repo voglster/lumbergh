@@ -19,6 +19,7 @@ from git_utils import (
     get_current_branch,
     get_full_diff_with_untracked,
     get_porcelain_status,
+    git_push,
     reset_to_head,
     stage_all_and_commit,
 )
@@ -137,6 +138,20 @@ async def git_reset():
         result = reset_to_head(PROJECT_ROOT)
         if "error" in result:
             raise HTTPException(status_code=500, detail=result["error"])
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/git/push")
+async def git_push_endpoint():
+    """Push commits to remote repository."""
+    try:
+        result = git_push(PROJECT_ROOT)
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
         return result
     except HTTPException:
         raise

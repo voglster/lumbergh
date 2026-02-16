@@ -28,6 +28,7 @@ export default function FileList({
   const [isCommitting, setIsCommitting] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
+  const [isPushing, setIsPushing] = useState(false)
   const [commitResult, setCommitResult] = useState<{
     type: 'success' | 'error'
     message: string
@@ -47,6 +48,11 @@ export default function FileList({
   const resetUrl = sessionName
     ? `http://${apiHost}/api/sessions/${sessionName}/git/reset`
     : `http://${apiHost}/api/git/reset`
+
+  // Build push URL
+  const pushUrl = sessionName
+    ? `http://${apiHost}/api/sessions/${sessionName}/git/push`
+    : `http://${apiHost}/api/git/push`
 
   const handleReset = async () => {
     if (
@@ -73,6 +79,28 @@ export default function FileList({
       setCommitResult({ type: 'error', message: 'Failed to reset changes' })
     } finally {
       setIsResetting(false)
+      setTimeout(() => setCommitResult(null), 3000)
+    }
+  }
+
+  const handlePush = async () => {
+    setIsPushing(true)
+    setCommitResult(null)
+    try {
+      const res = await fetch(pushUrl, { method: 'POST' })
+      const result = await res.json()
+      if (!res.ok) {
+        setCommitResult({ type: 'error', message: result.detail || 'Push failed' })
+      } else {
+        setCommitResult({
+          type: 'success',
+          message: `Pushed ${result.branch} to ${result.remote}`,
+        })
+      }
+    } catch {
+      setCommitResult({ type: 'error', message: 'Failed to push' })
+    } finally {
+      setIsPushing(false)
       setTimeout(() => setCommitResult(null), 3000)
     }
   }
@@ -185,10 +213,20 @@ export default function FileList({
           >
             ↻
           </button>
+          {isWorkingChanges && (
+            <button
+              onClick={handlePush}
+              disabled={isPushing || isResetting || isCommitting || isGenerating}
+              className="px-2 py-1 text-gray-400 hover:text-blue-400 disabled:text-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
+              title="Push to remote"
+            >
+              {isPushing ? '...' : '↑'}
+            </button>
+          )}
           {isWorkingChanges && hasChanges && (
             <button
               onClick={handleReset}
-              disabled={isResetting || isCommitting || isGenerating}
+              disabled={isResetting || isCommitting || isGenerating || isPushing}
               className="px-2 py-1 text-gray-400 hover:text-red-400 disabled:text-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
               title="Revert all changes"
             >
@@ -209,12 +247,12 @@ export default function FileList({
               placeholder="Commit message..."
               rows={commitMessage.includes('\n') ? 3 : 1}
               className="flex-1 px-3 py-2 bg-gray-700 text-white text-sm rounded border border-gray-600 focus:outline-none focus:border-blue-500 resize-none"
-              disabled={isCommitting || isGenerating}
+              disabled={isCommitting || isGenerating || isPushing}
             />
             <div className="flex flex-col gap-2 shrink-0">
               <button
                 onClick={handleCommit}
-                disabled={!commitMessage.trim() || isCommitting || isGenerating || isResetting}
+                disabled={!commitMessage.trim() || isCommitting || isGenerating || isResetting || isPushing}
                 className="px-3 py-2 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
                 title="Commit changes (Ctrl/Cmd+Enter)"
               >
@@ -223,7 +261,7 @@ export default function FileList({
               {generateUrl && hasChanges && (
                 <button
                   onClick={handleGenerate}
-                  disabled={isGenerating || isCommitting || isResetting}
+                  disabled={isGenerating || isCommitting || isResetting || isPushing}
                   className="px-3 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
                   title="Generate commit message with AI"
                 >

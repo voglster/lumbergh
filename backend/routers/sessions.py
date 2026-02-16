@@ -29,6 +29,7 @@ from git_utils import (
     get_current_branch,
     get_full_diff_with_untracked,
     get_porcelain_status,
+    git_push,
     reset_to_head,
     stage_all_and_commit,
 )
@@ -390,6 +391,22 @@ async def session_git_reset(name: str):
         result = reset_to_head(workdir)
         if "error" in result:
             raise HTTPException(status_code=500, detail=result["error"])
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{name}/git/push")
+async def session_git_push(name: str):
+    """Push commits to remote in a session's workdir."""
+    workdir = get_session_workdir(name)
+
+    try:
+        result = git_push(workdir)
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
         return result
     except HTTPException:
         raise

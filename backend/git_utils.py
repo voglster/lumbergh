@@ -444,3 +444,61 @@ def reset_to_head(cwd: Path) -> dict:
         }
     except GitCommandError as e:
         return {"error": f"git reset failed: {e}"}
+
+
+def git_push(cwd: Path) -> dict:
+    """
+    Push commits to the remote repository.
+
+    Returns:
+        Dict with status, remote, branch, and message on success, or error on failure
+    """
+    try:
+        repo = get_repo(cwd)
+    except InvalidGitRepositoryError:
+        return {"error": "Not a git repository"}
+
+    # Check for detached HEAD
+    if repo.head.is_detached:
+        return {"error": "Cannot push: HEAD is detached"}
+
+    branch = repo.active_branch
+
+    # Check for tracking branch
+    tracking = branch.tracking_branch()
+    if tracking:
+        remote_name = tracking.remote_name
+    else:
+        # Default to origin if no tracking branch
+        try:
+            remote_name = "origin"
+            repo.remote(remote_name)
+        except ValueError:
+            return {"error": "No remote configured"}
+
+    try:
+        remote = repo.remote(remote_name)
+        push_info = remote.push(branch.name)
+
+        # Check push result
+        for info in push_info:
+            if info.flags & info.ERROR:
+                return {"error": f"Push failed: {info.summary}"}
+            if info.flags & info.REJECTED:
+                return {"error": "Push rejected: non-fast-forward update. Pull first."}
+            if info.flags & info.REMOTE_REJECTED:
+                return {"error": f"Push rejected by remote: {info.summary}"}
+
+        return {
+            "status": "pushed",
+            "remote": remote_name,
+            "branch": branch.name,
+            "message": f"Pushed {branch.name} to {remote_name}",
+        }
+    except GitCommandError as e:
+        error_msg = str(e)
+        if "Could not read from remote repository" in error_msg:
+            return {"error": "Push failed: Could not connect to remote repository"}
+        if "Authentication failed" in error_msg or "Permission denied" in error_msg:
+            return {"error": "Push failed: Authentication error"}
+        return {"error": f"Push failed: {e}"}
