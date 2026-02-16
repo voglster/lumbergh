@@ -11,6 +11,7 @@ interface TerminalProps {
   onSendReady?: (send: ((data: string) => void) | null) => void
   onFocusReady?: (focus: () => void) => void
   onBack?: () => void
+  isVisible?: boolean
 }
 
 export default function Terminal({
@@ -19,6 +20,7 @@ export default function Terminal({
   onSendReady,
   onFocusReady,
   onBack,
+  isVisible = true,
 }: TerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<XTerm | null>(null)
@@ -109,15 +111,22 @@ export default function Terminal({
       }
 
       fitAddonRef.current.fit()
+      // Force canvas repaint - needed on mobile after layout changes
+      termRef.current.refresh(0, termRef.current.rows - 1)
       sendResizeRef.current(termRef.current.cols, termRef.current.rows)
     }
   }, [])
 
   // Handle connection - fit to ensure correct size is sent
+  // Double RAF handles initial render timing, delayed call handles mobile layout settling
   const handleConnect = useCallback(() => {
     requestAnimationFrame(() => {
-      handleFit()
+      requestAnimationFrame(() => {
+        handleFit()
+      })
     })
+    // Mobile browsers may need additional time for layout to settle
+    setTimeout(handleFit, 100)
   }, [handleFit])
 
   const { send, sendResize, isConnected, error, sessionDead } = useTerminalSocket({
@@ -259,33 +268,18 @@ export default function Terminal({
     }
   }, [handleFit])
 
-  // Refresh terminal when it becomes visible (handles tab switching on mobile)
-  // The canvas doesn't repaint existing content when hidden/shown, so we force a refresh
+  // Refresh terminal when visibility changes (handles mobile tab switching)
+  // IntersectionObserver doesn't work with display:none, so we use explicit prop
   useEffect(() => {
-    if (!containerRef.current) return
-
-    const intersectionObserver = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0]
-        if (entry?.isIntersecting && termRef.current) {
-          requestAnimationFrame(() => {
-            if (termRef.current) {
-              // Force full redraw of all terminal content
-              termRef.current.refresh(0, termRef.current.rows - 1)
-              handleFit()
-            }
-          })
-        }
-      },
-      { threshold: 0.1 }
-    )
-
-    intersectionObserver.observe(containerRef.current)
-
-    return () => {
-      intersectionObserver.disconnect()
+    if (isVisible && termRef.current && containerRef.current) {
+      // Double RAF ensures layout is complete after display:none removal
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          handleFit()
+        })
+      })
     }
-  }, [handleFit])
+  }, [isVisible, handleFit])
 
   // Update terminal font size when it changes
   useEffect(() => {

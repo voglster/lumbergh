@@ -101,6 +101,7 @@ export default function SessionDetail() {
           apiHost={apiHost}
           onFocusReady={handleFocusReady}
           onBack={isDesktop ? () => navigate('/') : undefined}
+          isVisible={isDesktop || mobileTab === 'terminal'}
         />
       ) : (
         <div className="flex items-center justify-center h-full text-gray-500">

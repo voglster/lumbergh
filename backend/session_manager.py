@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 
 from fastapi import WebSocket
 
-from tmux_pty import TmuxPtySession
+from tmux_pty import TmuxPtySession, capture_pane_content
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +54,7 @@ class SessionManager:
         """
         Register a WebSocket client for a tmux session.
         Creates the PTY if this is the first client.
+        Sends current pane content to new client for immediate display.
         """
         async with self._lock:
             if session_name not in self._sessions:
@@ -73,7 +74,21 @@ class SessionManager:
 
             managed.clients.add(websocket)
             logger.info(f"Session {session_name}: {len(managed.clients)} client(s) connected")
-            return managed
+
+        # Send current pane content to the new client (outside lock to avoid blocking)
+        try:
+            loop = asyncio.get_event_loop()
+            content = await loop.run_in_executor(None, capture_pane_content, session_name)
+            if content:
+                await websocket.send_json({
+                    "type": "output",
+                    "data": content
+                })
+                logger.info(f"Sent initial pane capture to client ({len(content)} chars)")
+        except Exception as e:
+            logger.warning(f"Failed to send initial pane capture: {e}")
+
+        return managed
 
     async def unregister_client(self, session_name: str, websocket: WebSocket) -> None:
         """

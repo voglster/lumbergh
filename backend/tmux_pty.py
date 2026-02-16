@@ -41,6 +41,30 @@ def get_session_pane_id(session_name: str) -> str:
     return pane.id
 
 
+def capture_pane_content(session_name: str) -> str:
+    """Capture the current visible content of the active pane.
+
+    Returns the terminal content with ANSI escape codes preserved.
+    """
+    server = libtmux.Server()
+    session = server.sessions.get(session_name=session_name)
+    if not session:
+        return ""
+
+    window = session.active_window
+    pane = window.active_pane
+
+    # capture_pane returns the pane content
+    # escape_sequences=True includes ANSI escape codes (colors)
+    try:
+        content = pane.capture_pane(start="-", end="-", escape_sequences=True)
+        if isinstance(content, list):
+            return "\r\n".join(content) + "\r\n"
+        return str(content) + "\r\n"
+    except Exception:
+        return ""
+
+
 class TmuxPtySession:
     """
     Manages a PTY connected to a tmux session for bidirectional I/O.
