@@ -34,7 +34,7 @@ from git_utils import (
     reset_to_head,
     stage_all_and_commit,
 )
-from models import CheckoutInput, CommitInput, ScratchpadContent, TodoList
+from models import CheckoutInput, CommitInput, ScratchpadContent, SessionUpdate, TodoList
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 directories_router = APIRouter(prefix="/api/directories", tags=["directories"])
@@ -143,6 +143,7 @@ async def list_sessions():
                 "name": name,
                 "workdir": meta.get("workdir", ""),
                 "description": meta.get("description", ""),
+                "displayName": meta.get("displayName", ""),
                 "alive": live_info.get("alive", False),
                 "attached": live_info.get("attached", False),
                 "windows": live_info.get("windows", 0),
@@ -157,6 +158,7 @@ async def list_sessions():
                     "name": name,
                     "workdir": None,
                     "description": None,
+                    "displayName": "",
                     "alive": True,
                     "attached": live_info.get("attached", False),
                     "windows": live_info.get("windows", 0),
@@ -164,6 +166,29 @@ async def list_sessions():
             )
 
     return {"sessions": sessions}
+
+
+@router.patch("/{name}")
+async def update_session(name: str, body: SessionUpdate):
+    """Update session metadata (e.g., displayName)."""
+    Session = Query()
+    existing = sessions_table.get(Session.name == name)
+
+    if not existing:
+        # Check if it's an orphan tmux session
+        live = get_live_sessions()
+        if name not in live:
+            raise HTTPException(status_code=404, detail=f"Session '{name}' not found")
+        # Create a new record for the orphan session
+        existing = {"name": name}
+
+    # Update fields
+    if body.displayName is not None:
+        existing["displayName"] = body.displayName
+
+    sessions_table.upsert(existing, Session.name == name)
+
+    return existing
 
 
 @router.post("")

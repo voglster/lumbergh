@@ -7,6 +7,7 @@ interface Session {
   name: string
   workdir: string | null
   description: string | null
+  displayName: string | null
   alive: boolean
   attached: boolean
   windows: number
@@ -56,6 +57,26 @@ export default function Dashboard() {
       fetchSessions()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete session')
+    }
+  }
+
+  const handleRename = async (name: string, displayName: string) => {
+    try {
+      const res = await fetch(`http://${apiHost}/api/sessions/${name}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ displayName }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.detail || 'Failed to rename session')
+      }
+      // Refresh sessions list
+      fetchSessions()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to rename session')
     }
   }
 
@@ -152,7 +173,7 @@ export default function Dashboard() {
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {aliveSessions.map((session) => (
-                    <SessionCard key={session.name} session={session} onDelete={handleDelete} />
+                    <SessionCard key={session.name} session={session} onDelete={handleDelete} onRename={handleRename} />
                   ))}
                 </div>
               </section>
@@ -166,7 +187,7 @@ export default function Dashboard() {
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {deadSessions.map((session) => (
-                    <SessionCard key={session.name} session={session} onDelete={handleDelete} />
+                    <SessionCard key={session.name} session={session} onDelete={handleDelete} onRename={handleRename} />
                   ))}
                 </div>
               </section>

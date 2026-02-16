@@ -71,3 +71,9 @@ class CreateSessionRequest(BaseModel):
     name: str
     workdir: str
     description: str = ""
+
+
+class SessionUpdate(BaseModel):
+    """Request to update session metadata."""
+
+    displayName: str | None = None
