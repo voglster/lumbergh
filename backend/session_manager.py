@@ -1,13 +1,15 @@
 """
-Session manager for PTY pooling - ensures one PTY per tmux session.
+Session manager for per-client PTY pooling.
 
-This prevents React StrictMode double-mounts from creating multiple
-tmux attach-session processes for the same session.
+Each WebSocket client gets its own `tmux attach-session` PTY process.
+tmux window-size is set to 'largest' so the biggest client (typically desktop)
+determines the window size, preventing desktop from shrinking when mobile connects.
 """
 
 import asyncio
 import logging
-from dataclasses import dataclass, field
+import subprocess
+from dataclasses import dataclass
 
 from fastapi import WebSocket
 
@@ -17,21 +19,29 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class ManagedSession:
-    """A PTY session with multiple connected WebSocket clients."""
+class ClientConnection:
+    """A single client's PTY connection to a tmux session."""
 
+    websocket: WebSocket
     pty: TmuxPtySession
-    clients: set[WebSocket] = field(default_factory=set)
     read_task: asyncio.Task | None = None
+
+
+@dataclass
+class ManagedSession:
+    """A tmux session with multiple connected clients, each with their own PTY."""
+
+    clients: dict  # WebSocket -> ClientConnection
 
 
 class SessionManager:
     """
     Singleton manager for PTY sessions.
 
-    - One PTY per tmux session name (no duplicates)
-    - Multiple WebSocket clients can share a PTY
-    - PTY closes only when last client disconnects
+    - One PTY per WebSocket client (each gets its own tmux attach-session)
+    - tmux handles multi-client sizing natively
+    - PTY closes when its client disconnects
+    - Session entry removed when last client leaves
     """
 
     _instance: "SessionManager | None" = None
@@ -50,30 +60,40 @@ class SessionManager:
             self._lock: asyncio.Lock = asyncio.Lock()
             self._initialized = True
 
-    async def register_client(self, session_name: str, websocket: WebSocket) -> ManagedSession:
+    async def register_client(self, session_name: str, websocket: WebSocket) -> None:
         """
         Register a WebSocket client for a tmux session.
-        Creates the PTY if this is the first client.
-        Sends current pane content to new client for immediate display.
+        Creates a dedicated PTY for this client.
+        Sends current pane content to client for immediate display.
         """
+        # Create a new PTY for this client
+        logger.info(f"Creating new PTY for client on session: {session_name}")
+        pty = TmuxPtySession(session_name)
+        pty.spawn()
+
+        conn = ClientConnection(websocket=websocket, pty=pty)
+
         async with self._lock:
             if session_name not in self._sessions:
-                # Create new PTY for this session
-                logger.info(f"Creating new PTY for session: {session_name}")
-                pty = TmuxPtySession(session_name)
-                pty.spawn()
+                self._sessions[session_name] = ManagedSession(clients={})
+                # Set window-size to 'largest' so the biggest client (desktop)
+                # determines the window size. Mobile sees wider content but that's
+                # acceptable; prevents desktop from shrinking when mobile connects.
+                subprocess.run(
+                    ["tmux", "set-option", "-t", session_name, "window-size", "largest"],
+                    capture_output=True,
+                )
 
-                managed = ManagedSession(pty=pty)
-                self._sessions[session_name] = managed
+            managed = self._sessions[session_name]
+            managed.clients[websocket] = conn
 
-                # Start the read loop task
-                managed.read_task = asyncio.create_task(self._broadcast_loop(session_name))
-            else:
-                logger.info(f"Reusing existing PTY for session: {session_name}")
-                managed = self._sessions[session_name]
+            client_count = len(managed.clients)
+            logger.info(f"Session {session_name}: {client_count} client(s) connected")
 
-            managed.clients.add(websocket)
-            logger.info(f"Session {session_name}: {len(managed.clients)} client(s) connected")
+        # Start the per-client read loop
+        conn.read_task = asyncio.create_task(
+            self._client_read_loop(session_name, websocket)
+        )
 
         # Send current pane content to the new client (outside lock to avoid blocking)
         try:
@@ -88,61 +108,74 @@ class SessionManager:
         except Exception as e:
             logger.warning(f"Failed to send initial pane capture: {e}")
 
-        return managed
-
     async def unregister_client(self, session_name: str, websocket: WebSocket) -> None:
         """
         Unregister a WebSocket client.
-        Closes the PTY if this was the last client.
+        Closes only this client's PTY.
+        Removes the session entry when the last client leaves.
         """
         async with self._lock:
             if session_name not in self._sessions:
                 return
 
             managed = self._sessions[session_name]
-            managed.clients.discard(websocket)
+            conn = managed.clients.pop(websocket, None)
 
-            logger.info(f"Session {session_name}: {len(managed.clients)} client(s) remaining")
-
-            if not managed.clients:
-                # Last client disconnected, cleanup
-                logger.info(f"Closing PTY for session: {session_name}")
-
-                if managed.read_task:
-                    managed.read_task.cancel()
+            if conn:
+                # Cancel this client's read loop
+                if conn.read_task:
+                    conn.read_task.cancel()
                     try:
-                        await managed.read_task
+                        await conn.read_task
                     except asyncio.CancelledError:
                         pass
 
-                managed.pty.close()
-                del self._sessions[session_name]
+                # Close this client's PTY
+                conn.pty.close()
+                logger.info(f"Closed PTY for client on session: {session_name}")
 
-    async def _broadcast_loop(self, session_name: str) -> None:
-        """Read from PTY and broadcast to all connected clients."""
+            remaining = len(managed.clients)
+            logger.info(f"Session {session_name}: {remaining} client(s) remaining")
+
+            if not managed.clients:
+                del self._sessions[session_name]
+                logger.info(f"Removed session entry: {session_name}")
+
+    async def _client_read_loop(self, session_name: str, websocket: WebSocket) -> None:
+        """Read from one client's PTY and send to that client's websocket."""
         loop = asyncio.get_event_loop()
         consecutive_eof = 0
 
+        # Get the connection for this client
+        async with self._lock:
+            managed = self._sessions.get(session_name)
+            if not managed:
+                return
+            conn = managed.clients.get(websocket)
+            if not conn:
+                return
+
         while True:
             try:
-                # Check if session still exists
-                if session_name not in self._sessions:
-                    break
-
-                managed = self._sessions[session_name]
-
                 await asyncio.sleep(0.01)  # Prevent busy loop
-                data = await loop.run_in_executor(None, managed.pty.read)
+                data = await loop.run_in_executor(None, conn.pty.read)
 
                 # Handle EOF (empty bytes) - possible session death
                 if data == b'':
                     consecutive_eof += 1
                     if consecutive_eof >= 3:
-                        # Verify session is actually dead
-                        is_alive = await loop.run_in_executor(None, managed.pty.is_alive)
+                        is_alive = await loop.run_in_executor(None, conn.pty.is_alive)
                         if not is_alive:
-                            logger.warning(f"Session {session_name} died, notifying clients")
-                            await self._notify_session_dead(session_name)
+                            logger.warning(
+                                f"Session {session_name} died, notifying client"
+                            )
+                            try:
+                                await websocket.send_json({
+                                    "type": "session_dead",
+                                    "message": f"Session '{session_name}' has terminated",
+                                })
+                            except Exception:
+                                pass
                             break
                     continue
 
@@ -153,73 +186,41 @@ class SessionManager:
                         "type": "output",
                         "data": data.decode("utf-8", errors="replace"),
                     }
-
-                    # Broadcast to all clients
-                    disconnected = []
-                    for client in list(managed.clients):
-                        try:
-                            await client.send_json(message)
-                        except Exception:
-                            disconnected.append(client)
-
-                    # Remove disconnected clients
-                    for client in disconnected:
-                        managed.clients.discard(client)
+                    try:
+                        await websocket.send_json(message)
+                    except Exception:
+                        break
 
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"Broadcast loop error: {e}")
+                logger.error(f"Client read loop error: {e}")
                 break
-
-    async def _notify_session_dead(self, session_name: str) -> None:
-        """Send session_dead message to all connected clients."""
-        if session_name not in self._sessions:
-            return
-        managed = self._sessions[session_name]
-        message = {
-            "type": "session_dead",
-            "message": f"Session '{session_name}' has terminated",
-        }
-        for client in list(managed.clients):
-            try:
-                await client.send_json(message)
-            except Exception:
-                pass
 
     async def handle_client_message(
         self, session_name: str, message: dict, sender: WebSocket | None = None
     ) -> None:
-        """Handle a message from a WebSocket client."""
-        if session_name not in self._sessions:
+        """Handle a message from a WebSocket client, routing to that client's PTY."""
+        if not sender:
             return
 
-        managed = self._sessions[session_name]
+        async with self._lock:
+            managed = self._sessions.get(session_name)
+            if not managed:
+                return
+            conn = managed.clients.get(sender)
+            if not conn:
+                return
 
         if message.get("type") == "input":
             data = message.get("data", "")
             if data:
-                managed.pty.write(data.encode("utf-8"))
+                conn.pty.write(data.encode("utf-8"))
 
         elif message.get("type") == "resize":
             cols = message.get("cols", 80)
             rows = message.get("rows", 24)
-            managed.pty.resize(cols, rows)
-
-            # Notify all OTHER clients so they can sync their terminal dimensions
-            # This prevents garbled text when multiple clients have different sizes
-            if sender and len(managed.clients) > 1:
-                sync_msg = {"type": "resize_sync", "cols": cols, "rows": rows}
-                for client in list(managed.clients):
-                    if client is not sender:
-                        try:
-                            await client.send_json(sync_msg)
-                        except Exception:
-                            pass
-
-    def get_session(self, session_name: str) -> ManagedSession | None:
-        """Get a managed session by name."""
-        return self._sessions.get(session_name)
+            conn.pty.resize(cols, rows)
 
 
 # Global singleton instance

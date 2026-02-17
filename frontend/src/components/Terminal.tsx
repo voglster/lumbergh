@@ -29,8 +29,6 @@ export default function Terminal({
   const sendResizeRef = useRef<(cols: number, rows: number) => void>(() => {})
   // Track last known dimensions for stability check
   const lastDimensionsRef = useRef<{ width: number; height: number } | null>(null)
-  // Track whether a remote client resized the PTY (cleared on local re-fit)
-  const remotelySizedRef = useRef(false)
 
   // Font size state with localStorage persistence
   const [fontSize, setFontSize] = useState(() => {
@@ -119,16 +117,6 @@ export default function Terminal({
     }
   }, [])
 
-  // Handle resize sync from another client (e.g., mobile resized while desktop is open)
-  // Adjusts xterm.js to match the actual PTY size to prevent garbled rendering
-  const handleResizeSync = useCallback((cols: number, rows: number) => {
-    if (termRef.current) {
-      remotelySizedRef.current = true
-      termRef.current.resize(cols, rows)
-      termRef.current.refresh(0, termRef.current.rows - 1)
-    }
-  }, [])
-
   // Handle connection - fit to ensure correct size is sent
   // Double RAF handles initial render timing, delayed call handles mobile layout settling
   const handleConnect = useCallback(() => {
@@ -141,11 +129,10 @@ export default function Terminal({
     setTimeout(handleFit, 100)
   }, [handleFit])
 
-  const { send, sendResize, isConnected, error, sessionDead } = useTerminalSocket({
+  const { send, sendResize, isConnected, error, reconnecting, sessionDead } = useTerminalSocket({
     sessionName,
     apiHost,
     onData: handleData,
-    onResizeSync: handleResizeSync,
     onConnect: handleConnect,
   })
 
@@ -229,14 +216,7 @@ export default function Terminal({
     })
 
     // Track focus state for click shield (desktop only)
-    // Re-fit on focus only if a remote client changed the PTY size
-    const handleFocus = () => {
-      setHasFocus(true)
-      if (remotelySizedRef.current) {
-        remotelySizedRef.current = false
-        handleFit()
-      }
-    }
+    const handleFocus = () => setHasFocus(true)
     const handleBlur = () => setHasFocus(false)
     term.element?.addEventListener('focusin', handleFocus)
     term.element?.addEventListener('focusout', handleBlur)
@@ -506,8 +486,15 @@ export default function Terminal({
         )}
       </div>
 
+      {/* Reconnecting indicator */}
+      {reconnecting && !sessionDead && (
+        <div className="bg-yellow-900/80 text-yellow-200 px-2 py-1 text-sm">
+          Reconnecting...
+        </div>
+      )}
+
       {/* Error display (only show if session is not dead - dead sessions have their own overlay) */}
-      {error && !sessionDead && (
+      {error && !sessionDead && !reconnecting && (
         <div className="bg-red-900/80 text-red-200 px-2 py-1 text-sm">{error}</div>
       )}
 
