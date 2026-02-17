@@ -249,22 +249,16 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
                       onDragStart={() => handleDragStart(index)}
                       onDragOver={(e) => handleDragOver(e, index)}
                       onDragEnd={handleDragEnd}
-                      className="flex items-center gap-3 p-3 cursor-grab active:cursor-grabbing"
+                      className="flex items-center gap-3 px-3 py-1 cursor-grab active:cursor-grabbing"
                     >
                       <span className="text-gray-600 select-none">⠿</span>
                       <button
                         onClick={() => handleToggleExpand(index)}
-                        className="text-gray-500 hover:text-gray-300 transition-colors"
+                        className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-300 hover:bg-gray-700 rounded transition-colors text-xl"
                         title={expandedIndex === index ? 'Collapse' : 'Expand'}
                       >
-                        {expandedIndex === index ? '▼' : '▶'}
+                        {expandedIndex === index ? '⌄' : '›'}
                       </button>
-                      <input
-                        type="checkbox"
-                        checked={todo.done}
-                        onChange={() => handleToggle(index)}
-                        className="w-5 h-5 rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
-                      />
                       {editingIndex === index ? (
                         <input
                           type="text"
@@ -308,6 +302,12 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
                           </button>
                         </>
                       )}
+                      <input
+                        type="checkbox"
+                        checked={todo.done}
+                        onChange={() => handleToggle(index)}
+                        className="w-5 h-5 rounded bg-gray-800 border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900 accent-blue-500"
+                      />
                     </div>
                     {expandedIndex === index && (
                       <div className="px-3 pb-3 pt-0">
