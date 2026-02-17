@@ -37,23 +37,40 @@ export default function ResizablePanes({
     setIsDragging(true)
   }, [])
 
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (!isDragging || !containerRef.current) return
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }, [])
 
-      const container = containerRef.current
-      const rect = container.getBoundingClientRect()
-      const x = e.clientX - rect.left
+  const updateWidth = useCallback(
+    (clientX: number) => {
+      if (!containerRef.current) return
+      const rect = containerRef.current.getBoundingClientRect()
+      const x = clientX - rect.left
       const percentage = (x / rect.width) * 100
-
-      // Clamp to min/max
       const clamped = Math.min(Math.max(percentage, minLeftWidth), maxLeftWidth)
       setLeftWidth(clamped)
     },
-    [isDragging, minLeftWidth, maxLeftWidth]
+    [minLeftWidth, maxLeftWidth]
   )
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isDragging) return
+      updateWidth(e.clientX)
+    },
+    [isDragging, updateWidth]
+  )
+
+  const handleTouchMove = useCallback(
+    (e: TouchEvent) => {
+      if (!isDragging) return
+      updateWidth(e.touches[0].clientX)
+    },
+    [isDragging, updateWidth]
+  )
+
+  const handleEnd = useCallback(() => {
     setIsDragging(false)
   }, [])
 
@@ -67,7 +84,9 @@ export default function ResizablePanes({
   useEffect(() => {
     if (isDragging) {
       document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
+      document.addEventListener('mouseup', handleEnd)
+      document.addEventListener('touchmove', handleTouchMove)
+      document.addEventListener('touchend', handleEnd)
       // Prevent text selection while dragging
       document.body.style.userSelect = 'none'
       document.body.style.cursor = 'col-resize'
@@ -75,11 +94,13 @@ export default function ResizablePanes({
 
     return () => {
       document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
+      document.removeEventListener('mouseup', handleEnd)
+      document.removeEventListener('touchmove', handleTouchMove)
+      document.removeEventListener('touchend', handleEnd)
       document.body.style.userSelect = ''
       document.body.style.cursor = ''
     }
-  }, [isDragging, handleMouseMove, handleMouseUp])
+  }, [isDragging, handleMouseMove, handleTouchMove, handleEnd])
 
   return (
     <div ref={containerRef} className="flex h-full">
@@ -91,7 +112,8 @@ export default function ResizablePanes({
       {/* Splitter */}
       <div
         onMouseDown={handleMouseDown}
-        className={`w-1 bg-gray-700 hover:bg-blue-500 cursor-col-resize transition-colors flex-shrink-0 ${
+        onTouchStart={handleTouchStart}
+        className={`w-1 bg-gray-700 hover:bg-blue-500 cursor-col-resize transition-colors flex-shrink-0 touch-none ${
           isDragging ? 'bg-blue-500' : ''
         }`}
       />

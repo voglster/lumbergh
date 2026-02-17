@@ -4,6 +4,7 @@ interface UseTerminalSocketOptions {
   sessionName: string
   apiHost: string
   onData: (data: string) => void
+  onResizeSync?: (cols: number, rows: number) => void
   onConnect?: () => void
   onDisconnect?: () => void
 }
@@ -20,6 +21,7 @@ export function useTerminalSocket({
   sessionName,
   apiHost,
   onData,
+  onResizeSync,
   onConnect,
   onDisconnect,
 }: UseTerminalSocketOptions): UseTerminalSocketResult {
@@ -33,14 +35,16 @@ export function useTerminalSocket({
 
   // Store callbacks in refs to avoid recreating connect() on every render
   const onDataRef = useRef(onData)
+  const onResizeSyncRef = useRef(onResizeSync)
   const onConnectRef = useRef(onConnect)
   const onDisconnectRef = useRef(onDisconnect)
 
   useEffect(() => {
     onDataRef.current = onData
+    onResizeSyncRef.current = onResizeSync
     onConnectRef.current = onConnect
     onDisconnectRef.current = onDisconnect
-  }, [onData, onConnect, onDisconnect])
+  }, [onData, onResizeSync, onConnect, onDisconnect])
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -68,6 +72,8 @@ export function useTerminalSocket({
         const message = JSON.parse(event.data)
         if (message.type === 'output') {
           onDataRef.current(message.data)
+        } else if (message.type === 'resize_sync') {
+          onResizeSyncRef.current?.(message.cols, message.rows)
         } else if (message.type === 'error') {
           setError(message.message)
         } else if (message.type === 'session_dead' || message.type === 'session_not_found') {

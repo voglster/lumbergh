@@ -29,6 +29,8 @@ export default function Terminal({
   const sendResizeRef = useRef<(cols: number, rows: number) => void>(() => {})
   // Track last known dimensions for stability check
   const lastDimensionsRef = useRef<{ width: number; height: number } | null>(null)
+  // Track whether a remote client resized the PTY (cleared on local re-fit)
+  const remotelySizedRef = useRef(false)
 
   // Font size state with localStorage persistence
   const [fontSize, setFontSize] = useState(() => {
@@ -117,6 +119,16 @@ export default function Terminal({
     }
   }, [])
 
+  // Handle resize sync from another client (e.g., mobile resized while desktop is open)
+  // Adjusts xterm.js to match the actual PTY size to prevent garbled rendering
+  const handleResizeSync = useCallback((cols: number, rows: number) => {
+    if (termRef.current) {
+      remotelySizedRef.current = true
+      termRef.current.resize(cols, rows)
+      termRef.current.refresh(0, termRef.current.rows - 1)
+    }
+  }, [])
+
   // Handle connection - fit to ensure correct size is sent
   // Double RAF handles initial render timing, delayed call handles mobile layout settling
   const handleConnect = useCallback(() => {
@@ -133,6 +145,7 @@ export default function Terminal({
     sessionName,
     apiHost,
     onData: handleData,
+    onResizeSync: handleResizeSync,
     onConnect: handleConnect,
   })
 
@@ -216,7 +229,14 @@ export default function Terminal({
     })
 
     // Track focus state for click shield (desktop only)
-    const handleFocus = () => setHasFocus(true)
+    // Re-fit on focus only if a remote client changed the PTY size
+    const handleFocus = () => {
+      setHasFocus(true)
+      if (remotelySizedRef.current) {
+        remotelySizedRef.current = false
+        handleFit()
+      }
+    }
     const handleBlur = () => setHasFocus(false)
     term.element?.addEventListener('focusin', handleFocus)
     term.element?.addEventListener('focusout', handleBlur)
@@ -272,14 +292,44 @@ export default function Terminal({
   // IntersectionObserver doesn't work with display:none, so we use explicit prop
   useEffect(() => {
     if (isVisible && termRef.current && containerRef.current) {
+      // Reset dimension tracking so the next ResizeObserver event always triggers a refit
+      // Without this, switching back to a same-sized container gets skipped by the 5px check
+      lastDimensionsRef.current = null
       // Double RAF ensures layout is complete after display:none removal
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           handleFit()
         })
       })
+      // Additional delayed fit for mobile layout settling (mobile browsers
+      // can take 200-300ms to finalize layout after display:none removal)
+      const timeoutId = setTimeout(handleFit, 300)
+      return () => clearTimeout(timeoutId)
     }
   }, [isVisible, handleFit])
+
+  // Handle browser/app visibility change (mobile app switching, screen lock/unlock)
+  // and orientation changes - both can leave the xterm canvas in a corrupted state
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && termRef.current && isVisible) {
+        lastDimensionsRef.current = null
+        setTimeout(handleFit, 200)
+      }
+    }
+
+    const handleOrientation = () => {
+      lastDimensionsRef.current = null
+      setTimeout(handleFit, 300)
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('orientationchange', handleOrientation)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('orientationchange', handleOrientation)
+    }
+  }, [handleFit, isVisible])
 
   // Update terminal font size when it changes
   useEffect(() => {

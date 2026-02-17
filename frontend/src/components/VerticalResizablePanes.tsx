@@ -37,23 +37,40 @@ export default function VerticalResizablePanes({
     setIsDragging(true)
   }, [])
 
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (!isDragging || !containerRef.current) return
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }, [])
 
-      const container = containerRef.current
-      const rect = container.getBoundingClientRect()
-      const y = e.clientY - rect.top
+  const updateHeight = useCallback(
+    (clientY: number) => {
+      if (!containerRef.current) return
+      const rect = containerRef.current.getBoundingClientRect()
+      const y = clientY - rect.top
       const percentage = (y / rect.height) * 100
-
-      // Clamp to min/max
       const clamped = Math.min(Math.max(percentage, minTopHeight), maxTopHeight)
       setTopHeight(clamped)
     },
-    [isDragging, minTopHeight, maxTopHeight]
+    [minTopHeight, maxTopHeight]
   )
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isDragging) return
+      updateHeight(e.clientY)
+    },
+    [isDragging, updateHeight]
+  )
+
+  const handleTouchMove = useCallback(
+    (e: TouchEvent) => {
+      if (!isDragging) return
+      updateHeight(e.touches[0].clientY)
+    },
+    [isDragging, updateHeight]
+  )
+
+  const handleEnd = useCallback(() => {
     setIsDragging(false)
   }, [])
 
@@ -67,7 +84,9 @@ export default function VerticalResizablePanes({
   useEffect(() => {
     if (isDragging) {
       document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
+      document.addEventListener('mouseup', handleEnd)
+      document.addEventListener('touchmove', handleTouchMove)
+      document.addEventListener('touchend', handleEnd)
       // Prevent text selection while dragging
       document.body.style.userSelect = 'none'
       document.body.style.cursor = 'row-resize'
@@ -75,11 +94,13 @@ export default function VerticalResizablePanes({
 
     return () => {
       document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
+      document.removeEventListener('mouseup', handleEnd)
+      document.removeEventListener('touchmove', handleTouchMove)
+      document.removeEventListener('touchend', handleEnd)
       document.body.style.userSelect = ''
       document.body.style.cursor = ''
     }
-  }, [isDragging, handleMouseMove, handleMouseUp])
+  }, [isDragging, handleMouseMove, handleTouchMove, handleEnd])
 
   return (
     <div ref={containerRef} className="flex flex-col h-full">
@@ -91,7 +112,8 @@ export default function VerticalResizablePanes({
       {/* Splitter */}
       <div
         onMouseDown={handleMouseDown}
-        className={`h-1 bg-gray-700 hover:bg-blue-500 cursor-row-resize transition-colors flex-shrink-0 ${
+        onTouchStart={handleTouchStart}
+        className={`h-1 bg-gray-700 hover:bg-blue-500 cursor-row-resize transition-colors flex-shrink-0 touch-none ${
           isDragging ? 'bg-blue-500' : ''
         }`}
       />

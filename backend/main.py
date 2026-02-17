@@ -286,7 +286,7 @@ async def session_stream(websocket: WebSocket, session_name: str):
         # Read messages from client and forward to PTY
         while True:
             message = await websocket.receive_json()
-            await session_manager.handle_client_message(session_name, message)
+            await session_manager.handle_client_message(session_name, message, sender=websocket)
 
     except ValueError as e:
         # Session doesn't exist (e.g., killed externally)

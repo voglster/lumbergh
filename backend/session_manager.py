@@ -187,7 +187,9 @@ class SessionManager:
             except Exception:
                 pass
 
-    async def handle_client_message(self, session_name: str, message: dict) -> None:
+    async def handle_client_message(
+        self, session_name: str, message: dict, sender: WebSocket | None = None
+    ) -> None:
         """Handle a message from a WebSocket client."""
         if session_name not in self._sessions:
             return
@@ -203,6 +205,17 @@ class SessionManager:
             cols = message.get("cols", 80)
             rows = message.get("rows", 24)
             managed.pty.resize(cols, rows)
+
+            # Notify all OTHER clients so they can sync their terminal dimensions
+            # This prevents garbled text when multiple clients have different sizes
+            if sender and len(managed.clients) > 1:
+                sync_msg = {"type": "resize_sync", "cols": cols, "rows": rows}
+                for client in list(managed.clients):
+                    if client is not sender:
+                        try:
+                            await client.send_json(sync_msg)
+                        except Exception:
+                            pass
 
     def get_session(self, session_name: str) -> ManagedSession | None:
         """Get a managed session by name."""
