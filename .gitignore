@@ -11,6 +11,7 @@ venv/
 # Node
 node_modules/
 dist/
+dev-dist/
 .npm
 
 # IDE

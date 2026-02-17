@@ -285,8 +285,14 @@ export default function Terminal({
   useEffect(() => {
     if (termRef.current) {
       termRef.current.options.fontSize = fontSize
-      handleFit()
       localStorage.setItem('terminal-font-size', String(fontSize))
+      // xterm needs a frame to recalculate character metrics with the new font size
+      // before FitAddon can correctly compute cols/rows for the container
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          handleFit()
+        })
+      })
     }
   }, [fontSize, handleFit])
 
