@@ -128,18 +128,31 @@ def get_stored_sessions() -> dict[str, dict]:
 
 def get_session_status(name: str) -> dict:
     """Get status info for a session from its data DB."""
+    result = {
+        "status": None,
+        "statusUpdatedAt": None,
+        "idleState": None,
+        "idleStateUpdatedAt": None,
+    }
     try:
         session_db = get_session_data_db(name)
+
+        # Get AI-generated status summary
         status_table = session_db.table("status")
         all_docs = status_table.all()
         if all_docs:
-            return {
-                "status": all_docs[0].get("status"),
-                "statusUpdatedAt": all_docs[0].get("statusUpdatedAt"),
-            }
+            result["status"] = all_docs[0].get("status")
+            result["statusUpdatedAt"] = all_docs[0].get("statusUpdatedAt")
+
+        # Get idle detection state
+        idle_state_table = session_db.table("idle_state")
+        idle_docs = idle_state_table.all()
+        if idle_docs:
+            result["idleState"] = idle_docs[0].get("state")
+            result["idleStateUpdatedAt"] = idle_docs[0].get("updatedAt")
     except Exception:
         pass
-    return {"status": None, "statusUpdatedAt": None}
+    return result
 
 
 @router.get("")
@@ -166,6 +179,8 @@ async def list_sessions():
                 "windows": live_info.get("windows", 0),
                 "status": status_info.get("status"),
                 "statusUpdatedAt": status_info.get("statusUpdatedAt"),
+                "idleState": status_info.get("idleState"),
+                "idleStateUpdatedAt": status_info.get("idleStateUpdatedAt"),
             }
         )
 
@@ -184,6 +199,8 @@ async def list_sessions():
                     "windows": live_info.get("windows", 0),
                     "status": status_info.get("status"),
                     "statusUpdatedAt": status_info.get("statusUpdatedAt"),
+                    "idleState": status_info.get("idleState"),
+                    "idleStateUpdatedAt": status_info.get("idleStateUpdatedAt"),
                 }
             )
 

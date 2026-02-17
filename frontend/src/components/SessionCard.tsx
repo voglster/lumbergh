@@ -11,6 +11,8 @@ interface Session {
   windows: number
   status?: string | null
   statusUpdatedAt?: string | null
+  idleState?: 'unknown' | 'idle' | 'working' | null
+  idleStateUpdatedAt?: string | null
 }
 
 interface SessionUpdate {
@@ -198,6 +200,20 @@ export default function SessionCard({ session, onDelete, onUpdate }: Props) {
 
       {session.status && (
         <p className="text-sm text-blue-400 truncate mb-2 italic">{session.status}</p>
+      )}
+
+      {session.alive && session.idleState === 'idle' && (
+        <div className="flex items-center gap-1.5 text-yellow-400 text-xs mb-2">
+          <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+          <span>Waiting for input</span>
+        </div>
+      )}
+
+      {session.alive && session.idleState === 'working' && (
+        <div className="flex items-center gap-1.5 text-green-400 text-xs mb-2">
+          <span className="w-2 h-2 bg-green-400 rounded-full" />
+          <span>Working</span>
+        </div>
       )}
 
       <div className="flex items-center gap-3 text-xs text-gray-500">
