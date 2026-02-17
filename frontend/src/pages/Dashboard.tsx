@@ -13,7 +13,7 @@ interface Session {
   windows: number
   status?: string | null
   statusUpdatedAt?: string | null
-  idleState?: 'unknown' | 'idle' | 'working' | null
+  idleState?: 'unknown' | 'idle' | 'working' | 'error' | 'stalled' | null
   idleStateUpdatedAt?: string | null
   type?: 'direct' | 'worktree'
   worktreeParentRepo?: string | null

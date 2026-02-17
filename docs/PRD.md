@@ -24,9 +24,11 @@ Lumbergh is a self-hosted, web-based orchestration dashboard designed to supervi
 **Cubicle Grid:** A bird's-eye view of all active tmux sessions.
 
 **Status Indicators:**
-- 🟢 Sipping Coffee (Idle/Waiting)
-- 🟡 Typing Furiously (Claude is generating)
-- 🔴 Jamming the Printer (Error/Stalled)
+- 🟢 Typing Furiously (Claude is generating)
+- 🟡 Sipping Coffee (Idle/Waiting for input)
+- 🔴 Jamming the Printer (Error/Crashed/Rate limited)
+- 🔴 Asleep at the Desk (Stalled - working 10+ min without progress)
+- ⚪ Called in Sick (Session offline)
 
 **New Hire Orientation (Session Creation):**
 - **Mode A (Desk Assignment):** Open in an existing repository.

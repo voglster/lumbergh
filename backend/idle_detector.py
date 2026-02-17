@@ -15,6 +15,8 @@ class SessionState(Enum):
     UNKNOWN = "unknown"
     IDLE = "idle"      # Waiting for user input
     WORKING = "working"
+    ERROR = "error"      # Claude Code exited, crashed, or hit a rate limit
+    STALLED = "stalled"  # Working for too long without progress
 
 
 class IdleDetectionResult:
@@ -53,6 +55,22 @@ class IdleDetector:
         re.compile(r"Esc to cancel"),
         re.compile(r"\? for shortcuts"),
         re.compile(r"Yes.*No", re.DOTALL),  # Yes/No choice
+    ]
+
+    # Patterns indicating an error state (Claude Code exited, rate limited, crashed)
+    ERROR_PATTERNS = [
+        re.compile(r"rate limit|rate_limit", re.IGNORECASE),
+        re.compile(r"429|too many requests", re.IGNORECASE),
+        re.compile(r"overloaded", re.IGNORECASE),
+        re.compile(r"APIError|API error|APIConnectionError", re.IGNORECASE),
+        re.compile(r"unexpected error|Connection error", re.IGNORECASE),
+    ]
+
+    # Shell prompt patterns (Claude Code exited, user is back at their shell)
+    SHELL_PROMPT_PATTERNS = [
+        re.compile(r"[\$%#]\s*$"),                    # Ends with $ % or #
+        re.compile(r"@.*[\$%#]\s*$"),                  # user@host$
+        re.compile(r"^\s*\w+@[\w.-]+[:\s]"),           # user@hostname:
     ]
 
     # Pattern for Claude Code prompt (idle state) - not used anymore but kept for reference
@@ -147,15 +165,50 @@ class IdleDetector:
         """
         Analyze buffer to determine current state.
 
+        Priority order:
+        1. ERROR patterns (rate limits, crashes) - highest
+        2. Shell prompt (Claude Code exited) - only if no working/idle indicators
+        3. Spinner on last line - WORKING
+        4. WORKING patterns in recent lines
+        5. IDLE patterns in recent lines
+        6. UNKNOWN - fallback
+
         Returns:
             Tuple of (state, confidence, reason)
         """
         if not self._buffer:
             return SessionState.UNKNOWN, 0.0, "No data"
 
-        # Check recent lines for working indicators
         recent_lines = list(self._buffer)[-10:]  # Last 10 lines
         last_line = recent_lines[-1] if recent_lines else ""
+
+        for line in recent_lines:
+            for pattern in self.ERROR_PATTERNS:
+                if pattern.search(line):
+                    return SessionState.ERROR, 0.9, f"Error pattern: {pattern.pattern}"
+
+        has_working_or_idle = False
+        for line in recent_lines:
+            if any(char in line for char in self.SPINNER_CHARS):
+                has_working_or_idle = True
+                break
+            for pattern in self.WORKING_PATTERNS:
+                if pattern.search(line):
+                    has_working_or_idle = True
+                    break
+            if has_working_or_idle:
+                break
+            for pattern in self.IDLE_PATTERNS:
+                if pattern.search(line):
+                    has_working_or_idle = True
+                    break
+            if has_working_or_idle:
+                break
+
+        if not has_working_or_idle:
+            for pattern in self.SHELL_PROMPT_PATTERNS:
+                if pattern.search(last_line):
+                    return SessionState.ERROR, 0.85, f"Shell prompt: {pattern.pattern}"
 
         # Check for spinner in last line (high confidence working)
         if any(char in last_line for char in self.SPINNER_CHARS):

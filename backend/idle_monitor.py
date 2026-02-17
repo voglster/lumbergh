@@ -7,12 +7,13 @@ independent of whether any WebSocket clients are connected.
 
 import asyncio
 import logging
+import time
 from datetime import datetime
 
 import libtmux
 
 from db_utils import get_session_data_db
-from idle_detector import IdleDetector, SessionState
+from idle_detector import IdleDetector, IdleDetectionResult, SessionState
 from tmux_pty import capture_pane_content
 
 logger = logging.getLogger(__name__)
@@ -27,10 +28,12 @@ class IdleMonitor:
     """
 
     POLL_INTERVAL_SECONDS = 2.0  # How often to check sessions
+    STALL_THRESHOLD_SECONDS = 600
 
     def __init__(self):
         self._detectors: dict[str, IdleDetector] = {}
         self._states: dict[str, SessionState] = {}
+        self._working_since: dict[str, float] = {}
         self._task: asyncio.Task | None = None
         self._running = False
 
@@ -81,6 +84,7 @@ class IdleMonitor:
         for name in dead_sessions:
             del self._detectors[name]
             self._states.pop(name, None)
+            self._working_since.pop(name, None)
 
         # Check each live session
         for session_name in sessions:
@@ -118,6 +122,14 @@ class IdleMonitor:
         # Analyze content
         # Use analyze_initial_content since we're getting full pane snapshots
         result = detector.analyze_initial_content(content)
+
+        if result.state == SessionState.WORKING:
+            if session_name not in self._working_since:
+                self._working_since[session_name] = time.time()
+            elif time.time() - self._working_since[session_name] > self.STALL_THRESHOLD_SECONDS:
+                result = IdleDetectionResult(SessionState.STALLED, result.confidence, "Working too long")
+        else:
+            self._working_since.pop(session_name, None)
 
         # Check for state change
         old_state = self._states.get(session_name, SessionState.UNKNOWN)

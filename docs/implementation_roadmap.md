@@ -107,6 +107,12 @@ This roadmap focuses on a "Depth First" approach: get a single session working p
     - [x] Send to terminal functionality
   - [x] `<VerticalResizablePanes />` for splitting Todo/Scratchpad
 
+- [x] **Session Status Intelligence:**
+  - [x] Error detection (shell prompt, rate limits, API errors, crashes)
+  - [x] Stall detection (WORKING > 10 minutes -> STALLED)
+  - [x] Unified status indicator on SessionCard (green/yellow/red/gray)
+  - [x] 5-state model: unknown, idle, working, error, stalled
+
 - [x] **Notes API:**
   - [x] `GET/POST /api/todos` - Todo list persistence
   - [x] `GET/POST /api/scratchpad` - Scratchpad persistence

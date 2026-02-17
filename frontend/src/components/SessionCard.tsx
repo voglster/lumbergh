@@ -11,11 +11,36 @@ interface Session {
   windows: number
   status?: string | null
   statusUpdatedAt?: string | null
-  idleState?: 'unknown' | 'idle' | 'working' | null
+  idleState?: 'unknown' | 'idle' | 'working' | 'error' | 'stalled' | null
   idleStateUpdatedAt?: string | null
   type?: 'direct' | 'worktree'
   worktreeParentRepo?: string | null
   worktreeBranch?: string | null
+}
+
+function getSessionStatus(session: Session) {
+  if (!session.alive) {
+    return { color: 'gray', pulse: false, label: 'Offline', icon: '\u2014' }
+  }
+  switch (session.idleState) {
+    case 'idle':
+      return { color: 'yellow', pulse: true, label: 'Waiting for input', icon: '\u23F8' }
+    case 'working':
+      return { color: 'green', pulse: false, label: 'Working', icon: '\u25B6' }
+    case 'error':
+      return { color: 'red', pulse: true, label: 'Error', icon: '!' }
+    case 'stalled':
+      return { color: 'red', pulse: true, label: 'Stalled', icon: '\u26A0' }
+    default:
+      return { color: 'green', pulse: false, label: 'Active', icon: '\u25CF' }
+  }
+}
+
+const statusColorClasses: Record<string, { dot: string; text: string }> = {
+  gray: { dot: 'bg-gray-500', text: 'text-gray-400' },
+  yellow: { dot: 'bg-yellow-400', text: 'text-yellow-400' },
+  green: { dot: 'bg-green-500', text: 'text-green-400' },
+  red: { dot: 'bg-red-500', text: 'text-red-400' },
 }
 
 interface SessionUpdate {
@@ -158,6 +183,9 @@ export default function SessionCard({ session, onDelete, onUpdate }: Props) {
     )
   }
 
+  const status = getSessionStatus(session)
+  const colors = statusColorClasses[status.color]
+
   return (
     <div
       onClick={handleClick}
@@ -166,7 +194,8 @@ export default function SessionCard({ session, onDelete, onUpdate }: Props) {
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <span
-            className={`w-2 h-2 rounded-full flex-shrink-0 ${session.alive ? 'bg-green-500' : 'bg-gray-500'}`}
+            className={`w-2 h-2 rounded-full flex-shrink-0 ${colors.dot} ${status.pulse ? 'animate-pulse' : ''}`}
+            title={status.label}
           />
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-white truncate">{displayTitle}</h3>
@@ -236,17 +265,10 @@ export default function SessionCard({ session, onDelete, onUpdate }: Props) {
         <p className="text-sm text-blue-400 truncate mb-2 italic">{session.status}</p>
       )}
 
-      {session.alive && session.idleState === 'idle' && (
-        <div className="flex items-center gap-1.5 text-yellow-400 text-xs mb-2">
-          <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
-          <span>Waiting for input</span>
-        </div>
-      )}
-
-      {session.alive && session.idleState === 'working' && (
-        <div className="flex items-center gap-1.5 text-green-400 text-xs mb-2">
-          <span className="w-2 h-2 bg-green-400 rounded-full" />
-          <span>Working</span>
+      {session.alive && session.idleState && session.idleState !== 'unknown' && (
+        <div className={`flex items-center gap-1.5 ${colors.text} text-xs mb-2`}>
+          <span>{status.icon}</span>
+          <span>{status.label}</span>
         </div>
       )}
 
