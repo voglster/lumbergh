@@ -8,11 +8,13 @@ from pathlib import Path
 CONFIG_DIR = Path.home() / ".config" / "lumbergh"
 PROJECTS_DIR = CONFIG_DIR / "projects"
 SESSIONS_DATA_DIR = CONFIG_DIR / "session_data"
+SHARED_DIR = CONFIG_DIR / "shared"
 
 # Ensure directories exist
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
 SESSIONS_DATA_DIR.mkdir(parents=True, exist_ok=True)
+SHARED_DIR.mkdir(parents=True, exist_ok=True)
 
 # Git status code mapping
 GIT_STATUS_MAP = {

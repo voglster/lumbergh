@@ -19,6 +19,8 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [lbSharedInstalled, setLbSharedInstalled] = useState<boolean | null>(null)
+  const [installingLbShared, setInstallingLbShared] = useState(false)
 
   // Determine API host - use same hostname but port 8000 for backend
   const apiHost = `${window.location.hostname}:8000`
@@ -37,12 +39,41 @@ export default function Dashboard() {
     }
   }, [apiHost])
 
+  const checkLbSharedStatus = useCallback(async () => {
+    try {
+      const res = await fetch(`http://${apiHost}/api/shared/claude-md-status`)
+      if (res.ok) {
+        const data = await res.json()
+        setLbSharedInstalled(data.installed)
+      }
+    } catch {
+      // Silently fail - not critical
+    }
+  }, [apiHost])
+
+  const installLbShared = async () => {
+    setInstallingLbShared(true)
+    try {
+      const res = await fetch(`http://${apiHost}/api/shared/setup-claude-md`, {
+        method: 'POST',
+      })
+      if (res.ok) {
+        setLbSharedInstalled(true)
+      }
+    } catch {
+      // Ignore errors
+    } finally {
+      setInstallingLbShared(false)
+    }
+  }
+
   useEffect(() => {
     fetchSessions()
+    checkLbSharedStatus()
     // Poll for session updates every 10 seconds
     const interval = setInterval(fetchSessions, 10000)
     return () => clearInterval(interval)
-  }, [fetchSessions])
+  }, [fetchSessions, checkLbSharedStatus])
 
   const handleDelete = async (name: string) => {
     try {
@@ -126,6 +157,27 @@ export default function Dashboard() {
           </button>
         </div>
       </header>
+
+      {/* LB Shared setup banner */}
+      {lbSharedInstalled === false && (
+        <div className="mx-4 mt-4 p-3 bg-blue-900/50 border border-blue-700 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-sm text-gray-300">
+              Enable cross-session sharing by adding LB Shared commands to your CLAUDE.md
+            </span>
+          </div>
+          <button
+            onClick={installLbShared}
+            disabled={installingLbShared}
+            className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 rounded transition-colors"
+          >
+            {installingLbShared ? 'Installing...' : 'Enable'}
+          </button>
+        </div>
+      )}
 
       {/* Main content */}
       <main className="p-4 max-w-6xl mx-auto">
