@@ -32,15 +32,23 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """App lifespan handler - runs on startup/shutdown."""
-    # Log any orphaned sessions (stored in TinyDB but no longer in tmux)
+    from idle_monitor import idle_monitor
     from routers.sessions import get_live_sessions, get_stored_sessions
 
+    # Log any orphaned sessions (stored in TinyDB but no longer in tmux)
     live = set(get_live_sessions().keys())
     stored = set(get_stored_sessions().keys())
     orphaned = stored - live
     if orphaned:
         logger.info(f"Found {len(orphaned)} stored session(s) without tmux: {orphaned}")
+
+    # Start background idle monitoring
+    idle_monitor.start()
+
     yield
+
+    # Stop idle monitoring on shutdown
+    idle_monitor.stop()
 
 
 app = FastAPI(title="Lumbergh", description="Tmux session supervisor", lifespan=lifespan)
