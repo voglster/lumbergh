@@ -49,7 +49,10 @@ async def get_todos():
 async def save_todos(todo_list: TodoList):
     """Save todo items."""
     try:
-        todos = [{"text": t.text, "done": t.done} for t in todo_list.todos]
+        todos = [
+            {"text": t.text, "done": t.done, "description": t.description}
+            for t in todo_list.todos
+        ]
         save_single_document_items(todos_table, todos)
         return {"todos": todos}
     except Exception as e:

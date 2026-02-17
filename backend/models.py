@@ -37,6 +37,7 @@ class TodoItem(BaseModel):
 
     text: str
     done: bool
+    description: str | None = None
 
 
 class TodoList(BaseModel):

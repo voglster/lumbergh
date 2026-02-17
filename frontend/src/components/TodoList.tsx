@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 interface Todo {
   text: string
   done: boolean
+  description?: string
 }
 
 interface TodoListProps {
@@ -21,6 +22,8 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editingText, setEditingText] = useState('')
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
+  const [editingDescription, setEditingDescription] = useState('')
 
   useEffect(() => {
     fetch(`http://${apiHost}/api/sessions/${sessionName}/todos`)
@@ -112,14 +115,49 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
     }
   }
 
+  const handleToggleExpand = (index: number) => {
+    if (expandedIndex === index) {
+      // Collapsing - save any description changes
+      handleSaveDescription(index)
+      setExpandedIndex(null)
+    } else {
+      // Expanding - load the description
+      setExpandedIndex(index)
+      setEditingDescription(todos[index].description || '')
+    }
+  }
+
+  const handleSaveDescription = (index: number) => {
+    const trimmed = editingDescription.trim()
+    const currentDesc = todos[index].description || ''
+    if (trimmed !== currentDesc) {
+      const updated = todos.map((t, i) =>
+        i === index ? { ...t, description: trimmed || undefined } : t
+      )
+      setTodos(updated)
+      saveTodos(updated)
+    }
+  }
+
+  const handleDescriptionKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setEditingDescription(todos[expandedIndex!]?.description || '')
+      setExpandedIndex(null)
+    }
+  }
+
   const handleSendToTerminal = async (index: number, sendEnter: boolean = true) => {
     if (!sessionName) return
     const todo = todos[index]
+    // Combine title and description if description exists
+    const textToSend = todo.description
+      ? `${todo.text}\n\n${todo.description}`
+      : todo.text
     try {
       await fetch(`http://${apiHost}/api/session/${sessionName}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: todo.text, send_enter: sendEnter }),
+        body: JSON.stringify({ text: textToSend, send_enter: sendEnter }),
       })
       // Mark as done and move to bottom (with other done items)
       const updated = todos.map((t, i) => (i === index ? { ...t, done: true } : t))
@@ -129,7 +167,7 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
       setTodos(reordered)
       saveTodos(reordered)
       onFocusTerminal?.()
-      onTodoSent?.(todo.text)
+      onTodoSent?.(textToSend)
     } catch (err) {
       console.error('Failed to send to terminal:', err)
     }
@@ -202,58 +240,86 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
                     </div>
                   )}
                   <div
-                    draggable
-                    onDragStart={() => handleDragStart(index)}
-                    onDragOver={(e) => handleDragOver(e, index)}
-                    onDragEnd={handleDragEnd}
-                    className={`flex items-center gap-3 p-3 bg-gray-800 rounded border border-gray-700 group cursor-grab active:cursor-grabbing ${
+                    className={`bg-gray-800 rounded border border-gray-700 ${
                       dragIndex === index ? 'opacity-50' : ''
                     } ${dragOverIndex === index && dragIndex !== index ? 'border-blue-500' : ''}`}
                   >
-                    <span className="text-gray-600 select-none">⠿</span>
-                    <input
-                      type="checkbox"
-                      checked={todo.done}
-                      onChange={() => handleToggle(index)}
-                      className="w-5 h-5 rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
-                    />
-                    {editingIndex === index ? (
-                      <input
-                        type="text"
-                        value={editingText}
-                        onChange={(e) => setEditingText(e.target.value)}
-                        onBlur={handleSaveEdit}
-                        onKeyDown={handleEditKeyDown}
-                        autoFocus
-                        className="flex-1 px-2 py-1 bg-gray-700 text-white rounded border border-blue-500 focus:outline-none"
-                      />
-                    ) : (
-                      <span
-                        onClick={() => handleStartEdit(index)}
-                        className={`flex-1 cursor-text ${
-                          todo.done ? 'text-gray-500 line-through' : 'text-white'
-                        }`}
+                    <div
+                      draggable
+                      onDragStart={() => handleDragStart(index)}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDragEnd={handleDragEnd}
+                      className="flex items-center gap-3 p-3 cursor-grab active:cursor-grabbing"
+                    >
+                      <span className="text-gray-600 select-none">⠿</span>
+                      <button
+                        onClick={() => handleToggleExpand(index)}
+                        className="text-gray-500 hover:text-gray-300 transition-colors"
+                        title={expandedIndex === index ? 'Collapse' : 'Expand'}
                       >
-                        {todo.text}
-                      </span>
-                    )}
-                    {sessionName && !todo.done && (
-                      <>
-                        <button
-                          onClick={() => handleSendToTerminal(index, false)}
-                          className="text-xl text-gray-500 hover:text-yellow-400 transition-colors px-1"
-                          title="Send text (no Enter)"
+                        {expandedIndex === index ? '▼' : '▶'}
+                      </button>
+                      <input
+                        type="checkbox"
+                        checked={todo.done}
+                        onChange={() => handleToggle(index)}
+                        className="w-5 h-5 rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
+                      />
+                      {editingIndex === index ? (
+                        <input
+                          type="text"
+                          value={editingText}
+                          onChange={(e) => setEditingText(e.target.value)}
+                          onBlur={handleSaveEdit}
+                          onKeyDown={handleEditKeyDown}
+                          autoFocus
+                          className="flex-1 px-2 py-1 bg-gray-700 text-white rounded border border-blue-500 focus:outline-none"
+                        />
+                      ) : (
+                        <span
+                          onClick={() => handleStartEdit(index)}
+                          className={`flex-1 cursor-text ${
+                            todo.done ? 'text-gray-500 line-through' : 'text-white'
+                          }`}
                         >
-                          ▷
-                        </button>
-                        <button
-                          onClick={() => handleSendToTerminal(index, true)}
-                          className="text-xl text-gray-500 hover:text-blue-400 transition-colors px-1"
-                          title="Send + Enter (yolo)"
-                        >
-                          ➤
-                        </button>
-                      </>
+                          {todo.text}
+                          {todo.description && expandedIndex !== index && (
+                            <span className="ml-2 text-gray-500 text-sm" title="Has description">
+                              📝
+                            </span>
+                          )}
+                        </span>
+                      )}
+                      {sessionName && !todo.done && (
+                        <>
+                          <button
+                            onClick={() => handleSendToTerminal(index, false)}
+                            className="text-xl text-gray-500 hover:text-yellow-400 transition-colors px-1"
+                            title="Send text (no Enter)"
+                          >
+                            ▷
+                          </button>
+                          <button
+                            onClick={() => handleSendToTerminal(index, true)}
+                            className="text-xl text-gray-500 hover:text-blue-400 transition-colors px-1"
+                            title="Send + Enter (yolo)"
+                          >
+                            ➤
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    {expandedIndex === index && (
+                      <div className="px-3 pb-3 pt-0">
+                        <textarea
+                          value={editingDescription}
+                          onChange={(e) => setEditingDescription(e.target.value)}
+                          onBlur={() => handleSaveDescription(index)}
+                          onKeyDown={handleDescriptionKeyDown}
+                          placeholder="Add details, context, acceptance criteria..."
+                          className="w-full h-32 px-3 py-2 bg-gray-700 text-white text-sm rounded border border-gray-600 focus:outline-none focus:border-blue-500 resize-y"
+                        />
+                      </div>
                     )}
                   </div>
                 </li>
