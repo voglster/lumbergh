@@ -37,18 +37,26 @@ class IdleDetector:
     # Spinner characters used by Claude Code
     SPINNER_CHARS = set("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")
 
-    # Patterns indicating active work
+    # Patterns indicating active work (thinking, running tools)
     WORKING_PATTERNS = [
-        re.compile(r"Thinking\.\.\."),
+        re.compile(r"Thinking|Channelling", re.IGNORECASE),
         re.compile(r"⠋|⠙|⠹|⠸|⠼|⠴|⠦|⠧|⠇|⠏"),  # Spinner chars
-        re.compile(r"Reading|Writing|Editing|Searching"),  # Tool names
-        re.compile(r"Running|Executing"),
-        re.compile(r"\.{3}$"),  # Trailing ellipsis (loading indicator)
+        re.compile(r"Running…|Executing"),  # Tool execution
+        re.compile(r"thought for \d+s"),  # "thought for Xs" indicator
+        re.compile(r"esc to interrupt", re.IGNORECASE),  # Actively processing
     ]
 
-    # Pattern for Claude Code prompt (idle state)
-    # The prompt is typically "> " at the start of a line
-    PROMPT_PATTERN = re.compile(r"^>\s*$")
+    # Patterns indicating idle state (waiting for user input)
+    IDLE_PATTERNS = [
+        re.compile(r"❯"),  # Claude Code prompt character
+        re.compile(r"Do you want to proceed\?"),
+        re.compile(r"Esc to cancel"),
+        re.compile(r"\? for shortcuts"),
+        re.compile(r"Yes.*No", re.DOTALL),  # Yes/No choice
+    ]
+
+    # Pattern for Claude Code prompt (idle state) - not used anymore but kept for reference
+    PROMPT_PATTERN = re.compile(r"^[❯>]\s*$")
 
     # Hysteresis settings
     STATE_CHANGE_DELAY_MS = 500  # Must be stable for this long before reporting
@@ -153,21 +161,17 @@ class IdleDetector:
         if any(char in last_line for char in self.SPINNER_CHARS):
             return SessionState.WORKING, 0.95, "Spinner detected"
 
-        # Check for working patterns in recent lines
+        # Check for working patterns in recent lines (working takes priority)
         for line in recent_lines:
             for pattern in self.WORKING_PATTERNS:
                 if pattern.search(line):
                     return SessionState.WORKING, 0.85, f"Working pattern: {pattern.pattern}"
 
-        # Check if last line is the Claude prompt
-        if self.PROMPT_PATTERN.match(last_line.strip()):
-            return SessionState.IDLE, 0.9, "Prompt detected"
-
-        # Check for prompt-like patterns in last few lines
-        for line in reversed(recent_lines[-3:]):
-            stripped = line.strip()
-            if stripped == ">" or stripped.endswith(">"):
-                return SessionState.IDLE, 0.75, "Likely prompt"
+        # Check for idle patterns in recent lines
+        for line in recent_lines:
+            for pattern in self.IDLE_PATTERNS:
+                if pattern.search(line):
+                    return SessionState.IDLE, 0.9, f"Idle pattern: {pattern.pattern}"
 
         # Default to unknown if we can't determine
         return SessionState.UNKNOWN, 0.3, "Unable to determine"

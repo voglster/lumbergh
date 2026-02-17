@@ -7,12 +7,10 @@ tmux attach-session processes for the same session.
 
 import asyncio
 import logging
-import time
 from dataclasses import dataclass, field
 
 from fastapi import WebSocket
 
-from idle_detector import IdleDetector, SessionState
 from tmux_pty import TmuxPtySession, capture_pane_content
 
 logger = logging.getLogger(__name__)
@@ -25,9 +23,6 @@ class ManagedSession:
     pty: TmuxPtySession
     clients: set[WebSocket] = field(default_factory=set)
     read_task: asyncio.Task | None = None
-    idle_detector: IdleDetector = field(default_factory=IdleDetector)
-    current_state: SessionState = field(default=SessionState.UNKNOWN)
-    last_state_persist_time: float = field(default=0)
 
 
 class SessionManager:
@@ -90,18 +85,6 @@ class SessionManager:
                     "data": content
                 })
                 logger.info(f"Sent initial pane capture to client ({len(content)} chars)")
-
-                # Analyze initial content for state detection
-                result = managed.idle_detector.analyze_initial_content(content)
-                if result.state != managed.current_state:
-                    managed.current_state = result.state
-                    # Send initial state to client
-                    await websocket.send_json({
-                        "type": "state_change",
-                        "state": result.state.value
-                    })
-                    # Persist initial state
-                    await self._persist_state(session_name, result.state)
         except Exception as e:
             logger.warning(f"Failed to send initial pane capture: {e}")
 
@@ -166,45 +149,22 @@ class SessionManager:
                 consecutive_eof = 0  # Reset on successful read
 
                 if data:
-                    decoded_data = data.decode("utf-8", errors="replace")
                     message = {
                         "type": "output",
-                        "data": decoded_data,
+                        "data": data.decode("utf-8", errors="replace"),
                     }
-
-                    # Process through idle detector
-                    result = managed.idle_detector.process_output(decoded_data)
-
-                    # Check for state change
-                    state_changed = result.state != managed.current_state
-                    if state_changed:
-                        managed.current_state = result.state
-                        logger.info(f"Session {session_name} state changed to: {result.state.value}")
 
                     # Broadcast to all clients
                     disconnected = []
                     for client in list(managed.clients):
                         try:
                             await client.send_json(message)
-                            # Send state change if applicable
-                            if state_changed:
-                                await client.send_json({
-                                    "type": "state_change",
-                                    "state": result.state.value
-                                })
                         except Exception:
                             disconnected.append(client)
 
                     # Remove disconnected clients
                     for client in disconnected:
                         managed.clients.discard(client)
-
-                    # Persist state change (debounced, max 1/sec)
-                    if state_changed:
-                        now = time.time()
-                        if now - managed.last_state_persist_time >= 1.0:
-                            managed.last_state_persist_time = now
-                            asyncio.create_task(self._persist_state(session_name, result.state))
 
             except asyncio.CancelledError:
                 break
@@ -226,29 +186,6 @@ class SessionManager:
                 await client.send_json(message)
             except Exception:
                 pass
-
-    async def _persist_state(self, session_name: str, state: SessionState) -> None:
-        """Persist session state to TinyDB."""
-        from datetime import datetime
-
-        from db_utils import get_session_data_db
-
-        try:
-            loop = asyncio.get_event_loop()
-
-            def _save():
-                session_db = get_session_data_db(session_name)
-                state_table = session_db.table("idle_state")
-                state_table.truncate()
-                state_table.insert({
-                    "state": state.value,
-                    "updatedAt": datetime.utcnow().isoformat(),
-                })
-
-            await loop.run_in_executor(None, _save)
-            logger.debug(f"Persisted state '{state.value}' for session {session_name}")
-        except Exception as e:
-            logger.warning(f"Failed to persist state for {session_name}: {e}")
 
     async def handle_client_message(self, session_name: str, message: dict) -> None:
         """Handle a message from a WebSocket client."""

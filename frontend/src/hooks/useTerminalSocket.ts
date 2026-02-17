@@ -8,15 +8,12 @@ interface UseTerminalSocketOptions {
   onDisconnect?: () => void
 }
 
-type SessionIdleState = 'unknown' | 'idle' | 'working'
-
 interface UseTerminalSocketResult {
   send: (data: string) => void
   sendResize: (cols: number, rows: number) => void
   isConnected: boolean
   error: string | null
   sessionDead: boolean
-  idleState: SessionIdleState
 }
 
 export function useTerminalSocket({
@@ -30,7 +27,6 @@ export function useTerminalSocket({
   const [isConnected, setIsConnected] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sessionDead, setSessionDead] = useState(false)
-  const [idleState, setIdleState] = useState<SessionIdleState>('unknown')
   const reconnectTimeoutRef = useRef<number | null>(null)
   const sessionDeadRef = useRef(false)
   const connectRef = useRef<() => void>(() => {})
@@ -74,9 +70,6 @@ export function useTerminalSocket({
           onDataRef.current(message.data)
         } else if (message.type === 'error') {
           setError(message.message)
-        } else if (message.type === 'state_change') {
-          // Update idle state from server
-          setIdleState(message.state as SessionIdleState)
         } else if (message.type === 'session_dead' || message.type === 'session_not_found') {
           // Session has terminated - stop reconnection attempts
           setSessionDead(true)
@@ -152,5 +145,5 @@ export function useTerminalSocket({
     }
   }, [connect])
 
-  return { send, sendResize, isConnected, error, sessionDead, idleState }
+  return { send, sendResize, isConnected, error, sessionDead }
 }
