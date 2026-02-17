@@ -620,7 +620,7 @@ async def save_session_todos(name: str, todo_list: TodoList):
     try:
         session_db = get_session_data_db(name)
         todos_table = session_db.table("todos")
-        todos = [{"text": t.text, "done": t.done} for t in todo_list.todos]
+        todos = [{"text": t.text, "done": t.done, "description": t.description} for t in todo_list.todos]
         save_single_document_items(todos_table, todos)
         return {"todos": todos}
     except Exception as e:
