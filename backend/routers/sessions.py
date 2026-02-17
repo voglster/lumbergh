@@ -32,6 +32,7 @@ from git_utils import (
     get_full_diff_with_untracked,
     get_porcelain_status,
     get_remote_status,
+    git_pull_rebase,
     git_push,
     remove_worktree,
     reset_to_head,
@@ -561,6 +562,22 @@ async def session_git_push(name: str):
 
     try:
         result = git_push(workdir)
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{name}/git/pull")
+async def session_git_pull(name: str):
+    """Pull latest changes with rebase."""
+    workdir = get_session_workdir(name)
+
+    try:
+        result = git_pull_rebase(workdir)
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
         return result

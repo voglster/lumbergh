@@ -51,6 +51,7 @@ const DiffViewer = memo(function DiffViewer({
   // Remote status for push button (when no changes)
   const [remoteStatus, setRemoteStatus] = useState<RemoteStatus | null>(null)
   const [isPushing, setIsPushing] = useState(false)
+  const [isPulling, setIsPulling] = useState(false)
 
   // Navigation state - default to working changes view
   const [view, setView] = useState<ViewState>({ level: 'changes', commit: null })
@@ -114,6 +115,30 @@ const DiffViewer = memo(function DiffViewer({
       // ignore
     } finally {
       setIsPushing(false)
+    }
+  }
+
+  // Handle pull with rebase
+  const handlePull = async () => {
+    if (!sessionName) return
+    setIsPulling(true)
+    try {
+      const res = await fetch(`${gitBaseUrl}/pull`, { method: 'POST' })
+      if (!res.ok) {
+        const data = await res.json()
+        alert(data.detail || 'Pull failed')
+      } else {
+        const data = await res.json()
+        if (data.stashConflict) {
+          alert(data.message)
+        }
+        fetchRemoteStatus()
+        refreshWorkingChanges()
+      }
+    } catch {
+      alert('Pull failed: network error')
+    } finally {
+      setIsPulling(false)
     }
   }
 
@@ -358,14 +383,30 @@ const DiffViewer = memo(function DiffViewer({
                     <span className="font-mono">{remoteStatus.remote || 'origin'}</span>
                   </div>
                 </div>
-                {onJumpToTodos && (
+                <div className="flex flex-col gap-3">
                   <button
-                    onClick={onJumpToTodos}
-                    className="px-4 py-2 text-gray-400 hover:text-gray-200 text-sm transition-colors"
+                    onClick={handlePull}
+                    disabled={isPulling}
+                    className="px-6 py-3 bg-yellow-600 hover:bg-yellow-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
                   >
-                    Something else to work on? Jump to Todos →
+                    {isPulling ? (
+                      <>Pulling...</>
+                    ) : (
+                      <>
+                        <span>↓</span>
+                        <span>Pull from {remoteStatus.remote || 'origin'}</span>
+                      </>
+                    )}
                   </button>
-                )}
+                  {onJumpToTodos && (
+                    <button
+                      onClick={onJumpToTodos}
+                      className="px-4 py-2 text-gray-400 hover:text-gray-200 text-sm transition-colors"
+                    >
+                      Something else to work on? Jump to Todos →
+                    </button>
+                  )}
+                </div>
               </>
             ) : remoteStatus ? (
               <>

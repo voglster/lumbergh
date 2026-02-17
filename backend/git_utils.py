@@ -624,6 +624,103 @@ def git_push(cwd: Path) -> dict:
         return {"error": f"Push failed: {e}"}
 
 
+def git_pull_rebase(cwd: Path) -> dict:
+    """
+    Pull changes from remote with rebase.
+    If conflicts occur, aborts the rebase and returns an error.
+
+    Returns:
+        Dict with status on success, or error on failure
+    """
+    try:
+        repo = get_repo(cwd)
+    except InvalidGitRepositoryError:
+        return {"error": "Not a git repository"}
+
+    # Check for detached HEAD
+    if repo.head.is_detached:
+        return {"error": "Cannot pull: HEAD is detached"}
+
+    branch = repo.active_branch
+
+    # Check for tracking branch
+    tracking = branch.tracking_branch()
+    if tracking:
+        remote_name = tracking.remote_name
+    else:
+        # Default to origin if no tracking branch
+        try:
+            remote_name = "origin"
+            repo.remote(remote_name)
+        except ValueError:
+            return {"error": "No remote configured"}
+
+    # Check if working directory is dirty and stash if needed
+    stashed = False
+    if repo.is_dirty(untracked_files=True):
+        try:
+            repo.git.stash("push", "-u", "-m", "lumbergh-auto-stash")
+            stashed = True
+        except GitCommandError as e:
+            return {"error": f"Failed to stash changes: {e}"}
+
+    # Attempt pull with rebase
+    try:
+        repo.git.pull("--rebase")
+    except GitCommandError as e:
+        error_msg = str(e)
+        # Check for rebase conflicts
+        if "conflict" in error_msg.lower() or "could not apply" in error_msg.lower():
+            # Abort the rebase
+            try:
+                repo.git.rebase("--abort")
+            except GitCommandError:
+                pass  # Best effort to abort
+
+            # Restore stash if we stashed
+            if stashed:
+                try:
+                    repo.git.stash("pop")
+                except GitCommandError:
+                    pass  # Best effort to restore
+
+            return {"error": "Rebase conflicts detected. Aborting rebase and restoring state."}
+
+        # Other errors (network, auth, etc.)
+        if stashed:
+            try:
+                repo.git.stash("pop")
+            except GitCommandError:
+                pass
+
+        if "Could not read from remote repository" in error_msg:
+            return {"error": "Pull failed: Could not connect to remote repository"}
+        if "Authentication failed" in error_msg or "Permission denied" in error_msg:
+            return {"error": "Pull failed: Authentication error"}
+        return {"error": f"Pull failed: {e}"}
+
+    # Pull succeeded - restore stash if we stashed
+    stash_conflict = False
+    if stashed:
+        try:
+            repo.git.stash("pop")
+        except GitCommandError:
+            stash_conflict = True
+
+    if stash_conflict:
+        return {
+            "status": "pulled",
+            "stashConflict": True,
+            "message": "Pulled successfully but stash pop had conflicts. Resolve manually with 'git stash pop'.",
+        }
+
+    return {
+        "status": "pulled",
+        "stashed": stashed,
+        "message": f"Pulled and rebased {branch.name} from {remote_name}",
+    }
+
+
 # --- Git Worktree Utilities ---
 
 
