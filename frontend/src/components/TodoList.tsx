@@ -9,9 +9,10 @@ interface TodoListProps {
   apiHost: string
   sessionName: string
   onFocusTerminal?: () => void
+  onTodoSent?: (text: string) => void
 }
 
-export default function TodoList({ apiHost, sessionName, onFocusTerminal }: TodoListProps) {
+export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodoSent }: TodoListProps) {
   const [todos, setTodos] = useState<Todo[]>([])
   const [newTodo, setNewTodo] = useState('')
   const [loading, setLoading] = useState(true)
@@ -128,6 +129,7 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal }: Todo
       setTodos(reordered)
       saveTodos(reordered)
       onFocusTerminal?.()
+      onTodoSent?.(todo.text)
     } catch (err) {
       console.error('Failed to send to terminal:', err)
     }

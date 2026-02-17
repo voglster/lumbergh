@@ -58,6 +58,11 @@ Diff:
 
 Respond with ONLY the commit message. No markdown, no explanation."""
 
+# Prompt for summarizing a todo into a short status
+STATUS_SUMMARY_PROMPT = """Summarize this task in 2-3 words maximum.
+Examples: "fixing auth", "adding tests", "refactoring API"
+Task: {text}"""
+
 # Table name for AI prompts
 AI_PROMPTS_TABLE = "ai_prompts"
 

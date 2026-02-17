@@ -11,6 +11,8 @@ interface Session {
   alive: boolean
   attached: boolean
   windows: number
+  status?: string | null
+  statusUpdatedAt?: string | null
 }
 
 export default function Dashboard() {

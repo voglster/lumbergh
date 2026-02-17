@@ -9,6 +9,8 @@ interface Session {
   alive: boolean
   attached: boolean
   windows: number
+  status?: string | null
+  statusUpdatedAt?: string | null
 }
 
 interface SessionUpdate {
@@ -191,7 +193,11 @@ export default function SessionCard({ session, onDelete, onUpdate }: Props) {
       )}
 
       {session.description && (
-        <p className="text-sm text-gray-500 truncate mb-2">{session.description}</p>
+        <p className="text-sm text-gray-500 truncate mb-1">{session.description}</p>
+      )}
+
+      {session.status && (
+        <p className="text-sm text-blue-400 truncate mb-2 italic">{session.status}</p>
       )}
 
       <div className="flex items-center gap-3 text-xs text-gray-500">

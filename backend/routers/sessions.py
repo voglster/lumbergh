@@ -34,7 +34,7 @@ from git_utils import (
     reset_to_head,
     stage_all_and_commit,
 )
-from models import CheckoutInput, CommitInput, CreateSessionRequest, ScratchpadContent, SessionUpdate, TodoList
+from models import CheckoutInput, CommitInput, CreateSessionRequest, ScratchpadContent, SessionUpdate, StatusSummaryInput, TodoList
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 directories_router = APIRouter(prefix="/api/directories", tags=["directories"])
@@ -126,6 +126,22 @@ def get_stored_sessions() -> dict[str, dict]:
     return {s["name"]: s for s in all_sessions}
 
 
+def get_session_status(name: str) -> dict:
+    """Get status info for a session from its data DB."""
+    try:
+        session_db = get_session_data_db(name)
+        status_table = session_db.table("status")
+        all_docs = status_table.all()
+        if all_docs:
+            return {
+                "status": all_docs[0].get("status"),
+                "statusUpdatedAt": all_docs[0].get("statusUpdatedAt"),
+            }
+    except Exception:
+        pass
+    return {"status": None, "statusUpdatedAt": None}
+
+
 @router.get("")
 async def list_sessions():
     """List all sessions (merge TinyDB metadata + live tmux state)."""
@@ -138,6 +154,7 @@ async def list_sessions():
     for name, meta in stored.items():
         seen_names.add(name)
         live_info = live.get(name, {})
+        status_info = get_session_status(name)
         sessions.append(
             {
                 "name": name,
@@ -147,12 +164,15 @@ async def list_sessions():
                 "alive": live_info.get("alive", False),
                 "attached": live_info.get("attached", False),
                 "windows": live_info.get("windows", 0),
+                "status": status_info.get("status"),
+                "statusUpdatedAt": status_info.get("statusUpdatedAt"),
             }
         )
 
     # Include orphan tmux sessions (created outside Lumbergh)
     for name, live_info in live.items():
         if name not in seen_names:
+            status_info = get_session_status(name)
             sessions.append(
                 {
                     "name": name,
@@ -162,6 +182,8 @@ async def list_sessions():
                     "alive": True,
                     "attached": live_info.get("attached", False),
                     "windows": live_info.get("windows", 0),
+                    "status": status_info.get("status"),
+                    "statusUpdatedAt": status_info.get("statusUpdatedAt"),
                 }
             )
 
@@ -611,3 +633,42 @@ async def session_generate_commit_message(name: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"AI generation failed: {e}")
+
+
+@router.post("/{name}/status-summary")
+async def session_status_summary(name: str, body: StatusSummaryInput):
+    """Generate a short status summary for a session based on the current task."""
+    from datetime import datetime
+
+    from ai.prompts import STATUS_SUMMARY_PROMPT
+    from ai.providers import get_provider
+    from routers.settings import get_settings
+
+    try:
+        # Get AI provider and generate summary
+        settings = get_settings()
+        ai_settings = settings.get("ai", {})
+        provider = get_provider(ai_settings)
+
+        prompt = STATUS_SUMMARY_PROMPT.format(text=body.text)
+        summary = await provider.complete(prompt)
+
+        # Clean up response
+        summary = summary.strip().strip('"').strip("'")
+        # Limit to 30 chars just in case
+        if len(summary) > 30:
+            summary = summary[:27] + "..."
+
+        # Store in session data DB
+        session_db = get_session_data_db(name)
+        status_table = session_db.table("status")
+        status_table.truncate()
+        status_table.insert({
+            "status": summary,
+            "statusUpdatedAt": datetime.utcnow().isoformat(),
+        })
+
+        return {"status": summary}
+
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"AI summary generation failed: {e}")

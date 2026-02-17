@@ -74,6 +74,19 @@ export default function SessionDetail() {
     setMobileTab('todos')
   }, [])
 
+  const handleTodoSent = useCallback(async (text: string) => {
+    if (!name) return
+    try {
+      await fetch(`http://${apiHost}/api/sessions/${name}/status-summary`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      })
+    } catch (err) {
+      console.error('Failed to update status summary:', err)
+    }
+  }, [apiHost, name])
+
   const fetchDiffData = useCallback(async () => {
     if (!name) return
     try {
@@ -258,6 +271,7 @@ export default function SessionDetail() {
                 apiHost={apiHost}
                 sessionName={name}
                 onFocusTerminal={handleFocusTerminal}
+                onTodoSent={handleTodoSent}
               />
             }
             bottom={
@@ -382,6 +396,7 @@ export default function SessionDetail() {
                     apiHost={apiHost}
                     sessionName={name}
                     onFocusTerminal={handleFocusTerminal}
+                    onTodoSent={handleTodoSent}
                   />
                 }
                 bottom={

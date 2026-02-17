@@ -78,3 +78,9 @@ class SessionUpdate(BaseModel):
 
     displayName: str | None = None
     description: str | None = None
+
+
+class StatusSummaryInput(BaseModel):
+    """Input for generating a status summary."""
+
+    text: str
