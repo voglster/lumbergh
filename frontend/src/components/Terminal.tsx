@@ -392,9 +392,9 @@ export default function Terminal({
         </div>
         {/* Expanded row */}
         {headerExpanded && (
-          <div className="flex items-center justify-between px-2 pb-2">
+          <div className="flex items-center justify-between px-2 pb-2 overflow-x-auto scrollbar-hide">
             {/* Font size controls - left aligned */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 shrink-0">
               <span className="text-xs text-gray-400">Font:</span>
               <button
                 onClick={() => setFontSize((s) => Math.max(8, s - 1))}
@@ -413,7 +413,7 @@ export default function Terminal({
               </button>
             </div>
             {/* Quick buttons - right aligned */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => {
                   sendTmuxCommand('new-window')

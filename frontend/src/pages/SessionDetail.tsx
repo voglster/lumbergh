@@ -323,11 +323,11 @@ export default function SessionDetail() {
       ) : (
         <div className="flex-1 min-h-0 flex flex-col">
           {/* Tab navigation with back button */}
-          <div className="flex gap-1 px-2 py-1 bg-gray-800 border-b border-gray-700">
+          <div className="flex gap-1 px-2 py-1 bg-gray-800 border-b border-gray-700 overflow-x-auto scrollbar-hide">
             {/* Back button */}
             <button
               onClick={() => navigate('/')}
-              className="px-2 py-1.5 text-gray-400 hover:text-white transition-colors"
+              className="shrink-0 px-2 py-1.5 text-gray-400 hover:text-white transition-colors"
               title="Back to Dashboard"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -340,7 +340,7 @@ export default function SessionDetail() {
               </svg>
             </button>
             {/* Separator */}
-            <div className="w-px bg-gray-700 my-1" />
+            <div className="w-px shrink-0 bg-gray-700 my-1" />
             {mobileTabs.map((tab) => (
               <button
                 key={tab.id}
@@ -348,7 +348,7 @@ export default function SessionDetail() {
                   setMobileTab(tab.id)
                   if (tab.id === 'diff') setDiffKey((k) => k + 1)
                 }}
-                className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
+                className={`shrink-0 px-4 py-1.5 rounded text-sm font-medium transition-colors ${
                   mobileTab === tab.id
                     ? 'bg-gray-600 text-white'
                     : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'
