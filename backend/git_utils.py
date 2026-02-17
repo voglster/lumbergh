@@ -622,3 +622,247 @@ def git_push(cwd: Path) -> dict:
         if "Authentication failed" in error_msg or "Permission denied" in error_msg:
             return {"error": "Push failed: Authentication error"}
         return {"error": f"Push failed: {e}"}
+
+
+# --- Git Worktree Utilities ---
+
+
+def sanitize_branch_for_path(branch: str) -> str:
+    """
+    Sanitize a branch name for use in a filesystem path.
+
+    Converts `feat/login` → `feat-login`, `fix/bug#123` → `fix-bug-123`, etc.
+    """
+    import re
+    # Replace slashes and other special chars with hyphens
+    sanitized = re.sub(r"[/\\#@:~^]", "-", branch)
+    # Remove any other non-alphanumeric chars except hyphen and underscore
+    sanitized = re.sub(r"[^a-zA-Z0-9_-]", "", sanitized)
+    # Collapse multiple hyphens
+    sanitized = re.sub(r"-+", "-", sanitized)
+    # Strip leading/trailing hyphens
+    return sanitized.strip("-")
+
+
+def get_worktree_container_path(repo_path: Path) -> Path:
+    """
+    Get the container directory for worktrees of a repo.
+
+    For `/home/user/src/my-app`, returns `/home/user/src/my-app-worktrees/`
+    """
+    return repo_path.parent / f"{repo_path.name}-worktrees"
+
+
+@dataclass
+class WorktreeInfo:
+    """Information about a git worktree."""
+
+    path: str
+    branch: str
+    commit: str
+    is_main: bool = False
+
+
+def list_worktrees(repo_path: Path) -> list[WorktreeInfo]:
+    """
+    List all worktrees for a repository.
+
+    Returns:
+        List of WorktreeInfo objects
+    """
+    try:
+        repo = get_repo(repo_path)
+    except InvalidGitRepositoryError:
+        return []
+
+    worktrees = []
+    try:
+        # Parse `git worktree list --porcelain` output
+        output = repo.git.worktree("list", "--porcelain")
+        current_worktree: dict[str, str] = {}
+
+        for line in output.split("\n"):
+            if line.startswith("worktree "):
+                current_worktree["path"] = line[9:]
+            elif line.startswith("HEAD "):
+                current_worktree["commit"] = line[5:]
+            elif line.startswith("branch "):
+                # refs/heads/branch-name → branch-name
+                branch_ref = line[7:]
+                if branch_ref.startswith("refs/heads/"):
+                    current_worktree["branch"] = branch_ref[11:]
+                else:
+                    current_worktree["branch"] = branch_ref
+            elif line == "":
+                if current_worktree.get("path"):
+                    worktrees.append(
+                        WorktreeInfo(
+                            path=current_worktree.get("path", ""),
+                            branch=current_worktree.get("branch", "HEAD"),
+                            commit=current_worktree.get("commit", "")[:7],
+                            is_main=current_worktree.get("path") == str(repo_path),
+                        )
+                    )
+                current_worktree = {}
+
+        # Don't forget the last entry
+        if current_worktree.get("path"):
+            worktrees.append(
+                WorktreeInfo(
+                    path=current_worktree.get("path", ""),
+                    branch=current_worktree.get("branch", "HEAD"),
+                    commit=current_worktree.get("commit", "")[:7],
+                    is_main=current_worktree.get("path") == str(repo_path),
+                )
+            )
+    except GitCommandError:
+        pass
+
+    return worktrees
+
+
+def validate_branch_for_worktree(repo_path: Path, branch: str) -> dict:
+    """
+    Check if a branch can be used for a new worktree.
+
+    A branch cannot be used if it's already checked out in another worktree.
+
+    Returns:
+        Dict with 'valid' bool and optional 'error' message
+    """
+    existing_worktrees = list_worktrees(repo_path)
+    for wt in existing_worktrees:
+        if wt.branch == branch:
+            return {
+                "valid": False,
+                "error": f"Branch '{branch}' is already checked out in worktree: {wt.path}",
+            }
+    return {"valid": True}
+
+
+def create_worktree(
+    repo_path: Path,
+    branch: str,
+    worktree_path: Path | None = None,
+    create_branch: bool = False,
+    base_branch: str | None = None,
+) -> dict:
+    """
+    Create a git worktree for a branch.
+
+    Args:
+        repo_path: Path to the parent git repository
+        branch: Branch name to checkout (or create)
+        worktree_path: Where to create the worktree (auto-generated if None)
+        create_branch: If True, create a new branch
+        base_branch: Branch to base new branch on (defaults to current HEAD)
+
+    Returns:
+        Dict with 'path' on success, or 'error' on failure
+    """
+    try:
+        repo = get_repo(repo_path)
+    except InvalidGitRepositoryError:
+        return {"error": "Not a git repository"}
+
+    # Validate branch availability
+    if not create_branch:
+        validation = validate_branch_for_worktree(repo_path, branch)
+        if not validation["valid"]:
+            return {"error": validation["error"]}
+
+    # Generate worktree path if not provided
+    if worktree_path is None:
+        container = get_worktree_container_path(Path(repo.working_dir))
+        container.mkdir(parents=True, exist_ok=True)
+        worktree_path = container / sanitize_branch_for_path(branch)
+
+    # Check if worktree path already exists
+    if worktree_path.exists():
+        return {"error": f"Worktree path already exists: {worktree_path}"}
+
+    try:
+        if create_branch:
+            # Create new branch and worktree
+            if base_branch:
+                repo.git.worktree("add", "-b", branch, str(worktree_path), base_branch)
+            else:
+                repo.git.worktree("add", "-b", branch, str(worktree_path))
+        else:
+            # Use existing branch
+            repo.git.worktree("add", str(worktree_path), branch)
+
+        return {"path": str(worktree_path)}
+    except GitCommandError as e:
+        error_str = str(e)
+        if "already exists" in error_str:
+            return {"error": f"Branch '{branch}' already exists"}
+        if "is not a valid branch name" in error_str:
+            return {"error": f"Invalid branch name: {branch}"}
+        return {"error": f"Failed to create worktree: {e}"}
+
+
+def remove_worktree(repo_path: Path, worktree_path: Path, force: bool = False) -> dict:
+    """
+    Remove a git worktree.
+
+    Args:
+        repo_path: Path to the parent git repository
+        worktree_path: Path to the worktree to remove
+        force: If True, force removal even with uncommitted changes
+
+    Returns:
+        Dict with 'status' on success, or 'error' on failure
+    """
+    try:
+        repo = get_repo(repo_path)
+    except InvalidGitRepositoryError:
+        return {"error": "Not a git repository"}
+
+    try:
+        if force:
+            repo.git.worktree("remove", "--force", str(worktree_path))
+        else:
+            repo.git.worktree("remove", str(worktree_path))
+        return {"status": "removed", "path": str(worktree_path)}
+    except GitCommandError as e:
+        error_str = str(e)
+        if "contains modified or untracked files" in error_str:
+            return {"error": "Worktree has uncommitted changes. Use force=True to override."}
+        return {"error": f"Failed to remove worktree: {e}"}
+
+
+def get_branches_for_worktree(repo_path: Path) -> dict:
+    """
+    Get branches available for creating a worktree.
+
+    Returns all local branches with info about whether they're available
+    (not already checked out in a worktree).
+
+    Returns:
+        Dict with 'branches' list and 'current' branch name
+    """
+    try:
+        repo = get_repo(repo_path)
+    except InvalidGitRepositoryError:
+        return {"error": "Not a git repository", "branches": [], "current": None}
+
+    # Get existing worktrees to check which branches are in use
+    existing_worktrees = list_worktrees(repo_path)
+    used_branches = {wt.branch for wt in existing_worktrees}
+
+    current_branch = get_current_branch(repo_path)
+
+    branches = []
+    for branch in repo.branches:
+        branches.append({
+            "name": branch.name,
+            "available": branch.name not in used_branches,
+            "inWorktree": branch.name in used_branches,
+            "current": branch.name == current_branch,
+        })
+
+    return {
+        "branches": branches,
+        "current": current_branch,
+    }

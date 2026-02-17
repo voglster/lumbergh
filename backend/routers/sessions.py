@@ -23,7 +23,9 @@ from db_utils import (
 from file_utils import get_file_language, list_project_files, validate_path_within_root
 from git_utils import (
     checkout_branch,
+    create_worktree,
     get_branches,
+    get_branches_for_worktree,
     get_commit_diff,
     get_commit_log,
     get_current_branch,
@@ -31,6 +33,7 @@ from git_utils import (
     get_porcelain_status,
     get_remote_status,
     git_push,
+    remove_worktree,
     reset_to_head,
     stage_all_and_commit,
 )
@@ -181,6 +184,9 @@ async def list_sessions():
                 "statusUpdatedAt": status_info.get("statusUpdatedAt"),
                 "idleState": status_info.get("idleState"),
                 "idleStateUpdatedAt": status_info.get("idleStateUpdatedAt"),
+                "type": meta.get("type", "direct"),
+                "worktreeParentRepo": meta.get("worktree_parent_repo"),
+                "worktreeBranch": meta.get("worktree_branch"),
             }
         )
 
@@ -201,6 +207,9 @@ async def list_sessions():
                     "statusUpdatedAt": status_info.get("statusUpdatedAt"),
                     "idleState": status_info.get("idleState"),
                     "idleStateUpdatedAt": status_info.get("idleStateUpdatedAt"),
+                    "type": "direct",
+                    "worktreeParentRepo": None,
+                    "worktreeBranch": None,
                 }
             )
 
@@ -242,16 +251,54 @@ async def create_session(body: CreateSessionRequest):
             detail="Invalid session name. Use only letters, numbers, underscores, and hyphens.",
         )
 
-    workdir = Path(body.workdir).expanduser().resolve()
-    if not workdir.exists():
-        raise HTTPException(status_code=400, detail=f"Directory does not exist: {body.workdir}")
-    if not workdir.is_dir():
-        raise HTTPException(status_code=400, detail=f"Path is not a directory: {body.workdir}")
+    live = get_live_sessions()
+    stored = get_stored_sessions()
+
+    if body.name in live:
+        raise HTTPException(status_code=409, detail=f"Session '{body.name}' already exists")
+
+    # Handle worktree mode
+    session_type = body.mode
+    worktree_parent_repo = None
+    worktree_branch = None
+
+    if body.mode == "worktree":
+        if not body.worktree:
+            raise HTTPException(status_code=400, detail="Worktree config required for worktree mode")
+
+        parent_repo = Path(body.worktree.parent_repo).expanduser().resolve()
+        if not parent_repo.exists():
+            raise HTTPException(status_code=400, detail=f"Parent repository does not exist: {body.worktree.parent_repo}")
+        if not (parent_repo / ".git").exists() and not (parent_repo / ".git").is_file():
+            raise HTTPException(status_code=400, detail=f"Not a git repository: {body.worktree.parent_repo}")
+
+        # Create the worktree
+        result = create_worktree(
+            repo_path=parent_repo,
+            branch=body.worktree.branch,
+            create_branch=body.worktree.create_branch,
+            base_branch=body.worktree.base_branch,
+        )
+
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+
+        workdir = Path(result["path"])
+        worktree_parent_repo = str(parent_repo)
+        worktree_branch = body.worktree.branch
+    else:
+        # Direct mode - workdir is required
+        if not body.workdir:
+            raise HTTPException(status_code=400, detail="Working directory required for direct mode")
+
+        workdir = Path(body.workdir).expanduser().resolve()
+        if not workdir.exists():
+            raise HTTPException(status_code=400, detail=f"Directory does not exist: {body.workdir}")
+        if not workdir.is_dir():
+            raise HTTPException(status_code=400, detail=f"Path is not a directory: {body.workdir}")
 
     # Check for existing session with same workdir
     workdir_str = str(workdir)
-    stored = get_stored_sessions()
-    live = get_live_sessions()
 
     for session_name, meta in stored.items():
         if meta.get("workdir") == workdir_str and session_name in live:
@@ -264,10 +311,10 @@ async def create_session(body: CreateSessionRequest):
                 "alive": True,
                 "attached": live[session_name].get("attached", False),
                 "windows": live[session_name].get("windows", 1),
+                "type": meta.get("type", "direct"),
+                "worktreeParentRepo": meta.get("worktree_parent_repo"),
+                "worktreeBranch": meta.get("worktree_branch"),
             }
-
-    if body.name in live:
-        raise HTTPException(status_code=409, detail=f"Session '{body.name}' already exists")
 
     result = subprocess.run(
         ["tmux", "new-session", "-d", "-s", body.name, "-c", str(workdir)],
@@ -284,14 +331,18 @@ async def create_session(body: CreateSessionRequest):
     )
 
     Session = Query()
-    sessions_table.upsert(
-        {
-            "name": body.name,
-            "workdir": str(workdir),
-            "description": body.description,
-        },
-        Session.name == body.name,
-    )
+    session_data = {
+        "name": body.name,
+        "workdir": str(workdir),
+        "description": body.description,
+        "type": session_type,
+    }
+    if worktree_parent_repo:
+        session_data["worktree_parent_repo"] = worktree_parent_repo
+    if worktree_branch:
+        session_data["worktree_branch"] = worktree_branch
+
+    sessions_table.upsert(session_data, Session.name == body.name)
 
     live = get_live_sessions()
     live_info = live.get(body.name, {})
@@ -303,13 +354,30 @@ async def create_session(body: CreateSessionRequest):
         "alive": live_info.get("alive", True),
         "attached": live_info.get("attached", False),
         "windows": live_info.get("windows", 1),
+        "type": session_type,
+        "worktreeParentRepo": worktree_parent_repo,
+        "worktreeBranch": worktree_branch,
     }
 
 
 @router.delete("/{name}")
-async def delete_session(name: str):
-    """Kill a tmux session and remove metadata."""
+async def delete_session(name: str, cleanup_worktree: bool = False):
+    """Kill a tmux session and remove metadata.
+
+    Args:
+        name: Session name
+        cleanup_worktree: If true and session is a worktree, also remove the worktree directory
+    """
     live = get_live_sessions()
+    stored = get_stored_sessions()
+
+    # Get session metadata for worktree cleanup
+    session_meta = stored.get(name, {})
+    session_type = session_meta.get("type", "direct")
+    worktree_parent_repo = session_meta.get("worktree_parent_repo")
+    workdir = session_meta.get("workdir")
+
+    # Kill the tmux session first
     if name in live:
         result = subprocess.run(
             ["tmux", "kill-session", "-t", name],
@@ -319,10 +387,20 @@ async def delete_session(name: str):
         if result.returncode != 0:
             raise HTTPException(status_code=500, detail=f"Failed to kill session: {result.stderr}")
 
+    # Clean up worktree if requested
+    worktree_removed = False
+    if cleanup_worktree and session_type == "worktree" and worktree_parent_repo and workdir:
+        result = remove_worktree(Path(worktree_parent_repo), Path(workdir), force=True)
+        worktree_removed = result.get("status") == "removed"
+
     Session = Query()
     sessions_table.remove(Session.name == name)
 
-    return {"status": "deleted", "name": name}
+    return {
+        "status": "deleted",
+        "name": name,
+        "worktreeRemoved": worktree_removed,
+    }
 
 
 # --- Session-scoped Git Endpoints ---
@@ -423,6 +501,22 @@ async def session_git_branches(name: str):
 
     try:
         return get_branches(workdir)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/branches")
+async def get_worktree_branches(repo_path: str):
+    """Get branches available for creating a worktree."""
+    path = Path(repo_path).expanduser().resolve()
+    if not path.exists():
+        raise HTTPException(status_code=400, detail=f"Repository path does not exist: {repo_path}")
+
+    try:
+        result = get_branches_for_worktree(path)
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

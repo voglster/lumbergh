@@ -13,6 +13,11 @@ interface Session {
   windows: number
   status?: string | null
   statusUpdatedAt?: string | null
+  idleState?: 'unknown' | 'idle' | 'working' | null
+  idleStateUpdatedAt?: string | null
+  type?: 'direct' | 'worktree'
+  worktreeParentRepo?: string | null
+  worktreeBranch?: string | null
 }
 
 export default function Dashboard() {
@@ -77,9 +82,13 @@ export default function Dashboard() {
     return () => clearInterval(interval)
   }, [fetchSessions, checkLbSharedStatus])
 
-  const handleDelete = async (name: string) => {
+  const handleDelete = async (name: string, cleanupWorktree?: boolean) => {
     try {
-      const res = await fetch(`http://${apiHost}/api/sessions/${name}`, {
+      const url = new URL(`http://${apiHost}/api/sessions/${name}`)
+      if (cleanupWorktree) {
+        url.searchParams.set('cleanup_worktree', 'true')
+      }
+      const res = await fetch(url.toString(), {
         method: 'DELETE',
       })
       if (!res.ok) {

@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DirectoryPicker from './DirectoryPicker'
+import BranchPicker from './BranchPicker'
 
 interface Props {
   apiHost: string
   onClose: () => void
   onCreated: () => void
 }
+
+type SessionMode = 'direct' | 'worktree'
 
 // Generate a URL-safe slug from free-form text
 function toSlug(text: string): string {
@@ -21,6 +24,7 @@ function toSlug(text: string): string {
 
 export default function CreateSessionModal({ apiHost, onClose, onCreated }: Props) {
   const navigate = useNavigate()
+  const [mode, setMode] = useState<SessionMode>('direct')
   const [name, setName] = useState('')
   const [workdir, setWorkdir] = useState('')
   const [description, setDescription] = useState('')
@@ -28,24 +32,51 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
   const [isCreating, setIsCreating] = useState(false)
   const [manualEntry, setManualEntry] = useState(false)
 
+  // Worktree mode state
+  const [parentRepo, setParentRepo] = useState('')
+  const [branch, setBranch] = useState('')
+  const [createNewBranch, setCreateNewBranch] = useState(false)
+  const [newBranchName, setNewBranchName] = useState('')
+
   const slug = toSlug(name)
+
+  const isValid = () => {
+    if (!slug) return false
+    if (mode === 'direct') {
+      return workdir.trim() !== ''
+    } else {
+      return parentRepo.trim() !== '' && (createNewBranch ? newBranchName.trim() !== '' : branch !== '')
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!slug || !workdir.trim()) return
+    if (!isValid()) return
 
     setIsCreating(true)
     setError(null)
 
     try {
+      const body: Record<string, unknown> = {
+        name: slug,
+        description: description.trim(),
+        mode,
+      }
+
+      if (mode === 'direct') {
+        body.workdir = workdir.trim()
+      } else {
+        body.worktree = {
+          parent_repo: parentRepo.trim(),
+          branch: createNewBranch ? newBranchName.trim() : branch,
+          create_branch: createNewBranch,
+        }
+      }
+
       const res = await fetch(`http://${apiHost}/api/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: slug,
-          workdir: workdir.trim(),
-          description: description.trim(),
-        }),
+        body: JSON.stringify(body),
       })
 
       if (!res.ok) {
@@ -88,6 +119,38 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          {/* Mode Toggle */}
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">Session Type</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setMode('direct')}
+                className={`flex-1 px-3 py-2 text-sm rounded transition-colors ${
+                  mode === 'direct'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-700 text-gray-400 hover:text-white hover:bg-gray-600'
+                }`}
+              >
+                <div className="font-medium">Direct</div>
+                <div className="text-xs opacity-75 mt-0.5">Use existing directory</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('worktree')}
+                className={`flex-1 px-3 py-2 text-sm rounded transition-colors ${
+                  mode === 'worktree'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-700 text-gray-400 hover:text-white hover:bg-gray-600'
+                }`}
+              >
+                <div className="font-medium">Worktree</div>
+                <div className="text-xs opacity-75 mt-0.5">Create git worktree</div>
+              </button>
+            </div>
+          </div>
+
+          {/* Session Name */}
           <div>
             <label className="block text-sm text-gray-400 mb-1">Session Name</label>
             <input
@@ -105,39 +168,74 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
             )}
           </div>
 
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">Working Directory</label>
-            {manualEntry ? (
-              <div>
-                <input
-                  type="text"
+          {mode === 'direct' ? (
+            /* Direct Mode - Working Directory */
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Working Directory</label>
+              {manualEntry ? (
+                <div>
+                  <input
+                    type="text"
+                    value={workdir}
+                    onChange={(e) => setWorkdir(e.target.value)}
+                    placeholder="e.g., /home/user/myproject"
+                    className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500 font-mono text-sm"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setManualEntry(false)
+                      setWorkdir('')
+                    }}
+                    className="mt-2 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                  >
+                    Search repositories instead
+                  </button>
+                </div>
+              ) : (
+                <DirectoryPicker
+                  apiHost={apiHost}
                   value={workdir}
-                  onChange={(e) => setWorkdir(e.target.value)}
-                  placeholder="e.g., /home/user/myproject"
-                  className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500 font-mono text-sm"
-                  required
+                  onChange={setWorkdir}
+                  onManualEntry={() => setManualEntry(true)}
                 />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setManualEntry(false)
-                    setWorkdir('')
+              )}
+            </div>
+          ) : (
+            /* Worktree Mode */
+            <>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Parent Repository</label>
+                <DirectoryPicker
+                  apiHost={apiHost}
+                  value={parentRepo}
+                  onChange={(path) => {
+                    setParentRepo(path)
+                    setBranch('')
                   }}
-                  className="mt-2 text-xs text-blue-400 hover:text-blue-300 transition-colors"
-                >
-                  Search repositories instead
-                </button>
+                  onManualEntry={() => {}}
+                />
               </div>
-            ) : (
-              <DirectoryPicker
-                apiHost={apiHost}
-                value={workdir}
-                onChange={setWorkdir}
-                onManualEntry={() => setManualEntry(true)}
-              />
-            )}
-          </div>
 
+              {parentRepo && (
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Branch</label>
+                  <BranchPicker
+                    apiHost={apiHost}
+                    repoPath={parentRepo}
+                    value={branch}
+                    onChange={setBranch}
+                    onCreateNew={setNewBranchName}
+                    createNewBranch={createNewBranch}
+                    onCreateNewBranchChange={setCreateNewBranch}
+                  />
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Description */}
           <div>
             <label className="block text-sm text-gray-400 mb-1">Description (optional)</label>
             <input
@@ -161,7 +259,7 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
             </button>
             <button
               type="submit"
-              disabled={isCreating || !slug || !workdir.trim()}
+              disabled={isCreating || !isValid()}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded transition-colors"
             >
               {isCreating ? 'Creating...' : 'Create Session'}

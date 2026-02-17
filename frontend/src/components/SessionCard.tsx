@@ -13,6 +13,9 @@ interface Session {
   statusUpdatedAt?: string | null
   idleState?: 'unknown' | 'idle' | 'working' | null
   idleStateUpdatedAt?: string | null
+  type?: 'direct' | 'worktree'
+  worktreeParentRepo?: string | null
+  worktreeBranch?: string | null
 }
 
 interface SessionUpdate {
@@ -22,7 +25,7 @@ interface SessionUpdate {
 
 interface Props {
   session: Session
-  onDelete: (name: string) => void
+  onDelete: (name: string, cleanupWorktree?: boolean) => void
   onUpdate: (name: string, updates: SessionUpdate) => void
 }
 
@@ -40,8 +43,24 @@ export default function SessionCard({ session, onDelete, onUpdate }: Props) {
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (confirm(`Delete session "${session.name}"?`)) {
-      onDelete(session.name)
+
+    if (session.type === 'worktree') {
+      // For worktree sessions, ask if user wants to cleanup worktree too
+      const choice = confirm(
+        `Delete session "${session.name}"?\n\nThis is a worktree session. Click OK to delete session only, or cancel and use the cleanup option.`
+      )
+      if (choice) {
+        // Ask about worktree cleanup
+        const cleanup = confirm(
+          'Also delete the worktree directory? This will remove the checkout at:\n' +
+          session.workdir
+        )
+        onDelete(session.name, cleanup)
+      }
+    } else {
+      if (confirm(`Delete session "${session.name}"?`)) {
+        onDelete(session.name)
+      }
     }
   }
 
@@ -187,6 +206,21 @@ export default function SessionCard({ session, onDelete, onUpdate }: Props) {
           </button>
         </div>
       </div>
+
+      {/* Worktree indicator */}
+      {session.type === 'worktree' && session.worktreeBranch && (
+        <div className="flex items-center gap-1.5 mb-1">
+          <svg className="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          </svg>
+          <span className="text-xs text-purple-400 font-mono">{session.worktreeBranch}</span>
+          {session.worktreeParentRepo && (
+            <span className="text-xs text-gray-500">
+              from {session.worktreeParentRepo.split('/').pop()}
+            </span>
+          )}
+        </div>
+      )}
 
       {session.workdir && (
         <p className="text-sm text-gray-400 font-mono truncate mb-1" title={session.workdir}>

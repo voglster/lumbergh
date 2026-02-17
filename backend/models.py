@@ -66,12 +66,23 @@ class PromptTemplateList(BaseModel):
     templates: list[PromptTemplate]
 
 
+class WorktreeConfig(BaseModel):
+    """Configuration for creating a worktree session."""
+
+    parent_repo: str  # Path to parent git repository
+    branch: str  # Branch name to checkout/create
+    create_branch: bool = False
+    base_branch: str | None = None
+
+
 class CreateSessionRequest(BaseModel):
     """Request to create a new tmux session."""
 
     name: str
-    workdir: str
+    workdir: str | None = None  # Required for direct, ignored for worktree
     description: str = ""
+    mode: Literal["direct", "worktree"] = "direct"
+    worktree: WorktreeConfig | None = None
 
 
 class SessionUpdate(BaseModel):
