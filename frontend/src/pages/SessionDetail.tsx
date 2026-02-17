@@ -8,10 +8,11 @@ import VerticalResizablePanes from '../components/VerticalResizablePanes'
 import TodoList from '../components/TodoList'
 import Scratchpad from '../components/Scratchpad'
 import PromptTemplates from '../components/PromptTemplates'
+import SharedFiles from '../components/SharedFiles'
 import { useIsDesktop } from '../hooks/useMediaQuery'
 
-type RightPanel = 'diff' | 'files' | 'todos' | 'prompts'
-type MobileTab = 'terminal' | 'diff' | 'files' | 'todos' | 'prompts'
+type RightPanel = 'diff' | 'files' | 'todos' | 'prompts' | 'shared'
+type MobileTab = 'terminal' | 'diff' | 'files' | 'todos' | 'prompts' | 'shared'
 
 type DiffData = {
   files: Array<{ path: string; diff: string }>
@@ -41,11 +42,12 @@ export default function SessionDetail() {
 
   const [rightPanel, setRightPanel] = useState<RightPanel>(() => {
     const saved = localStorage.getItem('lumbergh:rightPanel')
-    if (saved === 'diff' || saved === 'files' || saved === 'todos' || saved === 'prompts') {
+    if (saved === 'diff' || saved === 'files' || saved === 'todos' || saved === 'prompts' || saved === 'shared') {
       return saved
     }
     return 'diff'
   })
+  const [sharedRefreshTrigger, setSharedRefreshTrigger] = useState(0)
   const [mobileTab, setMobileTab] = useState<MobileTab>('terminal')
   const [diffData, setDiffData] = useState<DiffData | null>(null)
   const [diffKey, setDiffKey] = useState(0)
@@ -104,12 +106,51 @@ export default function SessionDetail() {
     }
   }, [fetchDiffData])
 
+  // Global paste handler for image uploads
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items
+      if (!items) return
+
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault()
+          const file = item.getAsFile()
+          if (!file) continue
+
+          const formData = new FormData()
+          formData.append('file', file)
+
+          try {
+            const res = await fetch(`http://${apiHost}/api/shared/upload`, {
+              method: 'POST',
+              body: formData,
+            })
+            if (res.ok) {
+              // Trigger refresh and switch to shared tab
+              setSharedRefreshTrigger((n) => n + 1)
+              setRightPanel('shared')
+              setMobileTab('shared')
+            }
+          } catch (err) {
+            console.error('Failed to upload image:', err)
+          }
+          break
+        }
+      }
+    }
+
+    document.addEventListener('paste', handlePaste)
+    return () => document.removeEventListener('paste', handlePaste)
+  }, [apiHost])
+
   const mobileTabs: { id: MobileTab; label: string }[] = [
     { id: 'terminal', label: 'Terminal' },
     { id: 'diff', label: 'Diff' },
     { id: 'files', label: 'Files' },
     { id: 'todos', label: 'Todo' },
     { id: 'prompts', label: 'Prompts' },
+    { id: 'shared', label: 'Shared' },
   ]
 
   const renderTerminal = () => (
@@ -183,6 +224,16 @@ export default function SessionDetail() {
         >
           Prompts
         </button>
+        <button
+          onClick={() => setRightPanel('shared')}
+          className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+            rightPanel === 'shared'
+              ? 'bg-gray-600 text-white'
+              : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'
+          }`}
+        >
+          Shared
+        </button>
       </div>
       {/* Panel content */}
       <div className="flex-1 min-h-0 overflow-hidden">
@@ -227,6 +278,14 @@ export default function SessionDetail() {
             apiHost={apiHost}
             sessionName={name}
             onFocusTerminal={handleFocusTerminal}
+          />
+        )}
+        {rightPanel === 'shared' && (
+          <SharedFiles
+            apiHost={apiHost}
+            sessionName={name}
+            onFocusTerminal={handleFocusTerminal}
+            refreshTrigger={sharedRefreshTrigger}
           />
         )}
       </div>
@@ -343,6 +402,14 @@ export default function SessionDetail() {
                 apiHost={apiHost}
                 sessionName={name}
                 onFocusTerminal={handleFocusTerminal}
+              />
+            )}
+            {mobileTab === 'shared' && (
+              <SharedFiles
+                apiHost={apiHost}
+                sessionName={name}
+                onFocusTerminal={handleFocusTerminal}
+                refreshTrigger={sharedRefreshTrigger}
               />
             )}
           </div>

@@ -2,9 +2,11 @@
 Shared folder router - Cross-project context sharing via ~/.config/lumbergh/shared/
 """
 
+from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 
 from constants import SHARED_DIR
 
@@ -23,6 +25,9 @@ Commands:
 - **"lb share: <topic>"** - Write context to shared/<topic>.md
 - **"check lb shared"** - List and read files in shared folder
 - **"clear lb shared"** - Delete all files in shared folder
+
+Images pasted in Lumbergh are saved here. Reference by path:
+`~/.config/lumbergh/shared/screenshot_2026-02-16_193045.png`
 """
 
 LB_SHARED_MARKER = "## LB Shared"
@@ -130,3 +135,50 @@ async def delete_shared_file(filename: str):
 
     file_path.unlink()
     return {"status": "deleted", "name": filename}
+
+
+@router.post("/upload")
+async def upload_file(file: UploadFile):
+    """Upload a file to the shared folder."""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
+
+    # Generate timestamped filename: screenshot_2026-02-16_193045.png
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+
+    # Get extension from original filename
+    original_ext = Path(file.filename).suffix.lower() or ".png"
+
+    # Determine prefix based on content type
+    if file.content_type and file.content_type.startswith("image/"):
+        prefix = "screenshot"
+    else:
+        prefix = "file"
+
+    filename = f"{prefix}_{timestamp}{original_ext}"
+    file_path = SHARED_DIR / filename
+
+    # Save the file
+    content = await file.read()
+    file_path.write_bytes(content)
+
+    return {
+        "name": filename,
+        "path": str(file_path),
+        "size": len(content),
+    }
+
+
+@router.get("/files/{filename}/content")
+async def get_shared_file_content(filename: str):
+    """Serve the raw content of a shared file (for images, etc.)."""
+    file_path = SHARED_DIR / filename
+
+    # Security: ensure we stay in shared dir
+    if not file_path.resolve().parent == SHARED_DIR.resolve():
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return FileResponse(file_path)
