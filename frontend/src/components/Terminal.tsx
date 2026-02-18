@@ -11,6 +11,7 @@ interface TerminalProps {
   onSendReady?: (send: ((data: string) => void) | null) => void
   onFocusReady?: (focus: () => void) => void
   onBack?: () => void
+  onReset?: () => void
   isVisible?: boolean
 }
 
@@ -20,6 +21,7 @@ export default function Terminal({
   onSendReady,
   onFocusReady,
   onBack,
+  onReset,
   isVisible = true,
 }: TerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -443,24 +445,40 @@ export default function Terminal({
         {/* Expanded row */}
         {headerExpanded && (
           <div className="flex items-center justify-between px-2 pb-2 overflow-x-auto scrollbar-hide">
-            {/* Font size controls - left aligned */}
-            <div className="flex items-center gap-1 shrink-0">
-              <span className="text-xs text-gray-400">Font:</span>
-              <button
-                onClick={() => setFontSize((s) => Math.max(8, s - 1))}
-                className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
-                title="Decrease font size"
-              >
-                -
-              </button>
-              <span className="text-xs text-gray-300 w-5 text-center">{fontSize}</span>
-              <button
-                onClick={() => setFontSize((s) => Math.min(24, s + 1))}
-                className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
-                title="Increase font size"
-              >
-                +
-              </button>
+            {/* Font size controls and reset - left aligned */}
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-gray-400">Font:</span>
+                <button
+                  onClick={() => setFontSize((s) => Math.max(8, s - 1))}
+                  className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
+                  title="Decrease font size"
+                >
+                  -
+                </button>
+                <span className="text-xs text-gray-300 w-5 text-center">{fontSize}</span>
+                <button
+                  onClick={() => setFontSize((s) => Math.min(24, s + 1))}
+                  className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
+                  title="Increase font size"
+                >
+                  +
+                </button>
+              </div>
+              {onReset && (
+                <button
+                  onClick={() => {
+                    if (confirm('⚠️ Reset this session?\n\nThis will:\n• Close ALL tmux windows and terminals\n• Kill any running processes\n• Start a fresh Claude session\n\nAny unsaved work will be lost!')) {
+                      onReset()
+                      setHeaderExpanded(false)
+                    }
+                  }}
+                  className="px-2 py-1 text-xs bg-yellow-700 hover:bg-yellow-600 rounded"
+                  title="Reset session (close all windows and restart Claude)"
+                >
+                  Reset
+                </button>
+              )}
             </div>
             {/* Quick buttons - right aligned */}
             <div className="flex items-center gap-2 shrink-0">

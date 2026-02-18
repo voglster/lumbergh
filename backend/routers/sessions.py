@@ -6,6 +6,7 @@ Stores metadata in ~/.config/lumbergh/sessions.json
 import re
 import subprocess
 from pathlib import Path
+from typing import Optional
 
 import libtmux
 from fastapi import APIRouter, HTTPException
@@ -85,6 +86,18 @@ def find_git_repos(base_dir: Path, query: str = "", limit: int = 20) -> list[dic
 
     search_dir(base_dir)
     return sorted(results, key=lambda x: x["name"].lower())
+
+
+def find_venv_activate(workdir: Path) -> Optional[Path]:
+    """Find venv activate script in common locations."""
+    candidates = [
+        workdir / ".venv" / "bin" / "activate",
+        workdir / "backend" / ".venv" / "bin" / "activate",
+    ]
+    for path in candidates:
+        if path.exists():
+            return path
+    return None
 
 
 @directories_router.get("/search")
@@ -325,6 +338,15 @@ async def create_session(body: CreateSessionRequest):
     if result.returncode != 0:
         raise HTTPException(status_code=500, detail=f"Failed to create session: {result.stderr}")
 
+    # Activate venv if found
+    venv_activate = find_venv_activate(workdir)
+    if venv_activate:
+        subprocess.run(
+            ["tmux", "send-keys", "-t", body.name, f"source {venv_activate}", "Enter"],
+            capture_output=True,
+            text=True,
+        )
+
     subprocess.run(
         ["tmux", "send-keys", "-t", body.name, "claude", "Enter"],
         capture_output=True,
@@ -358,6 +380,61 @@ async def create_session(body: CreateSessionRequest):
         "type": session_type,
         "worktreeParentRepo": worktree_parent_repo,
         "worktreeBranch": worktree_branch,
+    }
+
+
+@router.post("/{name}/reset")
+async def reset_session(name: str):
+    """Reset a session: kill all windows and start fresh with venv + claude."""
+    live = get_live_sessions()
+    stored = get_stored_sessions()
+
+    if name not in live:
+        raise HTTPException(status_code=404, detail=f"Session '{name}' is not running")
+
+    session_meta = stored.get(name, {})
+    workdir_str = session_meta.get("workdir")
+
+    if not workdir_str:
+        raise HTTPException(status_code=400, detail=f"Session '{name}' has no workdir configured")
+
+    workdir = Path(workdir_str)
+
+    # Kill all windows in the session
+    result = subprocess.run(
+        ["tmux", "kill-window", "-t", f"{name}:", "-a"],
+        capture_output=True,
+        text=True,
+    )
+    # -a kills all windows except current, so also kill the remaining one
+    # by respawning it instead
+    subprocess.run(
+        ["tmux", "respawn-window", "-t", f"{name}:", "-k", "-c", str(workdir)],
+        capture_output=True,
+        text=True,
+    )
+
+    # Activate venv if found
+    venv_activate = find_venv_activate(workdir)
+    if venv_activate:
+        subprocess.run(
+            ["tmux", "send-keys", "-t", name, f"source {venv_activate}", "Enter"],
+            capture_output=True,
+            text=True,
+        )
+
+    # Start claude
+    subprocess.run(
+        ["tmux", "send-keys", "-t", name, "claude", "Enter"],
+        capture_output=True,
+        text=True,
+    )
+
+    return {
+        "status": "reset",
+        "name": name,
+        "workdir": workdir_str,
+        "venvActivated": venv_activate is not None,
     }
 
 

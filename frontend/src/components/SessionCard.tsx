@@ -52,9 +52,10 @@ interface Props {
   session: Session
   onDelete: (name: string, cleanupWorktree?: boolean) => void
   onUpdate: (name: string, updates: SessionUpdate) => void
+  onReset: (name: string) => void
 }
 
-export default function SessionCard({ session, onDelete, onUpdate }: Props) {
+export default function SessionCard({ session, onDelete, onUpdate, onReset }: Props) {
   const navigate = useNavigate()
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState(session.displayName || '')
@@ -86,6 +87,13 @@ export default function SessionCard({ session, onDelete, onUpdate }: Props) {
       if (confirm(`Delete session "${session.name}"?`)) {
         onDelete(session.name)
       }
+    }
+  }
+
+  const handleReset = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (confirm(`⚠️ Reset "${session.name}"?\n\nThis will:\n• Close ALL tmux windows and terminals\n• Kill any running processes\n• Start a fresh Claude session\n\nAny unsaved work will be lost!`)) {
+      onReset(session.name)
     }
   }
 
@@ -219,6 +227,22 @@ export default function SessionCard({ session, onDelete, onUpdate }: Props) {
               />
             </svg>
           </button>
+          {session.alive && (
+            <button
+              onClick={handleReset}
+              className="text-gray-500 hover:text-yellow-400 transition-colors p-1"
+              title="Reset session"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+            </button>
+          )}
           <button
             onClick={handleDelete}
             className="text-gray-500 hover:text-red-400 transition-colors p-1"

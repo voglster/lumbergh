@@ -87,6 +87,21 @@ export default function SessionDetail() {
     }
   }, [apiHost, name])
 
+  const handleReset = useCallback(async () => {
+    if (!name) return
+    try {
+      const res = await fetch(`http://${apiHost}/api/sessions/${name}/reset`, {
+        method: 'POST',
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.detail || 'Failed to reset session')
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to reset session')
+    }
+  }, [apiHost, name])
+
   const fetchDiffData = useCallback(async () => {
     if (!name) return
     try {
@@ -174,6 +189,7 @@ export default function SessionDetail() {
           apiHost={apiHost}
           onFocusReady={handleFocusReady}
           onBack={isDesktop ? () => navigate('/') : undefined}
+          onReset={handleReset}
           isVisible={isDesktop || mobileTab === 'terminal'}
         />
       ) : (

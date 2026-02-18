@@ -122,6 +122,22 @@ export default function Dashboard() {
     }
   }
 
+  const handleReset = async (name: string) => {
+    try {
+      const res = await fetch(`http://${apiHost}/api/sessions/${name}/reset`, {
+        method: 'POST',
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.detail || 'Failed to reset session')
+      }
+      // Refresh sessions list
+      fetchSessions()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to reset session')
+    }
+  }
+
   // Separate alive and dead sessions
   const aliveSessions = sessions.filter((s) => s.alive)
   const deadSessions = sessions.filter((s) => !s.alive)
@@ -237,7 +253,7 @@ export default function Dashboard() {
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {aliveSessions.map((session) => (
-                    <SessionCard key={session.name} session={session} onDelete={handleDelete} onUpdate={handleUpdate} />
+                    <SessionCard key={session.name} session={session} onDelete={handleDelete} onUpdate={handleUpdate} onReset={handleReset} />
                   ))}
                 </div>
               </section>
@@ -251,7 +267,7 @@ export default function Dashboard() {
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {deadSessions.map((session) => (
-                    <SessionCard key={session.name} session={session} onDelete={handleDelete} onUpdate={handleUpdate} />
+                    <SessionCard key={session.name} session={session} onDelete={handleDelete} onUpdate={handleUpdate} onReset={handleReset} />
                   ))}
                 </div>
               </section>
