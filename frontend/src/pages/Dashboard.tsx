@@ -127,7 +127,7 @@ export default function Dashboard() {
   const deadSessions = sessions.filter((s) => !s.alive)
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="h-full flex flex-col bg-gray-900 text-white overflow-hidden">
       {/* Header */}
       <header className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700">
         <h1 className="text-xl font-semibold text-gray-200">Lumbergh</h1>
@@ -191,7 +191,8 @@ export default function Dashboard() {
       )}
 
       {/* Main content */}
-      <main className="p-4 max-w-6xl mx-auto">
+      <main className="flex-1 overflow-y-auto p-4">
+        <div className="max-w-6xl mx-auto">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <span className="text-gray-500">Loading sessions...</span>
@@ -257,6 +258,7 @@ export default function Dashboard() {
             )}
           </>
         )}
+        </div>
       </main>
 
       {/* Create session modal */}
