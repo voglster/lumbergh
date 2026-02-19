@@ -8,6 +8,7 @@ tmux attach-session processes for the same session.
 import asyncio
 import logging
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from fastapi import WebSocket
 
@@ -54,14 +55,39 @@ class SessionManager:
         """
         Register a WebSocket client for a tmux session.
         Creates the PTY if this is the first client.
+        Auto-recreates the tmux session if it exists in TinyDB but not in tmux.
         Sends current pane content to new client for immediate display.
         """
+        from routers.sessions import create_tmux_session, get_stored_sessions
+
         async with self._lock:
             if session_name not in self._sessions:
                 # Create new PTY for this session
                 logger.info(f"Creating new PTY for session: {session_name}")
                 pty = TmuxPtySession(session_name)
-                pty.spawn()
+                try:
+                    pty.spawn()
+                except ValueError as e:
+                    # Session missing from tmux - try auto-recreate from TinyDB
+                    logger.info(f"Session '{session_name}' not in tmux, checking TinyDB...")
+                    session_meta = get_stored_sessions().get(session_name)
+                    if session_meta and session_meta.get("workdir"):
+                        workdir = Path(session_meta["workdir"])
+                        if workdir.exists():
+                            logger.info(f"Auto-recreating tmux session: {session_name} in {workdir}")
+                            try:
+                                create_tmux_session(session_name, workdir)
+                            except RuntimeError as create_err:
+                                logger.error(f"Failed to create tmux session: {create_err}")
+                                raise ValueError(f"Failed to recreate session: {create_err}")
+                            pty.spawn()  # Retry
+                            logger.info(f"Successfully recreated session: {session_name}")
+                        else:
+                            logger.warning(f"Workdir no longer exists: {workdir}")
+                            raise ValueError(f"Workdir no longer exists: {workdir}")
+                    else:
+                        logger.warning(f"Session '{session_name}' not found in TinyDB")
+                        raise  # Re-raise if not in TinyDB
 
                 managed = ManagedSession(pty=pty)
                 self._sessions[session_name] = managed

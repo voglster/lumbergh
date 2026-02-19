@@ -100,6 +100,41 @@ def find_venv_activate(workdir: Path) -> Optional[Path]:
     return None
 
 
+def create_tmux_session(name: str, workdir: Path) -> None:
+    """Create a tmux session with optional venv activation and claude start.
+
+    Args:
+        name: Session name
+        workdir: Working directory for the session
+
+    Raises:
+        RuntimeError: If tmux session creation fails
+    """
+    result = subprocess.run(
+        ["tmux", "new-session", "-d", "-s", name, "-c", str(workdir)],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to create session: {result.stderr}")
+
+    # Activate venv if found
+    venv_activate = find_venv_activate(workdir)
+    if venv_activate:
+        subprocess.run(
+            ["tmux", "send-keys", "-t", name, f"source {venv_activate}", "Enter"],
+            capture_output=True,
+            text=True,
+        )
+
+    # Start claude
+    subprocess.run(
+        ["tmux", "send-keys", "-t", name, "claude", "Enter"],
+        capture_output=True,
+        text=True,
+    )
+
+
 @directories_router.get("/search")
 async def search_directories(query: str = ""):
     """Search for git repositories in the configured search directory."""
@@ -330,28 +365,10 @@ async def create_session(body: CreateSessionRequest):
                 "worktreeBranch": meta.get("worktree_branch"),
             }
 
-    result = subprocess.run(
-        ["tmux", "new-session", "-d", "-s", body.name, "-c", str(workdir)],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        raise HTTPException(status_code=500, detail=f"Failed to create session: {result.stderr}")
-
-    # Activate venv if found
-    venv_activate = find_venv_activate(workdir)
-    if venv_activate:
-        subprocess.run(
-            ["tmux", "send-keys", "-t", body.name, f"source {venv_activate}", "Enter"],
-            capture_output=True,
-            text=True,
-        )
-
-    subprocess.run(
-        ["tmux", "send-keys", "-t", body.name, "claude", "Enter"],
-        capture_output=True,
-        text=True,
-    )
+    try:
+        create_tmux_session(body.name, workdir)
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     Session = Query()
     session_data = {

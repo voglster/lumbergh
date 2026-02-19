@@ -10,6 +10,7 @@ import struct
 import termios
 
 import libtmux
+from libtmux._internal.query_list import ObjectDoesNotExist
 
 
 def list_tmux_sessions() -> list[dict]:
@@ -33,7 +34,10 @@ def list_tmux_sessions() -> list[dict]:
 def get_session_pane_id(session_name: str) -> str:
     """Get the active pane ID for a session."""
     server = libtmux.Server()
-    session = server.sessions.get(session_name=session_name)
+    try:
+        session = server.sessions.get(session_name=session_name)
+    except ObjectDoesNotExist:
+        raise ValueError(f"Session '{session_name}' not found")
     if not session:
         raise ValueError(f"Session '{session_name}' not found")
     window = session.active_window
@@ -47,7 +51,10 @@ def capture_pane_content(session_name: str) -> str:
     Returns the terminal content with ANSI escape codes preserved.
     """
     server = libtmux.Server()
-    session = server.sessions.get(session_name=session_name)
+    try:
+        session = server.sessions.get(session_name=session_name)
+    except ObjectDoesNotExist:
+        return ""
     if not session:
         return ""
 
@@ -83,7 +90,10 @@ class TmuxPtySession:
         """Spawn a PTY running tmux attach."""
         # Verify session exists
         server = libtmux.Server()
-        session = server.sessions.get(session_name=self.session_name)
+        try:
+            session = server.sessions.get(session_name=self.session_name)
+        except ObjectDoesNotExist:
+            raise ValueError(f"Session '{self.session_name}' not found")
         if not session:
             raise ValueError(f"Session '{self.session_name}' not found")
 
