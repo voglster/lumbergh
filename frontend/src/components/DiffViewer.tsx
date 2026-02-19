@@ -110,9 +110,19 @@ const DiffViewer = memo(function DiffViewer({
       const res = await fetch(`${gitBaseUrl}/push`, { method: 'POST' })
       if (res.ok) {
         fetchRemoteStatus()
+      } else {
+        const data = await res.json()
+        const errorMsg = data.detail || 'Push failed'
+
+        // Non-fast-forward errors - refresh status to show diverged state
+        if (errorMsg.includes('non-fast-forward') || errorMsg.includes('Pull first')) {
+          fetchRemoteStatus()
+        } else {
+          alert(errorMsg)
+        }
       }
     } catch {
-      // ignore
+      alert('Push failed: network error')
     } finally {
       setIsPushing(false)
     }
@@ -139,6 +149,41 @@ const DiffViewer = memo(function DiffViewer({
       alert('Pull failed: network error')
     } finally {
       setIsPulling(false)
+    }
+  }
+
+  // Handle pull then push (for non-fast-forward recovery)
+  const handlePullAndPush = async () => {
+    setIsPulling(true)
+    try {
+      const pullRes = await fetch(`${gitBaseUrl}/pull`, { method: 'POST' })
+      if (!pullRes.ok) {
+        const data = await pullRes.json()
+        alert(`Pull failed: ${data.detail || 'Unknown error'}`)
+        return
+      }
+
+      const pullData = await pullRes.json()
+      if (pullData.stashConflict) {
+        alert(pullData.message)
+        return
+      }
+
+      // Pull succeeded, retry push
+      setIsPushing(true)
+      const pushRes = await fetch(`${gitBaseUrl}/push`, { method: 'POST' })
+      if (pushRes.ok) {
+        fetchRemoteStatus()
+        refreshWorkingChanges()
+      } else {
+        const data = await pushRes.json()
+        alert(`Push failed after pull: ${data.detail || 'Unknown error'}`)
+      }
+    } catch {
+      alert('Operation failed: network error')
+    } finally {
+      setIsPulling(false)
+      setIsPushing(false)
     }
   }
 
@@ -340,7 +385,45 @@ const DiffViewer = memo(function DiffViewer({
             </button>
           </div>
           <div className="flex flex-col items-center justify-center flex-1 gap-6 p-6">
-            {remoteStatus && remoteStatus.ahead > 0 ? (
+            {remoteStatus && remoteStatus.ahead > 0 && remoteStatus.behind > 0 ? (
+              // Diverged state - need to pull before push
+              <>
+                <div className="text-center">
+                  <div className="text-lg text-yellow-400 mb-1">Branches have diverged</div>
+                  <div className="text-gray-500">
+                    {remoteStatus.ahead} unpushed commit{remoteStatus.ahead > 1 ? 's' : ''},{' '}
+                    {remoteStatus.behind} commit{remoteStatus.behind > 1 ? 's' : ''} behind{' '}
+                    <span className="font-mono">{remoteStatus.remote || 'origin'}</span>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={handlePullAndPush}
+                    disabled={isPulling || isPushing}
+                    className="px-6 py-3 bg-yellow-600 hover:bg-yellow-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    {isPulling ? (
+                      <>Pulling...</>
+                    ) : isPushing ? (
+                      <>Pushing...</>
+                    ) : (
+                      <>
+                        <span>↓↑</span>
+                        <span>Pull (rebase) & Push</span>
+                      </>
+                    )}
+                  </button>
+                  {onJumpToTodos && (
+                    <button
+                      onClick={onJumpToTodos}
+                      className="px-4 py-2 text-gray-400 hover:text-gray-200 text-sm transition-colors"
+                    >
+                      Something else to work on? Jump to Todos →
+                    </button>
+                  )}
+                </div>
+              </>
+            ) : remoteStatus && remoteStatus.ahead > 0 ? (
               <>
                 <div className="text-center">
                   <div className="text-lg text-gray-300 mb-1">No local changes</div>
