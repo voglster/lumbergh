@@ -252,27 +252,18 @@ export default function PromptTemplates({
         } ${isDragging ? 'opacity-50' : ''} ${isDragOver ? 'border-blue-500' : ''}`}
       >
         {editMode && <span className="text-gray-600 select-none">&#x2807;</span>}
+        {!editMode && sessionName && (
+          <button
+            onClick={() => handleSendToTerminal(template, false)}
+            className="text-xl text-gray-500 hover:text-yellow-400 transition-colors px-1"
+            title="Send text (no Enter)"
+          >
+            &#x25B7;
+          </button>
+        )}
         <span className="flex-1 text-white truncate" title={template.prompt}>
           {template.name}
         </span>
-        {!editMode && sessionName && (
-          <>
-            <button
-              onClick={() => handleSendToTerminal(template, false)}
-              className="text-xl text-gray-500 hover:text-yellow-400 transition-colors px-1"
-              title="Send text (no Enter)"
-            >
-              &#x25B7;
-            </button>
-            <button
-              onClick={() => handleSendToTerminal(template, true)}
-              className="text-xl text-gray-500 hover:text-blue-400 transition-colors px-1"
-              title="Send + Enter (yolo)"
-            >
-              &#x27A4;
-            </button>
-          </>
-        )}
         {editMode && (
           <>
             <button
