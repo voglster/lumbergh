@@ -5,6 +5,7 @@ Stores metadata in ~/.config/lumbergh/sessions.json
 
 import re
 import subprocess
+import uuid
 from pathlib import Path
 from typing import Optional
 
@@ -14,6 +15,7 @@ from tinydb import Query
 
 from constants import IGNORE_DIRS, REPO_SEARCH_SKIP_DIRS
 from db_utils import (
+    get_project_db,
     get_session_data_db,
     get_sessions_db,
     get_single_document_items,
@@ -39,7 +41,7 @@ from git_utils import (
     reset_to_head,
     stage_all_and_commit,
 )
-from models import CheckoutInput, CommitInput, CreateSessionRequest, ScratchpadContent, SessionUpdate, StatusSummaryInput, TodoList
+from models import CheckoutInput, CommitInput, CreateSessionRequest, PromptTemplateList, ScratchpadContent, SessionUpdate, StatusSummaryInput, TodoList
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 directories_router = APIRouter(prefix="/api/directories", tags=["directories"])
@@ -743,6 +745,103 @@ async def save_session_scratchpad(name: str, data: ScratchpadContent):
         return {"content": data.content}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Session-scoped Prompt Templates ---
+
+
+@router.get("/{name}/prompts")
+async def get_session_prompts(name: str):
+    """Get project-specific prompt templates for a session."""
+    workdir = get_session_workdir(name)
+    db = get_project_db(workdir)
+    prompts_table = db.table("prompts")
+    templates = get_single_document_items(prompts_table)
+    return {"templates": templates}
+
+
+@router.post("/{name}/prompts")
+async def save_session_prompts(name: str, template_list: PromptTemplateList):
+    """Save project-specific prompt templates for a session."""
+    workdir = get_session_workdir(name)
+    db = get_project_db(workdir)
+    prompts_table = db.table("prompts")
+    templates = [{"id": t.id, "name": t.name, "prompt": t.prompt} for t in template_list.templates]
+    save_single_document_items(prompts_table, templates)
+    return {"templates": templates}
+
+
+@router.post("/{name}/prompts/{template_id}/copy-to-global")
+async def copy_session_prompt_to_global(name: str, template_id: str):
+    """Copy a project template to global, remove from project."""
+    from db_utils import get_global_db
+
+    workdir = get_session_workdir(name)
+    db = get_project_db(workdir)
+    prompts_table = db.table("prompts")
+    global_db = get_global_db()
+    global_prompts_table = global_db.table("prompts")
+
+    project_templates = get_single_document_items(prompts_table)
+
+    template_to_copy = None
+    remaining_templates = []
+    for t in project_templates:
+        if t["id"] == template_id:
+            template_to_copy = t
+        else:
+            remaining_templates.append(t)
+
+    if not template_to_copy:
+        raise HTTPException(status_code=404, detail="Template not found")
+
+    global_templates = get_single_document_items(global_prompts_table)
+    new_template = {
+        "id": str(uuid.uuid4()),
+        "name": template_to_copy["name"],
+        "prompt": template_to_copy["prompt"],
+    }
+    global_templates.append(new_template)
+
+    save_single_document_items(global_prompts_table, global_templates)
+    save_single_document_items(prompts_table, remaining_templates)
+
+    return {"success": True, "template": new_template}
+
+
+@router.post("/{name}/global/prompts/{template_id}/copy-to-project")
+async def copy_global_prompt_to_session(name: str, template_id: str):
+    """Copy a global template to this session's project (keeps both)."""
+    from db_utils import get_global_db
+
+    workdir = get_session_workdir(name)
+    db = get_project_db(workdir)
+    prompts_table = db.table("prompts")
+    global_db = get_global_db()
+    global_prompts_table = global_db.table("prompts")
+
+    global_templates = get_single_document_items(global_prompts_table)
+
+    template_to_copy = None
+    for t in global_templates:
+        if t["id"] == template_id:
+            template_to_copy = t
+            break
+
+    if not template_to_copy:
+        raise HTTPException(status_code=404, detail="Template not found")
+
+    project_templates = get_single_document_items(prompts_table)
+    new_template = {
+        "id": str(uuid.uuid4()),
+        "name": template_to_copy["name"],
+        "prompt": template_to_copy["prompt"],
+    }
+    project_templates.append(new_template)
+
+    save_single_document_items(prompts_table, project_templates)
+
+    return {"success": True, "template": new_template}
 
 
 # --- Session-scoped File Endpoints ---

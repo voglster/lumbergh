@@ -40,8 +40,12 @@ export default function PromptTemplates({
   const [dragScope, setDragScope] = useState<'project' | 'global' | null>(null)
 
   useEffect(() => {
+    if (!sessionName) {
+      setLoading(false)
+      return
+    }
     Promise.all([
-      fetch(`http://${apiHost}/api/prompts`).then((res) => res.json()),
+      fetch(`http://${apiHost}/api/sessions/${sessionName}/prompts`).then((res) => res.json()),
       fetch(`http://${apiHost}/api/global/prompts`).then((res) => res.json()),
     ])
       .then(([projectData, globalData]) => {
@@ -53,12 +57,13 @@ export default function PromptTemplates({
         console.error('Failed to fetch prompts:', err)
         setLoading(false)
       })
-  }, [apiHost])
+  }, [apiHost, sessionName])
 
   const saveProjectTemplates = async (templates: PromptTemplate[]) => {
+    if (!sessionName) return
     setSaving(true)
     try {
-      await fetch(`http://${apiHost}/api/prompts`, {
+      await fetch(`http://${apiHost}/api/sessions/${sessionName}/prompts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ templates }),
@@ -164,13 +169,14 @@ export default function PromptTemplates({
   }
 
   const handleCopyToGlobal = async (template: PromptTemplate) => {
+    if (!sessionName) return
     try {
-      await fetch(`http://${apiHost}/api/prompts/${template.id}/copy-to-global`, {
+      await fetch(`http://${apiHost}/api/sessions/${sessionName}/prompts/${template.id}/copy-to-global`, {
         method: 'POST',
       })
       // Refresh both lists
       const [projectData, globalData] = await Promise.all([
-        fetch(`http://${apiHost}/api/prompts`).then((res) => res.json()),
+        fetch(`http://${apiHost}/api/sessions/${sessionName}/prompts`).then((res) => res.json()),
         fetch(`http://${apiHost}/api/global/prompts`).then((res) => res.json()),
       ])
       setProjectTemplates(projectData.templates || [])
@@ -181,12 +187,13 @@ export default function PromptTemplates({
   }
 
   const handleCopyToProject = async (template: PromptTemplate) => {
+    if (!sessionName) return
     try {
-      await fetch(`http://${apiHost}/api/global/prompts/${template.id}/copy-to-project`, {
+      await fetch(`http://${apiHost}/api/sessions/${sessionName}/global/prompts/${template.id}/copy-to-project`, {
         method: 'POST',
       })
       // Refresh project list
-      const projectData = await fetch(`http://${apiHost}/api/prompts`).then((res) => res.json())
+      const projectData = await fetch(`http://${apiHost}/api/sessions/${sessionName}/prompts`).then((res) => res.json())
       setProjectTemplates(projectData.templates || [])
     } catch (err) {
       console.error('Failed to copy to project:', err)
