@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useLocalStorageDraft } from '../hooks/useLocalStorageDraft'
 
 interface ScratchpadProps {
   apiHost: string
@@ -7,20 +8,25 @@ interface ScratchpadProps {
 }
 
 export default function Scratchpad({ apiHost, sessionName, onFocusTerminal }: ScratchpadProps) {
-  const [content, setContent] = useState('')
+  const [content, setContent] = useLocalStorageDraft(`scratchpad:${sessionName}`, '', 100)
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [loading, setLoading] = useState(true)
   const [hasSelection, setHasSelection] = useState(false)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const selectedTextRef = useRef('')
+  const contentRef = useRef(content)
+  contentRef.current = content
 
-  // Fetch content on mount
+  // Fetch content on mount - localStorage draft takes priority over backend
   useEffect(() => {
     fetch(`http://${apiHost}/api/sessions/${sessionName}/scratchpad`)
       .then((res) => res.json())
       .then((data) => {
-        setContent(data.content || '')
+        // Only use backend content if we don't have a localStorage draft
+        if (!contentRef.current) {
+          setContent(data.content || '')
+        }
         setLoading(false)
       })
       .catch((err) => {

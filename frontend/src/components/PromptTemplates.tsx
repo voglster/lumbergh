@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useLocalStorageDraft } from '../hooks/useLocalStorageDraft'
 
 // Simple UUID generator that works without crypto.randomUUID()
 function generateId(): string {
@@ -33,8 +34,8 @@ export default function PromptTemplates({
   const [editMode, setEditMode] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<PromptTemplate | null>(null)
   const [showForm, setShowForm] = useState<'project' | 'global' | null>(null)
-  const [formName, setFormName] = useState('')
-  const [formPrompt, setFormPrompt] = useState('')
+  const [formName, setFormName, clearFormName] = useLocalStorageDraft(`prompt-form:${sessionName}:name`)
+  const [formPrompt, setFormPrompt, clearFormPrompt] = useLocalStorageDraft(`prompt-form:${sessionName}:prompt`)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [dragScope, setDragScope] = useState<'project' | 'global' | null>(null)
@@ -134,8 +135,8 @@ export default function PromptTemplates({
     }
 
     // Reset form
-    setFormName('')
-    setFormPrompt('')
+    clearFormName()
+    clearFormPrompt()
     setEditingTemplate(null)
     setShowForm(null)
   }
@@ -149,15 +150,14 @@ export default function PromptTemplates({
 
   const handleCancelEdit = () => {
     setEditingTemplate(null)
-    setFormName('')
-    setFormPrompt('')
+    clearFormName()
+    clearFormPrompt()
     setShowForm(null)
   }
 
   const handleStartAdd = (scope: 'project' | 'global') => {
     setEditingTemplate(null)
-    setFormName('')
-    setFormPrompt('')
+    // Don't clear drafts - localStorage may have unsaved content from a previous session
     setShowForm(scope)
   }
 

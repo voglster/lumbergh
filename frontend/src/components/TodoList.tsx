@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { usePrompts } from '../hooks/usePrompts'
+import { useLocalStorageDraft } from '../hooks/useLocalStorageDraft'
 import { expandPromptReferences } from '../utils/promptResolver'
 import PromptMentionInput from './PromptMentionInput'
 import MentionText from './MentionText'
@@ -19,7 +20,7 @@ interface TodoListProps {
 
 export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodoSent }: TodoListProps) {
   const [todos, setTodos] = useState<Todo[]>([])
-  const [newTodo, setNewTodo] = useState('')
+  const [newTodo, setNewTodo, clearNewTodoDraft] = useLocalStorageDraft(`todo:${sessionName}:new`)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
@@ -73,7 +74,7 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
     if (!newTodo.trim()) return
     const updated = [{ text: newTodo.trim(), done: false }, ...todos]
     setTodos(updated)
-    setNewTodo('')
+    clearNewTodoDraft()
     saveTodos(updated)
   }
 
