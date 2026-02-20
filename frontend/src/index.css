@@ -17,6 +17,14 @@ body,
   display: none;
 }
 
+.diff-font-size-override .diff-tailwindcss-wrapper,
+.diff-font-size-override .diff-tailwindcss-wrapper * {
+  font-size: var(--diff-font-size) !important;
+}
+.diff-font-size-override .diff-tailwindcss-wrapper .diff-widget-tooltip::after {
+  font-size: 11px !important;
+}
+
 body {
   background-color: #1a1a1a;
   /* Safe area insets for notched devices */

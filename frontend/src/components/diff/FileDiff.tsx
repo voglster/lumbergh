@@ -12,6 +12,12 @@ interface Props {
   onFocusTerminal?: () => void
 }
 
+const FONT_SIZE_KEY = 'diff-font-size'
+const DEFAULT_FONT_SIZE = 14
+const MIN_FONT_SIZE = 8
+const MAX_FONT_SIZE = 20
+const FONT_SIZE_STEP = 2
+
 const FileDiff = memo(function FileDiff({
   file,
   onBack,
@@ -21,8 +27,20 @@ const FileDiff = memo(function FileDiff({
 }: Props) {
   const [showMarkdownPreview, setShowMarkdownPreview] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
+  const [fontSize, setFontSize] = useState(() => {
+    const stored = localStorage.getItem(FONT_SIZE_KEY)
+    return stored ? Number(stored) : DEFAULT_FONT_SIZE
+  })
   const selectedTextRef = useRef('')
   const contentRef = useRef<HTMLDivElement>(null)
+
+  const changeFontSize = useCallback((delta: number) => {
+    setFontSize((prev) => {
+      const next = Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, prev + delta))
+      localStorage.setItem(FONT_SIZE_KEY, String(next))
+      return next
+    })
+  }, [])
 
   // Memoize computed values to prevent recalculation on every render
   const hunks = useMemo(() => extractDiffContent(file.diff), [file.diff])
@@ -102,10 +120,28 @@ const FileDiff = memo(function FileDiff({
         )}
         <span className="text-green-400 text-xs">+{stats.additions}</span>
         <span className="text-red-400 text-xs">-{stats.deletions}</span>
+        <div className="flex items-center gap-0.5 ml-1">
+          <button
+            onClick={() => changeFontSize(-FONT_SIZE_STEP)}
+            disabled={fontSize <= MIN_FONT_SIZE}
+            className="px-1.5 py-0.5 text-xs bg-gray-700 hover:bg-gray-600 disabled:opacity-30 disabled:cursor-not-allowed rounded-l"
+            title="Decrease font size"
+          >
+            A-
+          </button>
+          <button
+            onClick={() => changeFontSize(FONT_SIZE_STEP)}
+            disabled={fontSize >= MAX_FONT_SIZE}
+            className="px-1.5 py-0.5 text-xs bg-gray-700 hover:bg-gray-600 disabled:opacity-30 disabled:cursor-not-allowed rounded-r"
+            title="Increase font size"
+          >
+            A+
+          </button>
+        </div>
       </div>
 
       {/* Diff viewer */}
-      <div className="flex-1 overflow-auto relative" ref={contentRef} style={{ color: 'unset' }}>
+      <div className="flex-1 overflow-auto relative diff-font-size-override" ref={contentRef} style={{ color: 'unset', '--diff-font-size': `${fontSize}px` } as React.CSSProperties}>
         {hasSelection && sessionName && (
           <button
             onMouseDown={(e) => {
