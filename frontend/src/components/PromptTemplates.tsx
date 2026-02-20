@@ -105,9 +105,17 @@ export default function PromptTemplates({
   const handleSaveTemplate = () => {
     if (!formName.trim() || !formPrompt.trim() || !showForm) return
 
+    // Sanitize name: replace spaces with underscores, remove invalid chars
+    const sanitizedName = formName
+      .trim()
+      .replace(/\s+/g, '_')
+      .replace(/[^a-zA-Z0-9_-]/g, '')
+
+    if (!sanitizedName) return
+
     const newTemplate: PromptTemplate = {
       id: editingTemplate?.id || generateId(),
-      name: formName.trim(),
+      name: sanitizedName,
       prompt: formPrompt.trim(),
     }
 
@@ -353,7 +361,7 @@ export default function PromptTemplates({
                   type="text"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  placeholder="Template name"
+                  placeholder="Template name (e.g. code_review)"
                   autoFocus
                   className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500"
                 />
@@ -418,7 +426,7 @@ export default function PromptTemplates({
                   type="text"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  placeholder="Template name"
+                  placeholder="Template name (e.g. code_review)"
                   autoFocus
                   className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500"
                 />

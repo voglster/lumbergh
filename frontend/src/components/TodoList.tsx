@@ -1,4 +1,8 @@
 import { useState, useEffect } from 'react'
+import { usePrompts } from '../hooks/usePrompts'
+import { expandPromptReferences } from '../utils/promptResolver'
+import PromptMentionInput from './PromptMentionInput'
+import MentionText from './MentionText'
 
 interface Todo {
   text: string
@@ -24,6 +28,9 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
   const [editingText, setEditingText] = useState('')
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
   const [editingDescription, setEditingDescription] = useState('')
+
+  // Fetch prompts for @ mention autocomplete
+  const { allPrompts } = usePrompts(apiHost, sessionName)
 
   useEffect(() => {
     fetch(`http://${apiHost}/api/sessions/${sessionName}/todos`)
@@ -150,9 +157,11 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
     if (!sessionName) return
     const todo = todos[index]
     // Combine title and description if description exists
-    const textToSend = todo.description
+    const rawText = todo.description
       ? `${todo.text}\n\n${todo.description}`
       : todo.text
+    // Expand @prompt references to their content
+    const textToSend = expandPromptReferences(rawText, allPrompts)
     try {
       await fetch(`http://${apiHost}/api/session/${sessionName}/send`, {
         method: 'POST',
@@ -202,12 +211,12 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
     <div className="h-full flex flex-col p-4 overflow-hidden">
       {/* Add todo input */}
       <div className="mb-4">
-        <input
-          type="text"
+        <PromptMentionInput
           value={newTodo}
-          onChange={(e) => setNewTodo(e.target.value)}
+          onChange={setNewTodo}
+          prompts={allPrompts}
           onKeyDown={handleKeyDown}
-          placeholder="Add a task... (press Enter)"
+          placeholder="Add a task... (press Enter, use @ to reference prompts)"
           className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500"
         />
       </div>
@@ -260,10 +269,10 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
                         {expandedIndex === index ? '⌄' : '›'}
                       </button>
                       {editingIndex === index ? (
-                        <input
-                          type="text"
+                        <PromptMentionInput
                           value={editingText}
-                          onChange={(e) => setEditingText(e.target.value)}
+                          onChange={setEditingText}
+                          prompts={allPrompts}
                           onBlur={handleSaveEdit}
                           onKeyDown={handleEditKeyDown}
                           autoFocus
@@ -276,7 +285,7 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
                             todo.done ? 'text-gray-500 line-through' : 'text-white'
                           }`}
                         >
-                          {todo.text}
+                          {todo.done ? todo.text : <MentionText text={todo.text} prompts={allPrompts} />}
                           {todo.description && expandedIndex !== index && (
                             <span className="ml-2 text-gray-500 text-sm" title="Has description">
                               📝
@@ -311,12 +320,15 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
                     </div>
                     {expandedIndex === index && (
                       <div className="px-3 pb-3 pt-0">
-                        <textarea
+                        <PromptMentionInput
                           value={editingDescription}
-                          onChange={(e) => setEditingDescription(e.target.value)}
+                          onChange={setEditingDescription}
+                          prompts={allPrompts}
                           onBlur={() => handleSaveDescription(index)}
                           onKeyDown={handleDescriptionKeyDown}
-                          placeholder="Add details, context, acceptance criteria..."
+                          placeholder="Add details, context, acceptance criteria... (use @ to reference prompts)"
+                          multiline
+                          rows={5}
                           className="w-full h-32 px-3 py-2 bg-gray-700 text-white text-sm rounded border border-gray-600 focus:outline-none focus:border-blue-500 resize-y"
                         />
                       </div>
