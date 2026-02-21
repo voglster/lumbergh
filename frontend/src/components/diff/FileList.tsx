@@ -141,7 +141,7 @@ const FileList = memo(function FileList({
   return (
     <div className="h-full flex flex-col">
       {/* Breadcrumb header */}
-      <div className="flex items-center justify-between p-3 bg-gray-800 border-b border-gray-700">
+      <div className="flex items-center justify-between p-3 bg-bg-surface border-b border-border-default">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {onNavigateToHistory && (
             <>
@@ -151,17 +151,17 @@ const FileList = memo(function FileList({
               >
                 History
               </button>
-              <span className="text-gray-500 shrink-0">›</span>
+              <span className="text-text-muted shrink-0">›</span>
             </>
           )}
-          <span className="text-sm text-gray-300 truncate">
+          <span className="text-sm text-text-secondary truncate">
             {isWorkingChanges ? (
               'Working Changes'
             ) : (
               <>
                 <span className="text-blue-400 font-mono">{commit.shortHash}</span>
-                <span className="text-gray-500">: </span>
-                <span className="text-gray-400">{commit.message}</span>
+                <span className="text-text-muted">: </span>
+                <span className="text-text-tertiary">{commit.message}</span>
               </>
             )}
           </span>
@@ -177,7 +177,7 @@ const FileList = memo(function FileList({
           <span className="text-red-400 text-sm">-{data.stats.deletions}</span>
           <button
             onClick={onRefresh}
-            className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+            className="px-2 py-1 bg-control-bg hover:bg-control-bg-hover rounded text-sm"
             title="Refresh"
           >
             ↻
@@ -186,7 +186,7 @@ const FileList = memo(function FileList({
             <button
               onClick={handleReset}
               disabled={isResetting || isCommitting || isGenerating}
-              className="px-2 py-1 text-gray-400 hover:text-red-400 disabled:text-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
+              className="px-2 py-1 text-text-tertiary hover:text-red-400 disabled:text-text-muted disabled:cursor-not-allowed text-sm transition-colors"
               title="Revert all changes"
             >
               {isResetting ? '...' : '⟲'}
@@ -197,7 +197,7 @@ const FileList = memo(function FileList({
 
       {/* Commit input - only show for working changes */}
       {isWorkingChanges && (
-        <div className="p-3 bg-gray-800 border-b border-gray-700">
+        <div className="p-3 bg-bg-surface border-b border-border-default">
           <div className="flex gap-2">
             <textarea
               value={commitMessage}
@@ -205,14 +205,14 @@ const FileList = memo(function FileList({
               onKeyDown={handleKeyDown}
               placeholder="Commit message..."
               rows={commitMessage.includes('\n') ? 3 : 1}
-              className="flex-1 px-3 py-2 bg-gray-700 text-white text-sm rounded border border-gray-600 focus:outline-none focus:border-blue-500 resize-none"
+              className="flex-1 px-3 py-2 bg-control-bg text-text-primary text-sm rounded border border-border-subtle focus:outline-none focus:border-blue-500 resize-none"
               disabled={isCommitting || isGenerating}
             />
             <div className="flex flex-col gap-2 shrink-0">
               <button
                 onClick={handleCommit}
                 disabled={!commitMessage.trim() || isCommitting || isGenerating || isResetting}
-                className="px-3 py-2 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
+                className="px-3 py-2 bg-green-600 hover:bg-green-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-text-primary text-sm rounded transition-colors"
                 title="Commit changes (Ctrl/Cmd+Enter)"
               >
                 {isCommitting ? '...' : 'Commit'}
@@ -221,7 +221,7 @@ const FileList = memo(function FileList({
                 <button
                   onClick={handleGenerate}
                   disabled={isGenerating || isCommitting || isResetting}
-                  className="px-3 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
+                  className="px-3 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-text-primary text-sm rounded transition-colors"
                   title="Generate commit message with AI"
                 >
                   {isGenerating ? '...' : 'AI'}
@@ -247,12 +247,12 @@ const FileList = memo(function FileList({
             <button
               key={file.path}
               onClick={() => onSelectFile(file.path)}
-              className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-800 border-b border-gray-700/50 text-left"
+              className="w-full flex items-center gap-3 px-3 py-2 hover:bg-bg-surface border-b border-border-default/50 text-left"
             >
               <span className="text-blue-400 font-mono text-sm truncate flex-1">{file.path}</span>
               <span className="text-green-400 text-xs">+{stats.additions}</span>
               <span className="text-red-400 text-xs">-{stats.deletions}</span>
-              <span className="text-gray-500">›</span>
+              <span className="text-text-muted">›</span>
             </button>
           )
         })}

@@ -321,7 +321,7 @@ const DiffViewer = memo(function DiffViewer({
   // Loading state
   if (loading && view.level !== 'history') {
     return (
-      <div className="flex items-center justify-center h-full text-gray-500">Loading diff...</div>
+      <div className="flex items-center justify-center h-full text-text-muted">Loading diff...</div>
     )
   }
 
@@ -363,7 +363,7 @@ const DiffViewer = memo(function DiffViewer({
       return (
         <div className="h-full flex flex-col">
           {/* Breadcrumb header */}
-          <div className="flex items-center justify-between p-3 bg-gray-800 border-b border-gray-700">
+          <div className="flex items-center justify-between p-3 bg-bg-surface border-b border-border-default">
             <div className="flex items-center gap-2">
               <button
                 onClick={handleNavigateToHistory}
@@ -371,15 +371,15 @@ const DiffViewer = memo(function DiffViewer({
               >
                 History
               </button>
-              <span className="text-gray-500">›</span>
-              <span className="text-sm text-gray-300">Working Changes</span>
+              <span className="text-text-muted">›</span>
+              <span className="text-sm text-text-secondary">Working Changes</span>
               {sessionName && (
                 <BranchSelector gitBaseUrl={gitBaseUrl} onBranchChange={handleRefresh} />
               )}
             </div>
             <button
               onClick={handleRefresh}
-              className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+              className="px-2 py-1 bg-control-bg hover:bg-control-bg-hover rounded text-sm"
             >
               ↻
             </button>
@@ -390,7 +390,7 @@ const DiffViewer = memo(function DiffViewer({
               <>
                 <div className="text-center">
                   <div className="text-lg text-yellow-400 mb-1">Branches have diverged</div>
-                  <div className="text-gray-500">
+                  <div className="text-text-muted">
                     {remoteStatus.ahead} unpushed commit{remoteStatus.ahead > 1 ? 's' : ''},{' '}
                     {remoteStatus.behind} commit{remoteStatus.behind > 1 ? 's' : ''} behind{' '}
                     <span className="font-mono">{remoteStatus.remote || 'origin'}</span>
@@ -400,7 +400,7 @@ const DiffViewer = memo(function DiffViewer({
                   <button
                     onClick={handlePullAndPush}
                     disabled={isPulling || isPushing}
-                    className="px-6 py-3 bg-yellow-600 hover:bg-yellow-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                    className="px-6 py-3 bg-yellow-600 hover:bg-yellow-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
                   >
                     {isPulling ? (
                       <>Pulling...</>
@@ -416,7 +416,7 @@ const DiffViewer = memo(function DiffViewer({
                   {onJumpToTodos && (
                     <button
                       onClick={onJumpToTodos}
-                      className="px-4 py-2 text-gray-400 hover:text-gray-200 text-sm transition-colors"
+                      className="px-4 py-2 text-text-tertiary hover:text-text-secondary text-sm transition-colors"
                     >
                       Something else to work on? Jump to Todos →
                     </button>
@@ -426,8 +426,8 @@ const DiffViewer = memo(function DiffViewer({
             ) : remoteStatus && remoteStatus.ahead > 0 ? (
               <>
                 <div className="text-center">
-                  <div className="text-lg text-gray-300 mb-1">No local changes</div>
-                  <div className="text-gray-500">
+                  <div className="text-lg text-text-secondary mb-1">No local changes</div>
+                  <div className="text-text-muted">
                     You have {remoteStatus.ahead} unpushed commit{remoteStatus.ahead > 1 ? 's' : ''} on{' '}
                     <span className="text-blue-400 font-mono">{remoteStatus.branch}</span>
                   </div>
@@ -436,7 +436,7 @@ const DiffViewer = memo(function DiffViewer({
                   <button
                     onClick={handlePush}
                     disabled={isPushing}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
                   >
                     {isPushing ? (
                       <>Pushing...</>
@@ -450,7 +450,7 @@ const DiffViewer = memo(function DiffViewer({
                   {onJumpToTodos && (
                     <button
                       onClick={onJumpToTodos}
-                      className="px-4 py-2 text-gray-400 hover:text-gray-200 text-sm transition-colors"
+                      className="px-4 py-2 text-text-tertiary hover:text-text-secondary text-sm transition-colors"
                     >
                       Something else to work on? Jump to Todos →
                     </button>
@@ -460,7 +460,7 @@ const DiffViewer = memo(function DiffViewer({
             ) : remoteStatus && remoteStatus.behind > 0 ? (
               <>
                 <div className="text-center">
-                  <div className="text-lg text-gray-300 mb-1">No local changes</div>
+                  <div className="text-lg text-text-secondary mb-1">No local changes</div>
                   <div className="text-yellow-500">
                     {remoteStatus.behind} commit{remoteStatus.behind > 1 ? 's' : ''} behind{' '}
                     <span className="font-mono">{remoteStatus.remote || 'origin'}</span>
@@ -470,7 +470,7 @@ const DiffViewer = memo(function DiffViewer({
                   <button
                     onClick={handlePull}
                     disabled={isPulling}
-                    className="px-6 py-3 bg-yellow-600 hover:bg-yellow-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                    className="px-6 py-3 bg-yellow-600 hover:bg-yellow-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
                   >
                     {isPulling ? (
                       <>Pulling...</>
@@ -484,7 +484,7 @@ const DiffViewer = memo(function DiffViewer({
                   {onJumpToTodos && (
                     <button
                       onClick={onJumpToTodos}
-                      className="px-4 py-2 text-gray-400 hover:text-gray-200 text-sm transition-colors"
+                      className="px-4 py-2 text-text-tertiary hover:text-text-secondary text-sm transition-colors"
                     >
                       Something else to work on? Jump to Todos →
                     </button>
@@ -494,8 +494,8 @@ const DiffViewer = memo(function DiffViewer({
             ) : remoteStatus ? (
               <>
                 <div className="text-center">
-                  <div className="text-lg text-gray-300 mb-1">All caught up</div>
-                  <div className="text-gray-500">
+                  <div className="text-lg text-text-secondary mb-1">All caught up</div>
+                  <div className="text-text-muted">
                     No local changes, in sync with{' '}
                     <span className="font-mono">{remoteStatus.remote || 'origin'}</span>
                   </div>
@@ -503,14 +503,14 @@ const DiffViewer = memo(function DiffViewer({
                 {onJumpToTodos && (
                   <button
                     onClick={onJumpToTodos}
-                    className="px-4 py-2 text-gray-400 hover:text-gray-200 text-sm transition-colors"
+                    className="px-4 py-2 text-text-tertiary hover:text-text-secondary text-sm transition-colors"
                   >
                     Something else to work on? Jump to Todos →
                   </button>
                 )}
               </>
             ) : (
-              <div className="text-gray-500">No changes detected</div>
+              <div className="text-text-muted">No changes detected</div>
             )}
           </div>
         </div>
@@ -518,7 +518,7 @@ const DiffViewer = memo(function DiffViewer({
     }
     // Commit with no files - shouldn't happen but handle gracefully
     return (
-      <div className="flex items-center justify-center h-full text-gray-500">
+      <div className="flex items-center justify-center h-full text-text-muted">
         No files in this commit
       </div>
     )

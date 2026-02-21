@@ -64,7 +64,7 @@ export default function BranchSelector({ gitBaseUrl, onBranchChange }: Props) {
   }
 
   if (!branchData) {
-    return <span className="text-gray-500 text-sm">...</span>
+    return <span className="text-text-muted text-sm">...</span>
   }
 
   const isDisabled = !branchData.clean
@@ -75,25 +75,25 @@ export default function BranchSelector({ gitBaseUrl, onBranchChange }: Props) {
         onClick={() => !isDisabled && setIsOpen(!isOpen)}
         disabled={isDisabled}
         className={`flex items-center gap-1 px-2 py-1 rounded text-sm ${
-          isDisabled ? 'text-gray-500 cursor-not-allowed' : 'text-blue-400 hover:bg-gray-700'
+          isDisabled ? 'text-text-muted cursor-not-allowed' : 'text-blue-400 hover:bg-control-bg'
         }`}
         title={isDisabled ? 'Commit or stash changes first' : 'Switch branch'}
       >
         <span className="font-mono">{branchData.current}</span>
-        <span className={isDisabled ? 'text-gray-600' : 'text-gray-400'}>{isOpen ? '▲' : '▼'}</span>
+        <span className={isDisabled ? 'text-text-muted' : 'text-text-tertiary'}>{isOpen ? '▲' : '▼'}</span>
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 min-w-[200px] max-h-[300px] overflow-auto bg-gray-800 border border-gray-600 rounded shadow-lg z-50">
-          {isLoading && <div className="px-3 py-2 text-sm text-gray-400">Switching...</div>}
+        <div className="absolute top-full left-0 mt-1 min-w-[200px] max-h-[300px] overflow-auto bg-bg-surface border border-border-subtle rounded shadow-lg z-50">
+          {isLoading && <div className="px-3 py-2 text-sm text-text-tertiary">Switching...</div>}
           {error && (
-            <div className="px-3 py-2 text-sm text-red-400 border-b border-gray-700">{error}</div>
+            <div className="px-3 py-2 text-sm text-red-400 border-b border-border-default">{error}</div>
           )}
 
           {/* Local branches */}
           {branchData.local.length > 0 && (
             <>
-              <div className="px-3 py-1 text-xs text-gray-500 uppercase bg-gray-900">Local</div>
+              <div className="px-3 py-1 text-xs text-text-muted uppercase bg-bg-sunken">Local</div>
               {branchData.local.map((branch) => (
                 <button
                   key={branch.name}
@@ -101,8 +101,8 @@ export default function BranchSelector({ gitBaseUrl, onBranchChange }: Props) {
                   disabled={isLoading || branch.current}
                   className={`w-full px-3 py-2 text-left text-sm ${
                     branch.current
-                      ? 'text-green-400 bg-gray-700/50'
-                      : 'text-gray-300 hover:bg-gray-700'
+                      ? 'text-green-400 bg-bg-elevated/50'
+                      : 'text-text-secondary hover:bg-control-bg'
                   }`}
                 >
                   {branch.current && '✓ '}
@@ -115,13 +115,13 @@ export default function BranchSelector({ gitBaseUrl, onBranchChange }: Props) {
           {/* Remote branches */}
           {branchData.remote.length > 0 && (
             <>
-              <div className="px-3 py-1 text-xs text-gray-500 uppercase bg-gray-900">Remote</div>
+              <div className="px-3 py-1 text-xs text-text-muted uppercase bg-bg-sunken">Remote</div>
               {branchData.remote.map((branch) => (
                 <button
                   key={branch.name}
                   onClick={() => handleCheckout(branch.name)}
                   disabled={isLoading}
-                  className="w-full px-3 py-2 text-left text-sm text-gray-400 hover:bg-gray-700"
+                  className="w-full px-3 py-2 text-left text-sm text-text-tertiary hover:bg-control-bg"
                 >
                   {branch.name}
                 </button>

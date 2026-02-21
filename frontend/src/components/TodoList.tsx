@@ -205,7 +205,7 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-full text-gray-500">Loading...</div>
+    return <div className="flex items-center justify-center h-full text-text-muted">Loading...</div>
   }
 
   return (
@@ -218,14 +218,14 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
           prompts={allPrompts}
           onKeyDown={handleKeyDown}
           placeholder="Add a task... (press Enter, use @ to reference prompts)"
-          className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500"
+          className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500"
         />
       </div>
 
       {/* Todo list */}
       <div className="flex-1 overflow-y-auto">
         {todos.length === 0 ? (
-          <div className="text-gray-500 text-center py-8">No tasks yet. Add one above!</div>
+          <div className="text-text-muted text-center py-8">No tasks yet. Add one above!</div>
         ) : (
           <ul className="space-y-2">
             {todos.map((todo, index) => {
@@ -235,22 +235,22 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
                 <li key={index}>
                   {showCompletedSeparator && (
                     <div className="flex items-center gap-2 py-2 mb-2">
-                      <div className="flex-1 border-t border-gray-700" />
-                      <span className="text-xs text-gray-500 uppercase tracking-wide">
+                      <div className="flex-1 border-t border-border-default" />
+                      <span className="text-xs text-text-muted uppercase tracking-wide">
                         Completed
                       </span>
                       <button
                         onClick={handleDeleteAllDone}
-                        className="text-xs text-gray-500 hover:text-red-400 transition-colors"
+                        className="text-xs text-text-muted hover:text-red-400 transition-colors"
                         title="Clear completed tasks"
                       >
                         (clear)
                       </button>
-                      <div className="flex-1 border-t border-gray-700" />
+                      <div className="flex-1 border-t border-border-default" />
                     </div>
                   )}
                   <div
-                    className={`bg-gray-800 rounded border border-gray-700 ${
+                    className={`bg-bg-surface rounded border border-border-default ${
                       dragIndex === index ? 'opacity-50' : ''
                     } ${dragOverIndex === index && dragIndex !== index ? 'border-blue-500' : ''}`}
                   >
@@ -261,10 +261,10 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
                       onDragEnd={handleDragEnd}
                       className="flex items-center gap-3 px-3 py-1 cursor-grab active:cursor-grabbing"
                     >
-                      <span className="text-gray-600 select-none">⠿</span>
+                      <span className="text-text-muted select-none">⠿</span>
                       <button
                         onClick={() => handleToggleExpand(index)}
-                        className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-300 hover:bg-gray-700 rounded transition-colors text-xl"
+                        className="w-8 h-8 flex items-center justify-center text-text-muted hover:text-text-secondary hover:bg-control-bg rounded transition-colors text-xl"
                         title={expandedIndex === index ? 'Collapse' : 'Expand'}
                       >
                         {expandedIndex === index ? '⌄' : '›'}
@@ -277,18 +277,18 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
                           onBlur={handleSaveEdit}
                           onKeyDown={handleEditKeyDown}
                           autoFocus
-                          className="flex-1 px-2 py-1 bg-gray-700 text-white rounded border border-blue-500 focus:outline-none"
+                          className="flex-1 px-2 py-1 bg-input-bg text-text-primary rounded border border-blue-500 focus:outline-none"
                         />
                       ) : (
                         <span
                           onClick={() => handleStartEdit(index)}
                           className={`flex-1 cursor-text ${
-                            todo.done ? 'text-gray-500 line-through' : 'text-white'
+                            todo.done ? 'text-text-muted line-through' : 'text-text-primary'
                           }`}
                         >
                           {todo.done ? todo.text : <MentionText text={todo.text} prompts={allPrompts} />}
                           {todo.description && expandedIndex !== index && (
-                            <span className="ml-2 text-gray-500 text-sm" title="Has description">
+                            <span className="ml-2 text-text-muted text-sm" title="Has description">
                               📝
                             </span>
                           )}
@@ -298,14 +298,14 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
                         <>
                           <button
                             onClick={() => handleSendToTerminal(index, false)}
-                            className="text-xl text-gray-500 hover:text-yellow-400 transition-colors px-1"
+                            className="text-xl text-text-muted hover:text-yellow-400 transition-colors px-1"
                             title="Send text (no Enter)"
                           >
                             ▷
                           </button>
                           <button
                             onClick={() => handleSendToTerminal(index, true)}
-                            className="text-xl text-gray-500 hover:text-blue-400 transition-colors px-1"
+                            className="text-xl text-text-muted hover:text-blue-400 transition-colors px-1"
                             title="Send + Enter (yolo)"
                           >
                             ➤
@@ -316,7 +316,7 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
                         type="checkbox"
                         checked={todo.done}
                         onChange={() => handleToggle(index)}
-                        className="w-5 h-5 rounded bg-gray-800 border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900 accent-blue-500"
+                        className="w-5 h-5 rounded bg-bg-surface border-input-border text-blue-500 focus:ring-blue-500 accent-blue-500"
                       />
                     </div>
                     {expandedIndex === index && (
@@ -330,7 +330,7 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
                           placeholder="Add details, context, acceptance criteria... (use @ to reference prompts)"
                           multiline
                           rows={5}
-                          className="w-full h-32 px-3 py-2 bg-gray-700 text-white text-sm rounded border border-gray-600 focus:outline-none focus:border-blue-500 resize-y"
+                          className="w-full h-32 px-3 py-2 bg-input-bg text-text-primary text-sm rounded border border-input-border focus:outline-none focus:border-blue-500 resize-y"
                         />
                       </div>
                     )}
@@ -343,7 +343,7 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
       </div>
 
       {/* Saving indicator */}
-      {saving && <div className="text-gray-500 text-sm text-center py-2">Saving...</div>}
+      {saving && <div className="text-text-muted text-sm text-center py-2">Saving...</div>}
     </div>
   )
 }

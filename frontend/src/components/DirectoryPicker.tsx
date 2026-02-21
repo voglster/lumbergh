@@ -136,9 +136,9 @@ export default function DirectoryPicker({ apiHost, value, onChange, onManualEntr
       {/* Selected value display or search input */}
       {value ? (
         <div className="flex items-center gap-2">
-          <div className="flex-1 px-3 py-2 bg-gray-700 rounded border border-gray-600">
-            <div className="text-white font-medium">{displayName}</div>
-            <div className="text-xs text-gray-400 font-mono truncate">{value}</div>
+          <div className="flex-1 px-3 py-2 bg-input-bg rounded border border-input-border">
+            <div className="text-text-primary font-medium">{displayName}</div>
+            <div className="text-xs text-text-tertiary font-mono truncate">{value}</div>
           </div>
           <button
             type="button"
@@ -147,7 +147,7 @@ export default function DirectoryPicker({ apiHost, value, onChange, onManualEntr
               setIsOpen(true)
               setTimeout(() => inputRef.current?.focus(), 0)
             }}
-            className="px-3 py-2 text-gray-400 hover:text-white transition-colors"
+            className="px-3 py-2 text-text-tertiary hover:text-text-primary transition-colors"
             title="Change directory"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -173,11 +173,11 @@ export default function DirectoryPicker({ apiHost, value, onChange, onManualEntr
             onFocus={() => setIsOpen(true)}
             onKeyDown={handleKeyDown}
             placeholder="Search git repositories..."
-            className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500 pr-10"
+            className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 pr-10"
           />
           {isLoading && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <svg className="w-4 h-4 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 animate-spin text-text-tertiary" fill="none" viewBox="0 0 24 24">
                 <circle
                   className="opacity-25"
                   cx="12"
@@ -201,12 +201,12 @@ export default function DirectoryPicker({ apiHost, value, onChange, onManualEntr
       {isOpen && !value && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 w-full mt-1 bg-gray-700 border border-gray-600 rounded shadow-lg max-h-64 overflow-y-auto"
+          className="absolute z-50 w-full mt-1 bg-control-bg border border-border-subtle rounded shadow-lg max-h-64 overflow-y-auto"
         >
           {error ? (
             <div className="px-3 py-2 text-red-400 text-sm">{error}</div>
           ) : directories.length === 0 && !isLoading ? (
-            <div className="px-3 py-2 text-gray-400 text-sm">
+            <div className="px-3 py-2 text-text-tertiary text-sm">
               {query ? 'No matching repositories found' : 'No repositories found in ~/src/'}
             </div>
           ) : (
@@ -218,12 +218,12 @@ export default function DirectoryPicker({ apiHost, value, onChange, onManualEntr
                 onMouseEnter={() => setHighlightedIndex(index)}
                 className={`w-full px-3 py-2 text-left transition-colors ${
                   index === highlightedIndex
-                    ? 'bg-blue-600 text-white'
-                    : 'text-white hover:bg-gray-600'
+                    ? 'bg-blue-600 text-text-primary'
+                    : 'text-text-primary hover:bg-control-bg-hover'
                 }`}
               >
                 <div className="font-medium">{dir.name}</div>
-                <div className="text-xs text-gray-400 font-mono truncate">{dir.path}</div>
+                <div className="text-xs text-text-tertiary font-mono truncate">{dir.path}</div>
               </button>
             ))
           )}

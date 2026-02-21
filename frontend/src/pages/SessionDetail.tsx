@@ -193,7 +193,7 @@ export default function SessionDetail() {
           isVisible={isDesktop || mobileTab === 'terminal'}
         />
       ) : (
-        <div className="flex items-center justify-center h-full text-gray-500">
+        <div className="flex items-center justify-center h-full text-text-muted">
           No session selected
         </div>
       )}
@@ -203,7 +203,7 @@ export default function SessionDetail() {
   const renderRightPanel = () => (
     <div className="h-full flex flex-col">
       {/* Panel switcher */}
-      <div className="flex gap-1 p-2 bg-gray-800 border-b border-gray-700">
+      <div className="flex gap-1 p-2 bg-bg-surface border-b border-border-default">
         <button
           onClick={() => {
             setRightPanel('diff')
@@ -211,8 +211,8 @@ export default function SessionDetail() {
           }}
           className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
             rightPanel === 'diff'
-              ? 'bg-gray-600 text-white'
-              : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'
+              ? 'bg-control-bg-hover text-text-primary'
+              : 'bg-control-bg text-text-tertiary hover:bg-control-bg-hover hover:text-text-secondary'
           }`}
         >
           Diff
@@ -227,8 +227,8 @@ export default function SessionDetail() {
           onClick={() => setRightPanel('files')}
           className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
             rightPanel === 'files'
-              ? 'bg-gray-600 text-white'
-              : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'
+              ? 'bg-control-bg-hover text-text-primary'
+              : 'bg-control-bg text-text-tertiary hover:bg-control-bg-hover hover:text-text-secondary'
           }`}
         >
           Files
@@ -237,8 +237,8 @@ export default function SessionDetail() {
           onClick={() => setRightPanel('todos')}
           className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
             rightPanel === 'todos'
-              ? 'bg-gray-600 text-white'
-              : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'
+              ? 'bg-control-bg-hover text-text-primary'
+              : 'bg-control-bg text-text-tertiary hover:bg-control-bg-hover hover:text-text-secondary'
           }`}
         >
           Todo
@@ -247,8 +247,8 @@ export default function SessionDetail() {
           onClick={() => setRightPanel('prompts')}
           className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
             rightPanel === 'prompts'
-              ? 'bg-gray-600 text-white'
-              : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'
+              ? 'bg-control-bg-hover text-text-primary'
+              : 'bg-control-bg text-text-tertiary hover:bg-control-bg-hover hover:text-text-secondary'
           }`}
         >
           Prompts
@@ -257,8 +257,8 @@ export default function SessionDetail() {
           onClick={() => setRightPanel('shared')}
           className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
             rightPanel === 'shared'
-              ? 'bg-gray-600 text-white'
-              : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'
+              ? 'bg-control-bg-hover text-text-primary'
+              : 'bg-control-bg text-text-tertiary hover:bg-control-bg-hover hover:text-text-secondary'
           }`}
         >
           Shared
@@ -323,7 +323,7 @@ export default function SessionDetail() {
   )
 
   return (
-    <div className="h-full flex flex-col bg-gray-900 text-white">
+    <div className="h-full flex flex-col bg-bg-sunken text-text-primary">
       {/* Conditionally render only desktop OR mobile layout (not both) */}
       {isDesktop ? (
         <main className="flex-1 min-h-0">
@@ -339,11 +339,11 @@ export default function SessionDetail() {
       ) : (
         <div className="flex-1 min-h-0 flex flex-col">
           {/* Tab navigation with back button */}
-          <div className="flex gap-1 px-2 py-1 bg-gray-800 border-b border-gray-700 overflow-x-auto scrollbar-hide">
+          <div className="flex gap-1 px-2 py-1 bg-bg-surface border-b border-border-default overflow-x-auto scrollbar-hide">
             {/* Back button */}
             <button
               onClick={() => navigate('/')}
-              className="shrink-0 px-2 py-1.5 text-gray-400 hover:text-white transition-colors"
+              className="shrink-0 px-2 py-1.5 text-text-tertiary hover:text-text-primary transition-colors"
               title="Back to Dashboard"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -356,7 +356,7 @@ export default function SessionDetail() {
               </svg>
             </button>
             {/* Separator */}
-            <div className="w-px shrink-0 bg-gray-700 my-1" />
+            <div className="w-px shrink-0 bg-border-default my-1" />
             {mobileTabs.map((tab) => (
               <button
                 key={tab.id}
@@ -366,8 +366,8 @@ export default function SessionDetail() {
                 }}
                 className={`shrink-0 px-4 py-1.5 rounded text-sm font-medium transition-colors ${
                   mobileTab === tab.id
-                    ? 'bg-gray-600 text-white'
-                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'
+                    ? 'bg-control-bg-hover text-text-primary'
+                    : 'bg-control-bg text-text-tertiary hover:bg-control-bg-hover hover:text-text-secondary'
                 }`}
               >
                 {tab.label}

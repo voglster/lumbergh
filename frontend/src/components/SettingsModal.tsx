@@ -255,14 +255,14 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
     // Special handling for Ollama model field with dynamic model list
     if (providerId === 'ollama' && field.key === 'model') {
       if (isLoadingModels) {
-        return <div className="text-gray-500 text-sm py-2">Loading models...</div>
+        return <div className="text-text-muted text-sm py-2">Loading models...</div>
       }
       if (ollamaModels.length > 0) {
         return (
           <select
             value={value}
             onChange={(e) => updateProviderConfig(providerId, field.key, e.target.value)}
-            className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500 text-sm"
+            className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 text-sm"
           >
             <option value="">Select a model</option>
             {ollamaModels.map((model) => (
@@ -281,7 +281,7 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
         <select
           value={value}
           onChange={(e) => updateProviderConfig(providerId, field.key, e.target.value)}
-          className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500 text-sm"
+          className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 text-sm"
         >
           {field.options.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -298,7 +298,7 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
         value={value}
         onChange={(e) => updateProviderConfig(providerId, field.key, e.target.value)}
         placeholder={field.placeholder}
-        className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500 font-mono text-sm"
+        className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-sm"
       />
     )
   }
@@ -311,11 +311,11 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
   const currentProvider = PROVIDERS.find((p) => p.id === aiProvider)
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-800 rounded-lg w-full max-w-lg border border-gray-700">
-        <div className="flex items-center justify-between p-4 border-b border-gray-700">
-          <h2 className="text-lg font-semibold text-white">Settings</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+    <div className="fixed inset-0 bg-bg-overlay flex items-center justify-center z-50 p-4">
+      <div className="bg-bg-surface rounded-lg w-full max-w-lg border border-border-default">
+        <div className="flex items-center justify-between p-4 border-b border-border-default">
+          <h2 className="text-lg font-semibold text-text-primary">Settings</h2>
+          <button onClick={onClose} className="text-text-tertiary hover:text-text-primary transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
@@ -328,7 +328,7 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-700">
+        <div className="flex border-b border-border-default">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -336,7 +336,7 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
               className={`px-4 py-2 text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? 'text-blue-400 border-b-2 border-blue-400'
-                  : 'text-gray-400 hover:text-white'
+                  : 'text-text-tertiary hover:text-text-primary'
               }`}
             >
               {tab.label}
@@ -345,13 +345,13 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
         </div>
 
         {isLoading ? (
-          <div className="p-8 text-center text-gray-400">Loading settings...</div>
+          <div className="p-8 text-center text-text-tertiary">Loading settings...</div>
         ) : (
           <form onSubmit={handleSubmit} className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
             {/* General Tab */}
             {activeTab === 'general' && (
               <div>
-                <label className="block text-sm text-gray-400 mb-1">
+                <label className="block text-sm text-text-tertiary mb-1">
                   Repository Search Directory
                 </label>
                 <input
@@ -359,9 +359,9 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
                   value={repoSearchDir}
                   onChange={(e) => setRepoSearchDir(e.target.value)}
                   placeholder="e.g., ~/src or /home/user/projects"
-                  className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500 font-mono text-sm"
+                  className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-sm"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-text-muted mt-1">
                   Directory to search for git repositories
                 </p>
               </div>
@@ -372,11 +372,11 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
               <div className="space-y-4">
                 {/* Provider selector */}
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">AI Provider</label>
+                  <label className="block text-sm text-text-tertiary mb-1">AI Provider</label>
                   <select
                     value={aiProvider}
                     onChange={(e) => setAiProvider(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500 text-sm"
+                    className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 text-sm"
                   >
                     {PROVIDERS.map((p) => (
                       <option key={p.id} value={p.id}>
@@ -388,10 +388,10 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
 
                 {/* Provider-specific fields (data-driven) */}
                 {currentProvider && (
-                  <div className="space-y-3 p-3 bg-gray-700/50 rounded">
+                  <div className="space-y-3 p-3 bg-bg-elevated/50 rounded">
                     {currentProvider.fields.map((field) => (
                       <div key={field.key}>
-                        <label className="block text-sm text-gray-400 mb-1">{field.label}</label>
+                        <label className="block text-sm text-text-tertiary mb-1">{field.label}</label>
                         {renderField(currentProvider.id, field)}
                       </div>
                     ))}
@@ -406,14 +406,14 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                className="px-4 py-2 text-text-tertiary hover:text-text-primary transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSaving}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded transition-colors"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-white rounded transition-colors"
               >
                 {isSaving ? 'Saving...' : 'Save'}
               </button>

@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
+import 'highlight.js/styles/github.css'
 import MarkdownPreview from '@uiw/react-markdown-preview'
 import mermaid from 'mermaid'
+import { useTheme } from '../hooks/useTheme'
 
-// Initialize mermaid with dark theme
+// Initialize mermaid
 mermaid.initialize({
   startOnLoad: false,
   theme: 'dark',
@@ -85,6 +87,7 @@ interface Props {
 }
 
 export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: Props) {
+  const { theme } = useTheme()
   const [files, setFiles] = useState<FileEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -113,6 +116,15 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
     document.addEventListener('selectionchange', handleSelectionChange)
     return () => document.removeEventListener('selectionchange', handleSelectionChange)
   }, [handleSelectionChange])
+
+  // Re-initialize mermaid when theme changes
+  useEffect(() => {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: theme === 'dark' ? 'dark' : 'default',
+      securityLevel: 'loose',
+    })
+  }, [theme])
 
   const handleSendToTerminal = async () => {
     const text = selectedTextRef.current
@@ -258,12 +270,12 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
           <div key={entry.path}>
             <button
               onClick={() => toggleDir(entry.path)}
-              className="w-full flex items-center gap-2 px-2 py-1 hover:bg-gray-800 text-left"
+              className="w-full flex items-center gap-2 px-2 py-1 hover:bg-bg-surface text-left"
               style={{ paddingLeft: `${depth * 16 + 8}px` }}
             >
-              <span className="text-gray-500 text-xs">{isExpanded ? '▼' : '▶'}</span>
+              <span className="text-text-muted text-xs">{isExpanded ? '▼' : '▶'}</span>
               <span className="text-yellow-400">📁</span>
-              <span className="text-gray-300 truncate">{name}</span>
+              <span className="text-text-secondary truncate">{name}</span>
             </button>
             {isExpanded && renderTree(tree, entry.path, depth + 1)}
           </div>
@@ -274,16 +286,16 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
         <button
           key={entry.path}
           onClick={() => fetchFileContent(entry.path)}
-          className={`w-full flex items-center gap-2 px-2 py-1 hover:bg-gray-800 text-left ${
-            selectedFile?.path === entry.path ? 'bg-gray-700' : ''
+          className={`w-full flex items-center gap-2 px-2 py-1 hover:bg-bg-surface text-left ${
+            selectedFile?.path === entry.path ? 'bg-control-bg' : ''
           }`}
           style={{ paddingLeft: `${depth * 16 + 8}px` }}
         >
-          <span className="text-gray-500 text-xs opacity-0">▶</span>
-          <span className="text-gray-500">📄</span>
-          <span className="text-gray-300 truncate">{name}</span>
+          <span className="text-text-muted text-xs opacity-0">▶</span>
+          <span className="text-text-muted">📄</span>
+          <span className="text-text-secondary truncate">{name}</span>
           {entry.size !== null && (
-            <span className="text-gray-600 text-xs ml-auto">{formatSize(entry.size)}</span>
+            <span className="text-text-muted text-xs ml-auto">{formatSize(entry.size)}</span>
           )}
         </button>
       )
@@ -347,10 +359,10 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
                   >
                     {segment.name}
                   </button>
-                  <span className="text-gray-500 mx-1">›</span>
+                  <span className="text-text-muted mx-1">›</span>
                 </>
               ) : (
-                <span className="text-gray-300">{segment.name}</span>
+                <span className="text-text-secondary">{segment.name}</span>
               )}
             </span>
           ))}
@@ -362,7 +374,7 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-500">Loading files...</div>
+      <div className="flex items-center justify-center h-full text-text-muted">Loading files...</div>
     )
   }
 
@@ -386,20 +398,20 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
     <div className="h-full flex">
       {/* File tree sidebar */}
       {!sidebarCollapsed && (
-        <div className="w-64 flex-shrink-0 border-r border-gray-700 overflow-auto">
-          <div className="p-2 bg-gray-800 border-b border-gray-700 flex justify-between items-center">
-            <span className="text-sm text-gray-400">Files</span>
+        <div className="w-64 flex-shrink-0 border-r border-border-default overflow-auto">
+          <div className="p-2 bg-bg-surface border-b border-border-default flex justify-between items-center">
+            <span className="text-sm text-text-tertiary">Files</span>
             <div className="flex gap-1">
               <button
                 onClick={() => fetchFiles()}
-                className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded"
+                className="text-xs px-2 py-1 bg-control-bg hover:bg-control-bg-hover rounded"
                 title="Refresh"
               >
                 ↻
               </button>
               <button
                 onClick={() => setSidebarCollapsed(true)}
-                className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded"
+                className="text-xs px-2 py-1 bg-control-bg hover:bg-control-bg-hover rounded"
                 title="Collapse sidebar"
               >
                 ◀
@@ -425,17 +437,17 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
           </button>
         )}
         {loadingFile ? (
-          <div className="flex items-center justify-center h-full text-gray-500">
+          <div className="flex items-center justify-center h-full text-text-muted">
             Loading file...
           </div>
         ) : selectedFile ? (
           <div className="h-full flex flex-col" ref={contentRef}>
-            <div className="p-2 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
+            <div className="p-2 bg-bg-surface border-b border-border-default flex items-center justify-between">
               <div className="font-mono text-sm flex items-center gap-2">
                 {sidebarCollapsed && (
                   <button
                     onClick={() => setSidebarCollapsed(false)}
-                    className="text-gray-400 hover:text-gray-200 px-1"
+                    className="text-text-tertiary hover:text-text-secondary px-1"
                     title="Show file tree"
                   >
                     ▶
@@ -453,7 +465,7 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
                     {showMarkdownPreview ? 'Code' : 'Preview'}
                   </button>
                 )}
-                <span className="text-gray-500 text-xs">{selectedFile.language}</span>
+                <span className="text-text-muted text-xs">{selectedFile.language}</span>
               </div>
             </div>
             {showMarkdownPreview && selectedFile.path.endsWith('.md') ? (
@@ -463,10 +475,10 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
                     source={selectedFile.content}
                     style={{
                       backgroundColor: 'transparent',
-                      color: '#e5e7eb',
+                      color: theme === 'dark' ? '#e5e7eb' : '#073642',
                     }}
                     wrapperElement={{
-                      'data-color-mode': 'dark',
+                      'data-color-mode': theme,
                     }}
                     components={{
                       code: Code,
@@ -488,17 +500,17 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
         ) : (
           <div className="h-full flex flex-col">
             {sidebarCollapsed && (
-              <div className="p-2 bg-gray-800 border-b border-gray-700">
+              <div className="p-2 bg-bg-surface border-b border-border-default">
                 <button
                   onClick={() => setSidebarCollapsed(false)}
-                  className="text-gray-400 hover:text-gray-200 px-1"
+                  className="text-text-tertiary hover:text-text-secondary px-1"
                   title="Show file tree"
                 >
                   ▶
                 </button>
               </div>
             )}
-            <div className="flex-1 flex items-center justify-center text-gray-500">
+            <div className="flex-1 flex items-center justify-center text-text-muted">
               Select a file to view
             </div>
           </div>

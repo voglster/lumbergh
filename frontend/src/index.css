@@ -1,5 +1,74 @@
 @import 'tailwindcss';
 
+/* ── Theme tokens ── */
+@theme {
+  --color-bg-base: var(--bg-base);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-sunken: var(--bg-sunken);
+  --color-bg-overlay: var(--bg-overlay);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-muted: var(--text-muted);
+  --color-border-default: var(--border-default);
+  --color-border-subtle: var(--border-subtle);
+  --color-control-bg: var(--control-bg);
+  --color-control-bg-hover: var(--control-bg-hover);
+  --color-input-bg: var(--input-bg);
+  --color-input-border: var(--input-border);
+  --color-terminal-bg: var(--terminal-bg);
+  --color-terminal-fg: var(--terminal-fg);
+}
+
+/* ── Dark theme (default) ── */
+:root {
+  --bg-base: #1a1a1a;
+  --bg-surface: #1f2937;
+  --bg-elevated: #374151;
+  --bg-sunken: #111827;
+  --bg-overlay: rgba(0, 0, 0, 0.5);
+  --text-primary: #ffffff;
+  --text-secondary: #d1d5db;
+  --text-tertiary: #9ca3af;
+  --text-muted: #6b7280;
+  --border-default: #374151;
+  --border-subtle: #4b5563;
+  --control-bg: #374151;
+  --control-bg-hover: #4b5563;
+  --input-bg: #374151;
+  --input-border: #4b5563;
+  --terminal-bg: #1a1a1a;
+  --terminal-fg: #d4d4d4;
+}
+
+/* ── Light theme ── */
+:root:not(.dark) {
+  --bg-base: #fdf6e3;
+  --bg-surface: #eee8d5;
+  --bg-elevated: #ffffff;
+  --bg-sunken: #e8e1cc;
+  --bg-overlay: rgba(0, 0, 0, 0.3);
+  --text-primary: #073642;
+  --text-secondary: #586e75;
+  --text-tertiary: #657b83;
+  --text-muted: #93a1a1;
+  --border-default: #d0c8b0;
+  --border-subtle: #e0d8c0;
+  --control-bg: #e0d8c0;
+  --control-bg-hover: #d0c8b0;
+  --input-bg: #ffffff;
+  --input-border: #d0c8b0;
+  --terminal-bg: #fdf6e3;
+  --terminal-fg: #073642;
+}
+
+/* ── highlight.js theme scoping ── */
+:root:not(.dark) .hljs {
+  background: var(--bg-elevated) !important;
+  color: var(--text-primary) !important;
+}
+
 html,
 body,
 #root {
@@ -26,7 +95,7 @@ body,
 }
 
 body {
-  background-color: #1a1a1a;
+  background-color: var(--bg-base);
   /* Safe area insets for notched devices */
   padding-top: env(safe-area-inset-top);
   padding-right: env(safe-area-inset-right);

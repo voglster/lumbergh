@@ -109,7 +109,7 @@ export default function Scratchpad({ apiHost, sessionName, onFocusTerminal }: Sc
   }, [])
 
   if (loading) {
-    return <div className="h-full flex items-center justify-center text-gray-500">Loading...</div>
+    return <div className="h-full flex items-center justify-center text-text-muted">Loading...</div>
   }
 
   return (
@@ -148,7 +148,7 @@ export default function Scratchpad({ apiHost, sessionName, onFocusTerminal }: Sc
         onSelect={handleSelect}
         onBlur={() => setHasSelection(false)}
         placeholder="Type your notes here..."
-        className="h-full w-full bg-gray-800 text-gray-100 border border-gray-700 rounded p-3 resize-none focus:outline-none focus:border-gray-500 font-mono text-sm"
+        className="h-full w-full bg-bg-surface text-text-secondary border border-border-default rounded p-3 resize-none focus:outline-none focus:border-border-subtle font-mono text-sm"
       />
     </div>
   )

@@ -244,7 +244,7 @@ export default function PromptTemplates({
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-full text-gray-500">Loading...</div>
+    return <div className="flex items-center justify-center h-full text-text-muted">Loading...</div>
   }
 
   const renderTemplateItem = (
@@ -262,28 +262,28 @@ export default function PromptTemplates({
         onDragStart={() => handleDragStart(index, scope)}
         onDragOver={(e) => handleDragOver(e, index, scope)}
         onDragEnd={handleDragEnd}
-        className={`flex items-center gap-2 p-3 bg-gray-800 rounded border border-gray-700 group ${
+        className={`flex items-center gap-2 p-3 bg-bg-surface rounded border border-border-default group ${
           editMode ? 'cursor-grab active:cursor-grabbing' : ''
         } ${isDragging ? 'opacity-50' : ''} ${isDragOver ? 'border-blue-500' : ''}`}
       >
-        {editMode && <span className="text-gray-600 select-none">&#x2807;</span>}
+        {editMode && <span className="text-text-muted select-none">&#x2807;</span>}
         {!editMode && sessionName && (
           <button
             onClick={() => handleSendToTerminal(template, false)}
-            className="text-xl text-gray-500 hover:text-yellow-400 transition-colors px-1"
+            className="text-xl text-text-muted hover:text-yellow-400 transition-colors px-1"
             title="Send text (no Enter)"
           >
             &#x25B7;
           </button>
         )}
-        <span className="flex-1 text-white truncate" title={template.prompt}>
+        <span className="flex-1 text-text-primary truncate" title={template.prompt}>
           {template.name}
         </span>
         {editMode && (
           <>
             <button
               onClick={() => handleEdit(template, scope)}
-              className="text-sm text-gray-500 hover:text-blue-400 transition-colors px-1"
+              className="text-sm text-text-muted hover:text-blue-400 transition-colors px-1"
               title="Edit"
             >
               Edit
@@ -291,7 +291,7 @@ export default function PromptTemplates({
             {scope === 'project' ? (
               <button
                 onClick={() => handleCopyToGlobal(template)}
-                className="text-sm text-gray-500 hover:text-green-400 transition-colors px-1"
+                className="text-sm text-text-muted hover:text-green-400 transition-colors px-1"
                 title="Move to Global"
               >
                 &#x2191;G
@@ -299,7 +299,7 @@ export default function PromptTemplates({
             ) : (
               <button
                 onClick={() => handleCopyToProject(template)}
-                className="text-sm text-gray-500 hover:text-green-400 transition-colors px-1"
+                className="text-sm text-text-muted hover:text-green-400 transition-colors px-1"
                 title="Copy to Project"
               >
                 &#x2193;P
@@ -307,7 +307,7 @@ export default function PromptTemplates({
             )}
             <button
               onClick={() => handleDelete(template.id, scope)}
-              className="text-sm text-gray-500 hover:text-red-400 transition-colors px-1"
+              className="text-sm text-text-muted hover:text-red-400 transition-colors px-1"
               title="Delete"
             >
               &#x00D7;
@@ -322,7 +322,7 @@ export default function PromptTemplates({
     <div className="h-full flex flex-col p-4 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-200">Prompt Templates</h2>
+        <h2 className="text-lg font-semibold text-text-secondary">Prompt Templates</h2>
         <button
           onClick={() => {
             if (editMode) handleCancelEdit()
@@ -331,7 +331,7 @@ export default function PromptTemplates({
           className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
             editMode
               ? 'bg-blue-600 text-white hover:bg-blue-500'
-              : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'
+              : 'bg-control-bg text-text-tertiary hover:bg-control-bg-hover hover:text-text-secondary'
           }`}
         >
           {editMode ? 'Done' : 'Edit'}
@@ -343,19 +343,19 @@ export default function PromptTemplates({
         {/* Project templates */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-400">Project Templates</h3>
+            <h3 className="text-sm font-medium text-text-tertiary">Project Templates</h3>
             {editMode && showForm !== 'project' && (
               <button
                 type="button"
                 onClick={() => handleStartAdd('project')}
-                className="text-xs px-2 py-1 bg-gray-700 text-gray-400 rounded hover:bg-gray-600 hover:text-gray-200 transition-colors"
+                className="text-xs px-2 py-1 bg-control-bg text-text-tertiary rounded hover:bg-control-bg-hover hover:text-text-secondary transition-colors"
               >
                 + Add
               </button>
             )}
           </div>
           {showForm === 'project' && (
-            <div className="mb-2 p-3 bg-gray-800 rounded border border-blue-500">
+            <div className="mb-2 p-3 bg-bg-surface rounded border border-blue-500">
               <div className="mb-2">
                 <input
                   type="text"
@@ -363,7 +363,7 @@ export default function PromptTemplates({
                   onChange={(e) => setFormName(e.target.value)}
                   placeholder="Template name (e.g. code_review)"
                   autoFocus
-                  className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500"
                 />
               </div>
               <div className="mb-2">
@@ -372,7 +372,7 @@ export default function PromptTemplates({
                   onChange={(e) => setFormPrompt(e.target.value)}
                   placeholder="Prompt text..."
                   rows={3}
-                  className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500 resize-none"
+                  className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 resize-none"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -387,7 +387,7 @@ export default function PromptTemplates({
                 <button
                   type="button"
                   onClick={handleCancelEdit}
-                  className="px-3 py-1.5 bg-gray-700 text-gray-400 text-sm rounded hover:bg-gray-600 hover:text-gray-200 transition-colors"
+                  className="px-3 py-1.5 bg-control-bg text-text-tertiary text-sm rounded hover:bg-control-bg-hover hover:text-text-secondary transition-colors"
                 >
                   Cancel
                 </button>
@@ -395,7 +395,7 @@ export default function PromptTemplates({
             </div>
           )}
           {projectTemplates.length === 0 && showForm !== 'project' ? (
-            <div className="text-gray-500 text-sm py-2">No project templates yet.</div>
+            <div className="text-text-muted text-sm py-2">No project templates yet.</div>
           ) : (
             <div className="space-y-2">
               {projectTemplates.map((template, index) =>
@@ -408,19 +408,19 @@ export default function PromptTemplates({
         {/* Global templates */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-400">Global Templates</h3>
+            <h3 className="text-sm font-medium text-text-tertiary">Global Templates</h3>
             {editMode && showForm !== 'global' && (
               <button
                 type="button"
                 onClick={() => handleStartAdd('global')}
-                className="text-xs px-2 py-1 bg-gray-700 text-gray-400 rounded hover:bg-gray-600 hover:text-gray-200 transition-colors"
+                className="text-xs px-2 py-1 bg-control-bg text-text-tertiary rounded hover:bg-control-bg-hover hover:text-text-secondary transition-colors"
               >
                 + Add
               </button>
             )}
           </div>
           {showForm === 'global' && (
-            <div className="mb-2 p-3 bg-gray-800 rounded border border-blue-500">
+            <div className="mb-2 p-3 bg-bg-surface rounded border border-blue-500">
               <div className="mb-2">
                 <input
                   type="text"
@@ -428,7 +428,7 @@ export default function PromptTemplates({
                   onChange={(e) => setFormName(e.target.value)}
                   placeholder="Template name (e.g. code_review)"
                   autoFocus
-                  className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500"
                 />
               </div>
               <div className="mb-2">
@@ -437,7 +437,7 @@ export default function PromptTemplates({
                   onChange={(e) => setFormPrompt(e.target.value)}
                   placeholder="Prompt text..."
                   rows={3}
-                  className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500 resize-none"
+                  className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 resize-none"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -452,7 +452,7 @@ export default function PromptTemplates({
                 <button
                   type="button"
                   onClick={handleCancelEdit}
-                  className="px-3 py-1.5 bg-gray-700 text-gray-400 text-sm rounded hover:bg-gray-600 hover:text-gray-200 transition-colors"
+                  className="px-3 py-1.5 bg-control-bg text-text-tertiary text-sm rounded hover:bg-control-bg-hover hover:text-text-secondary transition-colors"
                 >
                   Cancel
                 </button>
@@ -460,7 +460,7 @@ export default function PromptTemplates({
             </div>
           )}
           {globalTemplates.length === 0 && showForm !== 'global' ? (
-            <div className="text-gray-500 text-sm py-2">No global templates yet.</div>
+            <div className="text-text-muted text-sm py-2">No global templates yet.</div>
           ) : (
             <div className="space-y-2">
               {globalTemplates.map((template, index) =>
@@ -472,7 +472,7 @@ export default function PromptTemplates({
       </div>
 
       {/* Saving indicator */}
-      {saving && <div className="text-gray-500 text-sm text-center py-2">Saving...</div>}
+      {saving && <div className="text-text-muted text-sm text-center py-2">Saving...</div>}
     </div>
   )
 }

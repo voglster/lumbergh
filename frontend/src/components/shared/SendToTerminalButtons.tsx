@@ -19,7 +19,7 @@ export default function SendToTerminalButtons({
       <button
         onClick={() => onSend(false)}
         disabled={disabled}
-        className="text-xl text-gray-500 hover:text-yellow-400 disabled:text-gray-700 disabled:cursor-not-allowed transition-colors px-1"
+        className="text-xl text-text-muted hover:text-yellow-400 disabled:text-text-muted disabled:cursor-not-allowed transition-colors px-1"
         title="Send text (no Enter)"
       >
         &#x25B7;
@@ -27,7 +27,7 @@ export default function SendToTerminalButtons({
       <button
         onClick={() => onSend(true)}
         disabled={disabled}
-        className="text-xl text-gray-500 hover:text-blue-400 disabled:text-gray-700 disabled:cursor-not-allowed transition-colors px-1"
+        className="text-xl text-text-muted hover:text-blue-400 disabled:text-text-muted disabled:cursor-not-allowed transition-colors px-1"
         title="Send + Enter (yolo)"
       >
         &#x27A4;

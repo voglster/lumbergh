@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
 import { useTerminalSocket } from '../hooks/useTerminalSocket'
+import { useTheme } from '../hooks/useTheme'
 
 interface TerminalProps {
   sessionName: string
@@ -24,6 +25,7 @@ export default function Terminal({
   onReset,
   isVisible = true,
 }: TerminalProps) {
+  const { theme } = useTheme()
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<XTerm | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
@@ -175,15 +177,19 @@ export default function Terminal({
 
     containerRef.current.innerHTML = ''
 
+    const style = getComputedStyle(document.documentElement)
+    const termBg = style.getPropertyValue('--terminal-bg').trim()
+    const termFg = style.getPropertyValue('--terminal-fg').trim()
+
     const term = new XTerm({
       cursorBlink: true,
       fontSize: initialFontSizeRef.current,
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
       scrollback: 10000, // Enable native scrollback for touch scrolling
       theme: {
-        background: '#1a1a1a',
-        foreground: '#d4d4d4',
-        cursor: '#d4d4d4',
+        background: termBg,
+        foreground: termFg,
+        cursor: termFg,
         selectionBackground: '#264f78',
       },
     })
@@ -348,10 +354,26 @@ export default function Terminal({
     }
   }, [fontSize, handleFit])
 
+  // Update terminal theme when app theme changes
+  useEffect(() => {
+    if (termRef.current) {
+      const style = getComputedStyle(document.documentElement)
+      const termBg = style.getPropertyValue('--terminal-bg').trim()
+      const termFg = style.getPropertyValue('--terminal-fg').trim()
+      termRef.current.options.theme = {
+        background: termBg,
+        foreground: termFg,
+        cursor: termFg,
+        selectionBackground: '#264f78',
+      }
+      termRef.current.refresh(0, termRef.current.rows - 1)
+    }
+  }, [theme])
+
   return (
     <div className="h-full w-full relative flex flex-col">
       {/* Header bar */}
-      <div className="bg-gray-800 border-b border-gray-700">
+      <div className="bg-bg-surface border-b border-border-default">
         {/* Main row */}
         <div className="flex items-center justify-between p-2">
           <div className="flex items-center gap-2">
@@ -359,7 +381,7 @@ export default function Terminal({
               <>
                 <button
                   onClick={onBack}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-text-tertiary hover:text-text-primary transition-colors"
                   title="Back to Dashboard"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -372,19 +394,19 @@ export default function Terminal({
                   </svg>
                 </button>
                 {/* Separator */}
-                <div className="w-px h-4 bg-gray-600 mx-1" />
+                <div className="w-px h-4 bg-border-subtle mx-1" />
               </>
             )}
             <button
               onClick={() => sendTmuxCommand('prev-window')}
-              className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
+              className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover rounded"
               title="Previous tmux window"
             >
               &lt;
             </button>
             <button
               onClick={() => sendTmuxCommand('next-window')}
-              className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
+              className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover rounded"
               title="Next tmux window"
             >
               &gt;
@@ -396,8 +418,8 @@ export default function Terminal({
                 onClick={toggleScrollMode}
                 disabled={!isConnected}
                 className={`px-2 py-1 text-xs rounded ${
-                  scrollMode ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-gray-700 hover:bg-gray-600'
-                } disabled:bg-gray-600 disabled:opacity-50`}
+                  scrollMode ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-control-bg hover:bg-control-bg-hover'
+                } disabled:bg-control-bg-hover disabled:opacity-50`}
                 title={scrollMode ? 'Exit scroll mode (q)' : 'Enter scroll mode (copy-mode)'}
               >
                 {scrollMode ? 'Exit' : 'Scroll'}
@@ -406,7 +428,7 @@ export default function Terminal({
             <button
               onClick={() => sendRef.current('\x1b')}
               disabled={!isConnected}
-              className="px-2 py-1 text-xs bg-red-700 hover:bg-red-600 disabled:bg-gray-600 disabled:opacity-50 rounded"
+              className="px-2 py-1 text-xs bg-red-700 hover:bg-red-600 disabled:bg-control-bg-hover disabled:opacity-50 rounded"
               title="Send Escape key"
             >
               Esc
@@ -414,7 +436,7 @@ export default function Terminal({
             <button
               onClick={() => sendRef.current('\x1b[Z')}
               disabled={!isConnected}
-              className="px-2 py-1 text-xs bg-blue-700 hover:bg-blue-600 disabled:bg-gray-600 disabled:opacity-50 rounded"
+              className="px-2 py-1 text-xs bg-blue-700 hover:bg-blue-600 disabled:bg-control-bg-hover disabled:opacity-50 rounded"
               title="Toggle Plan/Accept Edits mode (Shift+Tab)"
             >
               Mode
@@ -422,20 +444,20 @@ export default function Terminal({
             <button
               onClick={() => sendViaApi('1')}
               disabled={!isConnected}
-              className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 disabled:opacity-50 rounded"
+              className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover disabled:opacity-50 rounded"
               title="Send 1"
             >
               1
             </button>
             <button
               onClick={handleFit}
-              className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
+              className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover rounded"
             >
               Fit
             </button>
             <button
               onClick={() => setHeaderExpanded(!headerExpanded)}
-              className={`px-2 py-1 text-xs rounded ${headerExpanded ? 'bg-gray-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+              className={`px-2 py-1 text-xs rounded ${headerExpanded ? 'bg-control-bg-hover' : 'bg-control-bg hover:bg-control-bg-hover'}`}
               title="More options"
             >
               ...
@@ -448,18 +470,18 @@ export default function Terminal({
             {/* Font size controls and reset - left aligned */}
             <div className="flex items-center gap-3 shrink-0">
               <div className="flex items-center gap-1">
-                <span className="text-xs text-gray-400">Font:</span>
+                <span className="text-xs text-text-tertiary">Font:</span>
                 <button
                   onClick={() => setFontSize((s) => Math.max(8, s - 1))}
-                  className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
+                  className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover rounded"
                   title="Decrease font size"
                 >
                   -
                 </button>
-                <span className="text-xs text-gray-300 w-5 text-center">{fontSize}</span>
+                <span className="text-xs text-text-secondary w-5 text-center">{fontSize}</span>
                 <button
                   onClick={() => setFontSize((s) => Math.min(24, s + 1))}
-                  className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
+                  className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover rounded"
                   title="Increase font size"
                 >
                   +
@@ -514,7 +536,7 @@ export default function Terminal({
                     setHeaderExpanded(false)
                   }}
                   disabled={!isConnected}
-                  className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 disabled:opacity-50 rounded"
+                  className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover disabled:opacity-50 rounded"
                 >
                   {text}
                 </button>
@@ -533,13 +555,13 @@ export default function Terminal({
       {sessionDead && (
         <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-20">
           <div className="text-red-400 text-lg font-semibold mb-2">Session Terminated</div>
-          <p className="text-gray-400 text-sm mb-4 text-center px-4">
+          <p className="text-text-tertiary text-sm mb-4 text-center px-4">
             The tmux session has ended or was killed
           </p>
           <div className="flex gap-3">
             <button
               onClick={() => (window.location.href = '/')}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+              className="px-4 py-2 bg-control-bg hover:bg-control-bg-hover rounded text-sm"
             >
               Dashboard
             </button>

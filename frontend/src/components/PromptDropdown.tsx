@@ -34,7 +34,7 @@ export default function PromptDropdown({
   return (
     <div
       ref={dropdownRef}
-      className="fixed z-50 bg-gray-700 border border-gray-600 rounded shadow-lg max-h-48 overflow-y-auto min-w-[200px]"
+      className="fixed z-50 bg-control-bg border border-border-subtle rounded shadow-lg max-h-48 overflow-y-auto min-w-[200px]"
       style={{
         top: position.top,
         left: position.left,
@@ -51,8 +51,8 @@ export default function PromptDropdown({
           onMouseEnter={() => onHighlight(index)}
           className={`w-full px-3 py-2 text-left transition-colors flex items-center gap-2 ${
             index === highlightedIndex
-              ? 'bg-blue-600 text-white'
-              : 'text-white hover:bg-gray-600'
+              ? 'bg-blue-600 text-text-primary'
+              : 'text-text-primary hover:bg-control-bg-hover'
           }`}
         >
           <span className="flex-1 truncate">{prompt.name}</span>

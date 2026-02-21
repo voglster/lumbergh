@@ -3,6 +3,7 @@ import { DiffView, DiffModeEnum } from '@git-diff-view/react'
 import type { DiffFile } from './types'
 import { extractDiffContent, getFileStats, getLangFromPath } from './utils'
 import MarkdownViewer from '../MarkdownViewer'
+import { useTheme } from '../../hooks/useTheme'
 
 interface Props {
   file: DiffFile
@@ -25,6 +26,7 @@ const FileDiff = memo(function FileDiff({
   sessionName,
   onFocusTerminal,
 }: Props) {
+  const { theme } = useTheme()
   const [showMarkdownPreview, setShowMarkdownPreview] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
   const [fontSize, setFontSize] = useState(() => {
@@ -100,14 +102,14 @@ const FileDiff = memo(function FileDiff({
   return (
     <div className="h-full flex flex-col">
       {/* Breadcrumb header */}
-      <div className="flex items-center gap-2 p-2 bg-gray-800 border-b border-gray-700">
+      <div className="flex items-center gap-2 p-2 bg-bg-surface border-b border-border-default">
         <button
           onClick={onBack}
-          className="flex items-center gap-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+          className="flex items-center gap-1 px-2 py-1 bg-control-bg hover:bg-control-bg-hover rounded text-sm"
         >
           ← Back
         </button>
-        <span className="text-gray-500">/</span>
+        <span className="text-text-muted">/</span>
         <span className="font-mono text-sm text-blue-400 truncate flex-1">{file.path}</span>
         {isMarkdown && (
           <button
@@ -124,7 +126,7 @@ const FileDiff = memo(function FileDiff({
           <button
             onClick={() => changeFontSize(-FONT_SIZE_STEP)}
             disabled={fontSize <= MIN_FONT_SIZE}
-            className="px-1.5 py-0.5 text-xs bg-gray-700 hover:bg-gray-600 disabled:opacity-30 disabled:cursor-not-allowed rounded-l"
+            className="px-1.5 py-0.5 text-xs bg-control-bg hover:bg-control-bg-hover disabled:opacity-30 disabled:cursor-not-allowed rounded-l"
             title="Decrease font size"
           >
             A-
@@ -132,7 +134,7 @@ const FileDiff = memo(function FileDiff({
           <button
             onClick={() => changeFontSize(FONT_SIZE_STEP)}
             disabled={fontSize >= MAX_FONT_SIZE}
-            className="px-1.5 py-0.5 text-xs bg-gray-700 hover:bg-gray-600 disabled:opacity-30 disabled:cursor-not-allowed rounded-r"
+            className="px-1.5 py-0.5 text-xs bg-control-bg hover:bg-control-bg-hover disabled:opacity-30 disabled:cursor-not-allowed rounded-r"
             title="Increase font size"
           >
             A+
@@ -158,12 +160,12 @@ const FileDiff = memo(function FileDiff({
           <DiffView
             data={diffViewData}
             diffViewMode={DiffModeEnum.Unified}
-            diffViewTheme="dark"
+            diffViewTheme={theme}
             diffViewHighlight
             diffViewWrap
           />
         ) : (
-          <div className="flex items-center justify-center h-full text-gray-500">
+          <div className="flex items-center justify-center h-full text-text-muted">
             No diff content for this file
           </div>
         )}

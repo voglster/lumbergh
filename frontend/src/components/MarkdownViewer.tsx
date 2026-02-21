@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback, useRef } from 'react'
 import MarkdownPreview from '@uiw/react-markdown-preview'
 import mermaid from 'mermaid'
+import { useTheme } from '../hooks/useTheme'
 
 interface Props {
   content: string
@@ -8,7 +9,7 @@ interface Props {
   onClose: () => void
 }
 
-// Initialize mermaid with dark theme
+// Initialize mermaid
 mermaid.initialize({
   startOnLoad: false,
   theme: 'dark',
@@ -71,6 +72,17 @@ function Code({ children, className }: { children?: React.ReactNode; className?:
 }
 
 export default function MarkdownViewer({ content, filePath, onClose }: Props) {
+  const { theme } = useTheme()
+
+  // Re-initialize mermaid when theme changes
+  useEffect(() => {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: theme === 'dark' ? 'dark' : 'default',
+      securityLevel: 'loose',
+    })
+  }, [theme])
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -103,17 +115,17 @@ export default function MarkdownViewer({ content, filePath, onClose }: Props) {
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-3 bg-gray-900 border-b border-gray-700">
+      <div className="flex items-center justify-between p-3 bg-bg-sunken border-b border-border-default">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-gray-500">📄</span>
-          <span className="font-mono text-sm text-gray-300 truncate" title={filePath}>
+          <span className="text-text-muted">📄</span>
+          <span className="font-mono text-sm text-text-secondary truncate" title={filePath}>
             {fileName}
           </span>
-          <span className="text-gray-600 text-xs hidden sm:inline">({filePath})</span>
+          <span className="text-text-muted text-xs hidden sm:inline">({filePath})</span>
         </div>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-white transition-colors p-1 flex-shrink-0"
+          className="text-text-tertiary hover:text-text-primary transition-colors p-1 flex-shrink-0"
           title="Close (Esc)"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -134,10 +146,10 @@ export default function MarkdownViewer({ content, filePath, onClose }: Props) {
             source={content}
             style={{
               backgroundColor: 'transparent',
-              color: '#e5e7eb',
+              color: theme === 'dark' ? '#e5e7eb' : '#073642',
             }}
             wrapperElement={{
-              'data-color-mode': 'dark',
+              'data-color-mode': theme,
             }}
             components={{
               code: Code,

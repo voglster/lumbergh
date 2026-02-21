@@ -40,7 +40,7 @@ export default function QuickInput({
         onKeyDown={handleKeyDown}
         disabled={disabled}
         placeholder={placeholder}
-        className="flex-1 bg-gray-700 text-white px-3 py-2 rounded border border-gray-600
+        className="flex-1 bg-input-bg text-text-primary px-3 py-2 rounded border border-input-border
                    focus:outline-none focus:border-blue-500 disabled:opacity-50
                    text-base" // text-base prevents iOS zoom on focus
         autoComplete="off"
@@ -51,8 +51,8 @@ export default function QuickInput({
       <button
         onClick={handleSendClick}
         disabled={disabled || !value.trim()}
-        className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed
-                   text-white px-4 py-2 rounded font-medium transition-colors"
+        className="bg-blue-600 hover:bg-blue-700 disabled:bg-control-bg-hover disabled:cursor-not-allowed
+                   text-text-primary px-4 py-2 rounded font-medium transition-colors"
       >
         Send
       </button>

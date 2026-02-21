@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import SessionCard from '../components/SessionCard'
 import CreateSessionModal from '../components/CreateSessionModal'
 import SettingsModal from '../components/SettingsModal'
+import { useTheme } from '../hooks/useTheme'
 
 interface Session {
   name: string
@@ -28,6 +29,7 @@ export default function Dashboard() {
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [lbSharedInstalled, setLbSharedInstalled] = useState<boolean | null>(null)
   const [installingLbShared, setInstallingLbShared] = useState(false)
+  const { theme, setTheme } = useTheme()
 
   // Determine API host - use same hostname but port 8000 for backend
   const apiHost = `${window.location.hostname}:8000`
@@ -143,15 +145,41 @@ export default function Dashboard() {
   const deadSessions = sessions.filter((s) => !s.alive)
 
   return (
-    <div className="h-full flex flex-col bg-gray-900 text-white overflow-hidden">
+    <div className="h-full flex flex-col bg-bg-sunken text-text-primary overflow-hidden">
       {/* Header */}
-      <header className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700">
-        <h1 className="text-xl font-semibold text-gray-200">Lumbergh</h1>
+      <header className="flex items-center justify-between p-4 bg-bg-surface border-b border-border-default">
+        <h1 className="text-xl font-semibold text-text-secondary">Lumbergh</h1>
         <div className="flex items-center gap-2">
+          {/* Theme toggle */}
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            className="p-2 text-text-tertiary hover:text-text-primary hover:bg-control-bg rounded transition-colors"
+          >
+            {theme === 'dark' ? (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                />
+              </svg>
+            )}
+          </button>
           <button
             onClick={() => setShowSettingsModal(true)}
             title="Settings"
-            className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+            className="p-2 text-text-tertiary hover:text-text-primary hover:bg-control-bg rounded transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -192,7 +220,7 @@ export default function Dashboard() {
             <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span className="text-sm text-gray-300">
+            <span className="text-sm text-text-secondary">
               Enable cross-session sharing by adding LB Shared commands to your CLAUDE.md
             </span>
           </div>
@@ -211,22 +239,22 @@ export default function Dashboard() {
         <div className="max-w-6xl mx-auto">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <span className="text-gray-500">Loading sessions...</span>
+            <span className="text-text-muted">Loading sessions...</span>
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-12 gap-4">
             <span className="text-red-400">{error}</span>
             <button
               onClick={fetchSessions}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+              className="px-4 py-2 bg-control-bg hover:bg-control-bg-hover rounded transition-colors"
             >
               Retry
             </button>
           </div>
         ) : sessions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-4 text-gray-500">
+          <div className="flex flex-col items-center justify-center py-12 gap-4 text-text-muted">
             <svg
-              className="w-16 h-16 text-gray-600"
+              className="w-16 h-16 text-text-muted"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -248,7 +276,7 @@ export default function Dashboard() {
             {/* Active sessions */}
             {aliveSessions.length > 0 && (
               <section className="mb-8">
-                <h2 className="text-sm font-medium text-gray-400 mb-3 uppercase tracking-wide">
+                <h2 className="text-sm font-medium text-text-tertiary mb-3 uppercase tracking-wide">
                   Active Sessions
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -262,7 +290,7 @@ export default function Dashboard() {
             {/* Dead sessions (stored but not running) */}
             {deadSessions.length > 0 && (
               <section>
-                <h2 className="text-sm font-medium text-gray-500 mb-3 uppercase tracking-wide">
+                <h2 className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wide">
                   Inactive Sessions
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

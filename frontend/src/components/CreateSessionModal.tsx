@@ -102,11 +102,11 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-800 rounded-lg w-full max-w-md border border-gray-700">
-        <div className="flex items-center justify-between p-4 border-b border-gray-700">
-          <h2 className="text-lg font-semibold text-white">New Session</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+    <div className="fixed inset-0 bg-bg-overlay flex items-center justify-center z-50 p-4">
+      <div className="bg-bg-surface rounded-lg w-full max-w-md border border-border-default">
+        <div className="flex items-center justify-between p-4 border-b border-border-default">
+          <h2 className="text-lg font-semibold text-text-primary">New Session</h2>
+          <button onClick={onClose} className="text-text-tertiary hover:text-text-primary transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
@@ -121,7 +121,7 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           {/* Mode Toggle */}
           <div>
-            <label className="block text-sm text-gray-400 mb-2">Session Type</label>
+            <label className="block text-sm text-text-tertiary mb-2">Session Type</label>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -129,7 +129,7 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
                 className={`flex-1 px-3 py-2 text-sm rounded transition-colors ${
                   mode === 'direct'
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-700 text-gray-400 hover:text-white hover:bg-gray-600'
+                    : 'bg-control-bg text-text-tertiary hover:text-text-primary hover:bg-control-bg-hover'
                 }`}
               >
                 <div className="font-medium">Direct</div>
@@ -141,7 +141,7 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
                 className={`flex-1 px-3 py-2 text-sm rounded transition-colors ${
                   mode === 'worktree'
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-700 text-gray-400 hover:text-white hover:bg-gray-600'
+                    : 'bg-control-bg text-text-tertiary hover:text-text-primary hover:bg-control-bg-hover'
                 }`}
               >
                 <div className="font-medium">Worktree</div>
@@ -152,18 +152,18 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
 
           {/* Session Name */}
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Session Name</label>
+            <label className="block text-sm text-text-tertiary mb-1">Session Name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Auth Feature, fix-login-bug"
-              className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500"
               required
             />
             {slug && (
-              <p className="text-xs text-gray-500 mt-1">
-                Session ID: <span className="text-gray-400 font-mono">{slug}</span>
+              <p className="text-xs text-text-muted mt-1">
+                Session ID: <span className="text-text-tertiary font-mono">{slug}</span>
               </p>
             )}
           </div>
@@ -171,7 +171,7 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
           {mode === 'direct' ? (
             /* Direct Mode - Working Directory */
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Working Directory</label>
+              <label className="block text-sm text-text-tertiary mb-1">Working Directory</label>
               {manualEntry ? (
                 <div>
                   <input
@@ -179,7 +179,7 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
                     value={workdir}
                     onChange={(e) => setWorkdir(e.target.value)}
                     placeholder="e.g., /home/user/myproject"
-                    className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500 font-mono text-sm"
+                    className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-sm"
                     required
                   />
                   <button
@@ -206,7 +206,7 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
             /* Worktree Mode */
             <>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Parent Repository</label>
+                <label className="block text-sm text-text-tertiary mb-1">Parent Repository</label>
                 <DirectoryPicker
                   apiHost={apiHost}
                   value={parentRepo}
@@ -220,7 +220,7 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
 
               {parentRepo && (
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Branch</label>
+                  <label className="block text-sm text-text-tertiary mb-1">Branch</label>
                   <BranchPicker
                     apiHost={apiHost}
                     repoPath={parentRepo}
@@ -237,13 +237,13 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
 
           {/* Description */}
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Description (optional)</label>
+            <label className="block text-sm text-text-tertiary mb-1">Description (optional)</label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="e.g., Working on user authentication"
-              className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500"
             />
           </div>
 
@@ -253,14 +253,14 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+              className="px-4 py-2 text-text-tertiary hover:text-text-primary transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isCreating || !isValid()}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded transition-colors"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-white rounded transition-colors"
             >
               {isCreating ? 'Creating...' : 'Create Session'}
             </button>

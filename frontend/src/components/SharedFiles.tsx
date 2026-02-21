@@ -147,7 +147,7 @@ export default function SharedFiles({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-500">
+      <div className="flex items-center justify-center h-full text-text-muted">
         Loading...
       </div>
     )
@@ -160,13 +160,13 @@ export default function SharedFiles({
         className={`p-4 border-2 border-dashed rounded m-2 text-center transition-colors ${
           isDragging
             ? 'border-blue-500 bg-blue-900/20'
-            : 'border-gray-600 hover:border-gray-500'
+            : 'border-border-subtle hover:border-border-subtle'
         } ${uploading ? 'opacity-50' : ''}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        <span className="text-gray-400 text-sm">
+        <span className="text-text-tertiary text-sm">
           {uploading ? 'Uploading...' : 'Drop images here or paste anywhere'}
         </span>
       </div>
@@ -181,7 +181,7 @@ export default function SharedFiles({
       {/* File list */}
       <div className="flex-1 overflow-auto px-2 pb-2">
         {files.length === 0 ? (
-          <div className="text-center text-gray-500 mt-4">
+          <div className="text-center text-text-muted mt-4">
             No shared files yet
           </div>
         ) : (
@@ -189,10 +189,10 @@ export default function SharedFiles({
             {files.map((file) => (
               <div
                 key={file.name}
-                className="flex items-center gap-2 p-2 bg-gray-800 rounded hover:bg-gray-750"
+                className="flex items-center gap-2 p-2 bg-bg-surface rounded hover:bg-bg-surface"
               >
                 {/* Thumbnail or icon */}
-                <div className="w-10 h-10 flex-shrink-0 rounded overflow-hidden bg-gray-700 flex items-center justify-center">
+                <div className="w-10 h-10 flex-shrink-0 rounded overflow-hidden bg-control-bg flex items-center justify-center">
                   {isImage(file.name) ? (
                     <img
                       src={`http://${apiHost}/api/shared/files/${encodeURIComponent(file.name)}/content`}
@@ -200,16 +200,16 @@ export default function SharedFiles({
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <span className="text-gray-400 text-lg">📄</span>
+                    <span className="text-text-tertiary text-lg">📄</span>
                   )}
                 </div>
 
                 {/* Filename and size */}
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm text-gray-200 truncate" title={file.name}>
+                  <div className="text-sm text-text-secondary truncate" title={file.name}>
                     {file.name}
                   </div>
-                  <div className="text-xs text-gray-500">{formatSize(file.size)}</div>
+                  <div className="text-xs text-text-muted">{formatSize(file.size)}</div>
                 </div>
 
                 {/* Action buttons */}
@@ -218,14 +218,14 @@ export default function SharedFiles({
                     <>
                       <button
                         onClick={() => sendToTerminal(file.name, false)}
-                        className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-gray-700 rounded"
+                        className="p-1.5 text-text-tertiary hover:text-blue-400 hover:bg-control-bg rounded"
                         title="Send path to terminal (no Enter)"
                       >
                         ▷
                       </button>
                       <button
                         onClick={() => sendToTerminal(file.name, true)}
-                        className="p-1.5 text-gray-400 hover:text-green-400 hover:bg-gray-700 rounded"
+                        className="p-1.5 text-text-tertiary hover:text-green-400 hover:bg-control-bg rounded"
                         title="Send path to terminal + Enter"
                       >
                         ➤
@@ -234,7 +234,7 @@ export default function SharedFiles({
                   )}
                   <button
                     onClick={() => deleteFile(file.name)}
-                    className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded"
+                    className="p-1.5 text-text-tertiary hover:text-red-400 hover:bg-control-bg rounded"
                     title="Delete file"
                   >
                     ×

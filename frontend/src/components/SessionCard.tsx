@@ -37,7 +37,7 @@ function getSessionStatus(session: Session) {
 }
 
 const statusColorClasses: Record<string, { dot: string; text: string }> = {
-  gray: { dot: 'bg-gray-500', text: 'text-gray-400' },
+  gray: { dot: 'bg-gray-500', text: 'text-text-tertiary' },
   yellow: { dot: 'bg-yellow-400', text: 'text-yellow-400' },
   green: { dot: 'bg-green-500', text: 'text-green-400' },
   red: { dot: 'bg-red-500', text: 'text-red-400' },
@@ -145,29 +145,29 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
     return (
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-gray-800 rounded-lg p-4 border border-blue-500"
+        className="bg-bg-surface rounded-lg p-4 border border-blue-500"
       >
         <form onSubmit={handleEditSubmit} className="space-y-3">
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Display Name</label>
+            <label className="block text-xs text-text-tertiary mb-1">Display Name</label>
             <input
               type="text"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               onKeyDown={handleKeyDown}
               autoFocus
-              className="w-full bg-gray-700 text-white px-2 py-1.5 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-sm"
+              className="w-full bg-control-bg text-text-primary px-2 py-1.5 rounded border border-border-subtle focus:border-blue-500 focus:outline-none text-sm"
               placeholder={session.name}
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Description</label>
+            <label className="block text-xs text-text-tertiary mb-1">Description</label>
             <input
               type="text"
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="w-full bg-gray-700 text-white px-2 py-1.5 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-sm"
+              className="w-full bg-control-bg text-text-primary px-2 py-1.5 rounded border border-border-subtle focus:border-blue-500 focus:outline-none text-sm"
               placeholder="Optional description"
             />
           </div>
@@ -175,7 +175,7 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
             <button
               type="button"
               onClick={handleEditCancel}
-              className="px-3 py-1 text-sm text-gray-400 hover:text-white transition-colors"
+              className="px-3 py-1 text-sm text-text-tertiary hover:text-text-primary transition-colors"
             >
               Cancel
             </button>
@@ -197,7 +197,7 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
   return (
     <div
       onClick={handleClick}
-      className="bg-gray-800 rounded-lg p-4 cursor-pointer hover:bg-gray-700 transition-colors border border-gray-700 hover:border-gray-600"
+      className="bg-bg-surface rounded-lg p-4 cursor-pointer hover:bg-bg-elevated transition-colors border border-border-default hover:border-border-subtle"
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -206,16 +206,16 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
             title={status.label}
           />
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-white truncate">{displayTitle}</h3>
+            <h3 className="font-semibold text-text-primary truncate">{displayTitle}</h3>
             {showOriginalName && (
-              <p className="text-xs text-gray-500 truncate">{session.name}</p>
+              <p className="text-xs text-text-muted truncate">{session.name}</p>
             )}
           </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           <button
             onClick={handleEditClick}
-            className="text-gray-500 hover:text-blue-400 transition-colors p-1"
+            className="text-text-muted hover:text-blue-400 transition-colors p-1"
             title="Edit session"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -230,7 +230,7 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
           {session.alive && (
             <button
               onClick={handleReset}
-              className="text-gray-500 hover:text-yellow-400 transition-colors p-1"
+              className="text-text-muted hover:text-yellow-400 transition-colors p-1"
               title="Reset session"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -245,7 +245,7 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
           )}
           <button
             onClick={handleDelete}
-            className="text-gray-500 hover:text-red-400 transition-colors p-1"
+            className="text-text-muted hover:text-red-400 transition-colors p-1"
             title="Delete session"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -268,7 +268,7 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
           </svg>
           <span className="text-xs text-purple-400 font-mono">{session.worktreeBranch}</span>
           {session.worktreeParentRepo && (
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-text-muted">
               from {session.worktreeParentRepo.split('/').pop()}
             </span>
           )}
@@ -276,13 +276,13 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
       )}
 
       {session.workdir && (
-        <p className="text-sm text-gray-400 font-mono truncate mb-1" title={session.workdir}>
+        <p className="text-sm text-text-tertiary font-mono truncate mb-1" title={session.workdir}>
           {session.workdir}
         </p>
       )}
 
       {session.description && (
-        <p className="text-sm text-gray-500 truncate mb-1">{session.description}</p>
+        <p className="text-sm text-text-muted truncate mb-1">{session.description}</p>
       )}
 
       {session.status && (
@@ -296,7 +296,7 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
         </div>
       )}
 
-      <div className="flex items-center gap-3 text-xs text-gray-500">
+      <div className="flex items-center gap-3 text-xs text-text-muted">
         <span>
           {session.windows} window{session.windows !== 1 ? 's' : ''}
         </span>
