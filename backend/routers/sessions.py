@@ -238,6 +238,7 @@ async def list_sessions():
                 "type": meta.get("type", "direct"),
                 "worktreeParentRepo": meta.get("worktree_parent_repo"),
                 "worktreeBranch": meta.get("worktree_branch"),
+                "lastUsedAt": meta.get("lastUsedAt"),
             }
         )
 
@@ -261,10 +262,32 @@ async def list_sessions():
                     "type": "direct",
                     "worktreeParentRepo": None,
                     "worktreeBranch": None,
+                    "lastUsedAt": None,
                 }
             )
 
     return {"sessions": sessions}
+
+
+@router.post("/{name}/touch")
+async def touch_session(name: str):
+    """Update lastUsedAt timestamp for a session."""
+    from datetime import datetime, timezone
+
+    Session = Query()
+    existing = sessions_table.get(Session.name == name)
+
+    if not existing:
+        # Check if it's an orphan tmux session
+        live = get_live_sessions()
+        if name not in live:
+            raise HTTPException(status_code=404, detail=f"Session '{name}' not found")
+        existing = {"name": name}
+
+    existing["lastUsedAt"] = datetime.now(timezone.utc).isoformat()
+    sessions_table.upsert(existing, Session.name == name)
+
+    return {"ok": True}
 
 
 @router.patch("/{name}")

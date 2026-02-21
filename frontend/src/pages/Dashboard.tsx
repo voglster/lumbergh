@@ -19,6 +19,7 @@ interface Session {
   type?: 'direct' | 'worktree'
   worktreeParentRepo?: string | null
   worktreeBranch?: string | null
+  lastUsedAt?: string | null
 }
 
 export default function Dashboard() {
@@ -140,9 +141,14 @@ export default function Dashboard() {
     }
   }
 
-  // Separate alive and dead sessions
-  const aliveSessions = sessions.filter((s) => s.alive)
-  const deadSessions = sessions.filter((s) => !s.alive)
+  // Separate alive and dead sessions, sort by last used (most recent first)
+  const sortByLastUsed = (a: Session, b: Session) => {
+    const aTime = a.lastUsedAt || ''
+    const bTime = b.lastUsedAt || ''
+    return bTime.localeCompare(aTime)
+  }
+  const aliveSessions = sessions.filter((s) => s.alive).sort(sortByLastUsed)
+  const deadSessions = sessions.filter((s) => !s.alive).sort(sortByLastUsed)
 
   return (
     <div className="h-full flex flex-col bg-bg-sunken text-text-primary overflow-hidden">

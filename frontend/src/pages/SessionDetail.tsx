@@ -56,6 +56,13 @@ export default function SessionDetail() {
   // Determine API host - use same hostname but port 8000 for backend
   const apiHost = `${window.location.hostname}:8000`
 
+  // Touch session to track last used time
+  useEffect(() => {
+    if (name) {
+      fetch(`http://${apiHost}/api/sessions/${name}/touch`, { method: 'POST' }).catch(() => {})
+    }
+  }, [apiHost, name])
+
   // Persist right panel selection
   useEffect(() => {
     localStorage.setItem('lumbergh:rightPanel', rightPanel)
