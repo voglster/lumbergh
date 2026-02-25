@@ -67,7 +67,7 @@ class SessionManager:
                 pty = TmuxPtySession(session_name)
                 try:
                     pty.spawn()
-                except ValueError as e:
+                except ValueError:
                     # Session missing from tmux - try auto-recreate from TinyDB
                     logger.info(f"Session '{session_name}' not in tmux, checking TinyDB...")
                     session_meta = get_stored_sessions().get(session_name)

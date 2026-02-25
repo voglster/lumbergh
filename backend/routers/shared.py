@@ -57,10 +57,7 @@ async def setup_claude_md():
     CLAUDE_MD_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     # Read existing content or start fresh
-    if CLAUDE_MD_PATH.exists():
-        content = CLAUDE_MD_PATH.read_text()
-    else:
-        content = ""
+    content = CLAUDE_MD_PATH.read_text() if CLAUDE_MD_PATH.exists() else ""
 
     # Append the section
     if content and not content.endswith("\n"):

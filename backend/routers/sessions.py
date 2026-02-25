@@ -7,7 +7,6 @@ import re
 import subprocess
 import uuid
 from pathlib import Path
-from typing import Optional
 
 import libtmux
 from fastapi import APIRouter, HTTPException
@@ -41,7 +40,16 @@ from git_utils import (
     reset_to_head,
     stage_all_and_commit,
 )
-from models import CheckoutInput, CommitInput, CreateSessionRequest, PromptTemplateList, ScratchpadContent, SessionUpdate, StatusSummaryInput, TodoList
+from models import (
+    CheckoutInput,
+    CommitInput,
+    CreateSessionRequest,
+    PromptTemplateList,
+    ScratchpadContent,
+    SessionUpdate,
+    StatusSummaryInput,
+    TodoList,
+)
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 directories_router = APIRouter(prefix="/api/directories", tags=["directories"])
@@ -90,7 +98,7 @@ def find_git_repos(base_dir: Path, query: str = "", limit: int = 20) -> list[dic
     return sorted(results, key=lambda x: x["name"].lower())
 
 
-def find_venv_activate(workdir: Path) -> Optional[Path]:
+def find_venv_activate(workdir: Path) -> Path | None:
     """Find venv activate script in common locations."""
     candidates = [
         workdir / ".venv" / "bin" / "activate",
@@ -272,7 +280,7 @@ async def list_sessions():
 @router.post("/{name}/touch")
 async def touch_session(name: str):
     """Update lastUsedAt timestamp for a session."""
-    from datetime import datetime, timezone
+    from datetime import UTC, datetime
 
     Session = Query()
     existing = sessions_table.get(Session.name == name)
@@ -284,7 +292,7 @@ async def touch_session(name: str):
             raise HTTPException(status_code=404, detail=f"Session '{name}' not found")
         existing = {"name": name}
 
-    existing["lastUsedAt"] = datetime.now(timezone.utc).isoformat()
+    existing["lastUsedAt"] = datetime.now(UTC).isoformat()
     sessions_table.upsert(existing, Session.name == name)
 
     return {"ok": True}
@@ -443,7 +451,7 @@ async def reset_session(name: str):
     workdir = Path(workdir_str)
 
     # Kill all windows in the session
-    result = subprocess.run(
+    subprocess.run(
         ["tmux", "kill-window", "-t", f"{name}:", "-a"],
         capture_output=True,
         text=True,

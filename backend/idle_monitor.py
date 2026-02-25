@@ -13,7 +13,7 @@ from datetime import datetime
 import libtmux
 
 from db_utils import get_session_data_db
-from idle_detector import IdleDetector, IdleDetectionResult, SessionState
+from idle_detector import IdleDetectionResult, IdleDetector, SessionState
 from tmux_pty import capture_pane_content
 
 logger = logging.getLogger(__name__)
