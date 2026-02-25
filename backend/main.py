@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """App lifespan handler - runs on startup/shutdown."""
+    from diff_cache import diff_cache
     from idle_monitor import idle_monitor
     from routers.sessions import get_live_sessions, get_stored_sessions
 
@@ -42,12 +43,14 @@ async def lifespan(app: FastAPI):
     if orphaned:
         logger.info(f"Found {len(orphaned)} stored session(s) without tmux: {orphaned}")
 
-    # Start background idle monitoring
+    # Start background services
     idle_monitor.start()
+    diff_cache.start()
 
     yield
 
-    # Stop idle monitoring on shutdown
+    # Stop background services
+    diff_cache.stop()
     idle_monitor.stop()
 
 

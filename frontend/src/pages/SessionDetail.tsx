@@ -121,25 +121,40 @@ export default function SessionDetail() {
     }
   }, [apiHost, name])
 
-  // Compute stats from full diff data for tab badges
-  const diffStats = diffData
-    ? {
-        files: diffData.files?.length || 0,
-        additions: diffData.stats?.additions || 0,
-        deletions: diffData.stats?.deletions || 0,
-      }
-    : null
+  // Lightweight stats for tab badges (polled always)
+  const [diffStats, setDiffStats] = useState<{
+    files: number
+    additions: number
+    deletions: number
+  } | null>(null)
 
-  // Poll for diff data every 5 seconds
+  // Is the diff tab currently visible?
+  const isDiffVisible = isDesktop ? rightPanel === 'diff' : mobileTab === 'diff'
+
+  // Poll lightweight diff-stats every 10s (for badge counts)
   useEffect(() => {
-    // Defer initial fetch to avoid synchronous setState in effect
-    const timeoutId = setTimeout(fetchDiffData, 0)
-    const interval = setInterval(fetchDiffData, 5000)
-    return () => {
-      clearTimeout(timeoutId)
-      clearInterval(interval)
+    if (!name) return
+    const fetchStats = async () => {
+      try {
+        const res = await fetch(`http://${apiHost}/api/sessions/${name}/git/diff-stats`)
+        const data = await res.json()
+        setDiffStats(data)
+      } catch {
+        // ignore
+      }
     }
-  }, [fetchDiffData])
+    fetchStats()
+    const interval = setInterval(fetchStats, 10000)
+    return () => clearInterval(interval)
+  }, [apiHost, name])
+
+  // Full diff: fetch when diff tab becomes visible + poll while visible
+  useEffect(() => {
+    if (!isDiffVisible) return
+    fetchDiffData()
+    const interval = setInterval(fetchDiffData, 5000)
+    return () => clearInterval(interval)
+  }, [isDiffVisible, fetchDiffData])
 
   // Global paste handler for image uploads
   useEffect(() => {

@@ -569,13 +569,34 @@ async def session_git_status(name: str):
 
 @router.get("/{name}/git/diff")
 async def session_git_diff(name: str):
-    """Get git diff for a session's workdir."""
-    workdir = get_session_workdir(name)
+    """Get git diff for a session's workdir (served from background cache)."""
+    from diff_cache import diff_cache
 
+    diff_cache.mark_active(name)
+    cached = diff_cache.get_diff(name)
+    if cached is not None:
+        return cached
+
+    # Cache miss (first request before background loop runs) — compute inline
+    workdir = get_session_workdir(name)
     try:
         return get_full_diff_with_untracked(workdir)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{name}/git/diff-stats")
+async def session_git_diff_stats(name: str):
+    """Get lightweight diff stats (file count + additions/deletions) from cache."""
+    from diff_cache import diff_cache
+
+    diff_cache.mark_active(name)
+    stats = diff_cache.get_stats(name)
+    if stats is not None:
+        return stats
+
+    # Cache miss — return zeros rather than blocking
+    return {"files": 0, "additions": 0, "deletions": 0}
 
 
 @router.get("/{name}/git/log")
