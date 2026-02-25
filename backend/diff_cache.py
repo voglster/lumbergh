@@ -44,6 +44,10 @@ class DiffCache:
         """Signal that someone is interested in diffs for this session."""
         self._last_interest[session_name] = time.monotonic()
 
+    def invalidate(self, session_name: str) -> None:
+        """Remove cached diff for a session so next request gets fresh data."""
+        self._cache.pop(session_name, None)
+
     def get_diff(self, session_name: str) -> dict | None:
         """Return cached diff data (instant, no blocking)."""
         return self._cache.get(session_name)

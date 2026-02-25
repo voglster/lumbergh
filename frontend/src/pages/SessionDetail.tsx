@@ -138,7 +138,18 @@ export default function SessionDetail() {
       try {
         const res = await fetch(`http://${apiHost}/api/sessions/${name}/git/diff-stats`)
         const data = await res.json()
-        setDiffStats(data)
+        // Only update state if values actually changed to avoid re-renders
+        setDiffStats((prev) => {
+          if (
+            prev &&
+            prev.files === data.files &&
+            prev.additions === data.additions &&
+            prev.deletions === data.deletions
+          ) {
+            return prev
+          }
+          return data
+        })
       } catch {
         // ignore
       }

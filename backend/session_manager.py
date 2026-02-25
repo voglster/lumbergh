@@ -145,26 +145,41 @@ class SessionManager:
                 del self._sessions[session_name]
 
     async def _broadcast_loop(self, session_name: str) -> None:
-        """Read from PTY and broadcast to all connected clients."""
+        """Read from PTY and broadcast to all connected clients.
+
+        Uses loop.add_reader (epoll) for zero-latency, zero-overhead fd watching
+        instead of polling with run_in_executor.
+        """
         loop = asyncio.get_event_loop()
         consecutive_eof = 0
 
-        while True:
-            try:
-                # Check if session still exists
+        if session_name not in self._sessions:
+            return
+        managed = self._sessions[session_name]
+        fd = managed.pty.master_fd
+        if fd is None:
+            return
+
+        data_ready = asyncio.Event()
+        loop.add_reader(fd, data_ready.set)
+
+        try:
+            while True:
+                await data_ready.wait()
+                data_ready.clear()
+
                 if session_name not in self._sessions:
                     break
 
                 managed = self._sessions[session_name]
 
-                await asyncio.sleep(0.01)  # Prevent busy loop
-                data = await loop.run_in_executor(None, managed.pty.read)
+                # Drain all available data from the fd
+                data = managed.pty.read()
 
                 # Handle EOF (empty bytes) - possible session death
                 if data == b'':
                     consecutive_eof += 1
                     if consecutive_eof >= 3:
-                        # Verify session is actually dead
                         is_alive = await loop.run_in_executor(None, managed.pty.is_alive)
                         if not is_alive:
                             logger.warning(f"Session {session_name} died, notifying clients")
@@ -172,7 +187,7 @@ class SessionManager:
                             break
                     continue
 
-                consecutive_eof = 0  # Reset on successful read
+                consecutive_eof = 0
 
                 if data:
                     message = {
@@ -180,7 +195,6 @@ class SessionManager:
                         "data": data.decode("utf-8", errors="replace"),
                     }
 
-                    # Broadcast to all clients
                     disconnected = []
                     for client in list(managed.clients):
                         try:
@@ -188,15 +202,18 @@ class SessionManager:
                         except Exception:
                             disconnected.append(client)
 
-                    # Remove disconnected clients
                     for client in disconnected:
                         managed.clients.discard(client)
 
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                logger.error(f"Broadcast loop error: {e}")
-                break
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.error(f"Broadcast loop error: {e}")
+        finally:
+            try:
+                loop.remove_reader(fd)
+            except Exception:
+                pass
 
     async def _notify_session_dead(self, session_name: str) -> None:
         """Send session_dead message to all connected clients."""

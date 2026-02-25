@@ -11,7 +11,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       devOptions: {
-        enabled: true,
+        enabled: false,
       },
       manifest: {
         name: 'Lumbergh',
@@ -43,10 +43,19 @@ export default defineConfig({
       workbox: {
         // Allow larger bundles (xterm.js is big)
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        // Network-first for API/WebSocket routes
+        // Skip caching for frequently-polled endpoints (causes terminal lag)
+        navigateFallbackDenylist: [/\/api\//],
         runtimeCaching: [
           {
-            urlPattern: /^https?:\/\/.*\/api\/.*/i,
+            // Cache API responses except polling endpoints
+            urlPattern: ({ url }) => {
+              if (!url.pathname.startsWith('/api/')) return false
+              // Don't cache frequently-polled endpoints
+              if (url.pathname.includes('/git/diff')) return false
+              if (url.pathname.includes('/git/status')) return false
+              if (url.pathname.endsWith('/touch')) return false
+              return true
+            },
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',

@@ -3,10 +3,13 @@ Sessions router - CRUD for tmux sessions and session-scoped git operations.
 Stores metadata in ~/.config/lumbergh/sessions.json
 """
 
+import logging
 import re
 import subprocess
 import uuid
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 import libtmux
 from fastapi import APIRouter, HTTPException
@@ -587,15 +590,18 @@ async def session_git_diff(name: str):
 
 @router.get("/{name}/git/diff-stats")
 async def session_git_diff_stats(name: str):
-    """Get lightweight diff stats (file count + additions/deletions) from cache."""
+    """Get lightweight diff stats (file count + additions/deletions) from cache.
+
+    Does NOT mark the session active — only the full diff endpoint does,
+    so background git I/O only runs when someone is actually viewing diffs.
+    """
     from diff_cache import diff_cache
 
-    diff_cache.mark_active(name)
     stats = diff_cache.get_stats(name)
+
     if stats is not None:
         return stats
 
-    # Cache miss — return zeros rather than blocking
     return {"files": 0, "additions": 0, "deletions": 0}
 
 
@@ -636,6 +642,9 @@ async def session_git_commit(name: str, body: CommitInput):
         result = stage_all_and_commit(workdir, body.message)
         if "error" in result:
             raise HTTPException(status_code=500, detail=result["error"])
+        from diff_cache import diff_cache
+        diff_cache.invalidate(name)
+        _files_cache.pop(name, None)
         return result
     except HTTPException:
         raise
@@ -680,6 +689,9 @@ async def session_git_checkout(name: str, body: CheckoutInput):
         if "error" in result:
             status_code = 409 if "pending changes" in result["error"] else 400
             raise HTTPException(status_code=status_code, detail=result["error"])
+        from diff_cache import diff_cache
+        diff_cache.invalidate(name)
+        _files_cache.pop(name, None)
         return result
     except HTTPException:
         raise
@@ -696,6 +708,9 @@ async def session_git_reset(name: str):
         result = reset_to_head(workdir)
         if "error" in result:
             raise HTTPException(status_code=500, detail=result["error"])
+        from diff_cache import diff_cache
+        diff_cache.invalidate(name)
+        _files_cache.pop(name, None)
         return result
     except HTTPException:
         raise
@@ -728,6 +743,9 @@ async def session_git_pull(name: str):
         result = git_pull_rebase(workdir)
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
+        from diff_cache import diff_cache
+        diff_cache.invalidate(name)
+        _files_cache.pop(name, None)
         return result
     except HTTPException:
         raise
@@ -899,13 +917,26 @@ async def copy_global_prompt_to_session(name: str, template_id: str):
 # --- Session-scoped File Endpoints ---
 
 
+_files_cache: dict[str, tuple[float, list, str]] = {}  # name -> (timestamp, files, root)
+_FILES_CACHE_TTL = 10.0  # seconds
+
+
 @router.get("/{name}/files")
 async def session_list_files(name: str):
-    """List files in the session's working directory."""
+    """List files in the session's working directory (cached, 10s TTL)."""
+    import asyncio
+    import time
+
+    now = time.monotonic()
+    cached = _files_cache.get(name)
+    if cached and (now - cached[0]) < _FILES_CACHE_TTL:
+        return {"files": cached[1], "root": cached[2]}
+
     workdir = get_session_workdir(name)
 
     try:
-        files = list_project_files(workdir, IGNORE_DIRS)
+        files = await asyncio.to_thread(list_project_files, workdir, IGNORE_DIRS)
+        _files_cache[name] = (now, files, str(workdir))
         return {"files": files, "root": str(workdir)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
