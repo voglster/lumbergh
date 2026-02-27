@@ -11,18 +11,18 @@ cleanup() {
 }
 trap cleanup SIGINT SIGTERM
 
-echo "Starting backend on http://0.0.0.0:8000"
+echo "Starting backend on http://0.0.0.0:8420"
 cd backend && uv run python main.py &
 BACKEND_PID=$!
 
-echo "Starting frontend on http://0.0.0.0:5173"
+echo "Starting frontend on http://0.0.0.0:5420"
 cd ../frontend && npm run dev &
 FRONTEND_PID=$!
 
 echo ""
 echo "Lumbergh running:"
-echo "  Frontend: http://localhost:5173"
-echo "  Backend:  http://localhost:8000"
+echo "  Frontend: http://localhost:5420"
+echo "  Backend:  http://localhost:8420"
 echo ""
 echo "Press Ctrl+C to stop"
 

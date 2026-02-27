@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { getApiHost } from '../config'
 import SessionCard from '../components/SessionCard'
 import CreateSessionModal from '../components/CreateSessionModal'
 import SettingsModal from '../components/SettingsModal'
@@ -32,8 +33,7 @@ export default function Dashboard() {
   const [installingLbShared, setInstallingLbShared] = useState(false)
   const { theme, setTheme } = useTheme()
 
-  // Determine API host - use same hostname but port 8000 for backend
-  const apiHost = `${window.location.hostname}:8000`
+  const apiHost = getApiHost()
 
   const fetchSessions = useCallback(async () => {
     try {

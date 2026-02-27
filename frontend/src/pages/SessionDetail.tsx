@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { getApiHost } from '../config'
 import Terminal from '../components/Terminal'
 import DiffViewer from '../components/DiffViewer'
 import FileBrowser from '../components/FileBrowser'
@@ -53,8 +54,7 @@ export default function SessionDetail() {
   const [diffKey, setDiffKey] = useState(0)
   const focusFnRef = useRef<(() => void) | null>(null)
 
-  // Determine API host - use same hostname but port 8000 for backend
-  const apiHost = `${window.location.hostname}:8000`
+  const apiHost = getApiHost()
 
   // Touch session to track last used time
   useEffect(() => {
