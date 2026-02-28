@@ -95,6 +95,7 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
   const [loadingFile, setLoadingFile] = useState(false)
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [rootDir, setRootDir] = useState('')
   const [showMarkdownPreview, setShowMarkdownPreview] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
   const selectedTextRef = useRef('')
@@ -125,6 +126,25 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
       securityLevel: 'loose',
     })
   }, [theme])
+
+  const handleSendPathToTerminal = async () => {
+    if (!selectedFile || !sessionName) return
+    const fullPath = rootDir ? `${rootDir}/${selectedFile.path}` : selectedFile.path
+
+    try {
+      const response = await fetch(`http://${apiHost}/api/session/${sessionName}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: fullPath, send_enter: false }),
+      })
+      if (!response.ok) {
+        console.error('Failed to send to terminal:', await response.text())
+      }
+      onFocusTerminal?.()
+    } catch (err) {
+      console.error('Failed to send to terminal:', err)
+    }
+  }
 
   const handleSendToTerminal = async () => {
     const text = selectedTextRef.current
@@ -160,6 +180,7 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const json = await res.json()
         setFiles(json.files)
+        if (json.root) setRootDir(json.root)
       } catch (e) {
         if (!silent) {
           setError(e instanceof Error ? e.message : 'Failed to fetch files')
@@ -456,6 +477,15 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
                 {renderBreadcrumb(selectedFile.path)}
               </div>
               <div className="flex items-center gap-2">
+                {sessionName && (
+                  <button
+                    onClick={handleSendPathToTerminal}
+                    className="text-xs px-2 py-1 bg-control-bg hover:bg-control-bg-hover rounded text-text-secondary"
+                    title="Send file path to terminal"
+                  >
+                    Send Path
+                  </button>
+                )}
                 {selectedFile.path.endsWith('.md') && (
                   <button
                     onClick={() => setShowMarkdownPreview(!showMarkdownPreview)}
