@@ -591,13 +591,10 @@ async def session_git_diff(name: str):
 
 @router.get("/{name}/git/diff-stats")
 async def session_git_diff_stats(name: str):
-    """Get lightweight diff stats (file count + additions/deletions) from cache.
-
-    Does NOT mark the session active — only the full diff endpoint does,
-    so background git I/O only runs when someone is actually viewing diffs.
-    """
+    """Get lightweight diff stats (file count + additions/deletions) from cache."""
     from diff_cache import diff_cache
 
+    diff_cache.mark_active(name)
     stats = diff_cache.get_stats(name)
 
     if stats is not None:
