@@ -450,10 +450,14 @@ export default function Terminal({
               1
             </button>
             <button
-              onClick={handleFit}
-              className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover rounded"
+              onClick={() => sendViaApi('/clear')}
+              disabled={!isConnected}
+              className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover disabled:opacity-50 rounded"
+              title="Send /clear"
             >
-              Fit
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 576 512">
+                <path d="M290.7 57.4L57.4 290.7c-25 25-25 65.5 0 90.5l80 80c12 12 28.3 18.7 45.3 18.7H288h9.4H512c17.7 0 32-14.3 32-32s-14.3-32-32-32H387.9L518.6 285.3c25-25 25-65.5 0-90.5L381.3 57.4c-25-25-65.5-25-90.5 0zM297.4 416H288l-105.4 0-80-80L227.3 211.3 364.7 348.7 297.4 416z" />
+              </svg>
             </button>
             <button
               onClick={() => setHeaderExpanded(!headerExpanded)}
@@ -528,7 +532,17 @@ export default function Terminal({
                   Exit Scroll
                 </button>
               )}
-              {['1', '2', '3', '4', 'yes', '/clear'].map((text) => (
+              <button
+                onClick={() => {
+                  handleFit()
+                  setHeaderExpanded(false)
+                }}
+                className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover rounded"
+                title="Fit terminal to container"
+              >
+                Fit
+              </button>
+              {['1', '2', '3', '4', 'yes'].map((text) => (
                 <button
                   key={text}
                   onClick={() => {
