@@ -2,13 +2,22 @@
 Shared folder router - Cross-project context sharing via ~/.config/lumbergh/shared/
 """
 
+import uuid
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
 from constants import SHARED_DIR
+from db_utils import (
+    get_global_db,
+    get_project_db,
+    get_single_document_items,
+    save_single_document_items,
+)
 
 router = APIRouter(prefix="/api/shared", tags=["shared"])
 
@@ -179,3 +188,45 @@ async def get_shared_file_content(filename: str):
         raise HTTPException(status_code=404, detail="File not found")
 
     return FileResponse(file_path)
+
+
+class SaveAsPromptRequest(BaseModel):
+    name: str
+    scope: Literal["project", "global"]
+    session_name: str | None = None
+
+
+@router.post("/files/{filename}/save-as-prompt")
+async def save_shared_file_as_prompt(filename: str, request: SaveAsPromptRequest):
+    """Save a shared file's content as a prompt template."""
+    file_path = SHARED_DIR / filename
+
+    # Security: ensure we stay in shared dir
+    if not file_path.resolve().parent == SHARED_DIR.resolve():
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    content = file_path.read_text(errors="replace")
+    template = {"id": str(uuid.uuid4()), "name": request.name, "prompt": content}
+
+    if request.scope == "global":
+        db = get_global_db()
+        prompts_table = db.table("prompts")
+    elif request.scope == "project":
+        if not request.session_name:
+            raise HTTPException(status_code=400, detail="session_name required for project scope")
+        from routers.sessions import get_session_workdir
+
+        workdir = get_session_workdir(request.session_name)
+        db = get_project_db(workdir)
+        prompts_table = db.table("prompts")
+    else:
+        raise HTTPException(status_code=400, detail="Invalid scope")
+
+    templates = get_single_document_items(prompts_table)
+    templates.append(template)
+    save_single_document_items(prompts_table, templates)
+
+    return {"template": template}

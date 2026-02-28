@@ -7,6 +7,7 @@ Provides:
 - AI prompt management
 """
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -37,6 +38,14 @@ class GenerateCommitMessageRequest(BaseModel):
 
 class GenerateCommitMessageResponse(BaseModel):
     message: str
+
+
+class GeneratePromptNameRequest(BaseModel):
+    content: str
+
+
+class GeneratePromptNameResponse(BaseModel):
+    name: str
 
 
 class AIPrompt(BaseModel):
@@ -148,6 +157,36 @@ async def generate_commit_message(
             message = "\n".join(lines).strip()
 
         return GenerateCommitMessageResponse(message=message)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"AI generation failed: {e}")
+
+
+@router.post("/generate/prompt-name")
+async def generate_prompt_name(
+    request: GeneratePromptNameRequest,
+) -> GeneratePromptNameResponse:
+    """Generate a short snake_case name for a prompt template using AI."""
+    settings = get_settings()
+    ai_settings = settings.get("ai", {})
+
+    prompt = (
+        "Given this text, generate a short descriptive snake_case name (2-4 words, "
+        "like `setup_instructions` or `code_review_checklist`). "
+        "Reply with ONLY the name, nothing else.\n\n"
+        f"{request.content[:2000]}"
+    )
+
+    try:
+        provider = get_provider(ai_settings)
+        name = await provider.complete(prompt)
+        # Sanitize: strip, lowercase, replace spaces/hyphens with _, remove non-alphanumeric
+        name = name.strip().strip("`").lower()
+        name = re.sub(r"[\s\-]+", "_", name)
+        name = re.sub(r"[^a-z0-9_]", "", name)
+        name = name.strip("_")
+        if not name:
+            name = "untitled_prompt"
+        return GeneratePromptNameResponse(name=name)
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"AI generation failed: {e}")
 

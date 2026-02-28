@@ -29,6 +29,11 @@ export default function SharedFiles({
   const [uploading, setUploading] = useState(false)
   const [previewFile, setPreviewFile] = useState<SharedFile | null>(null)
   const [previewContent, setPreviewContent] = useState<string | null>(null)
+  const [savingPrompt, setSavingPrompt] = useState<string | null>(null) // filename being saved
+  const [promptName, setPromptName] = useState('')
+  const [promptScope, setPromptScope] = useState<'project' | 'global'>('project')
+  const [promptSaving, setPromptSaving] = useState(false)
+  const [promptSuccess, setPromptSuccess] = useState<string | null>(null) // filename that was saved
 
   const fetchFiles = useCallback(async () => {
     try {
@@ -176,6 +181,69 @@ export default function SharedFiles({
     setPreviewContent(null)
   }
 
+  const startSaveAsPrompt = async (filename: string) => {
+    setSavingPrompt(filename)
+    setPromptName('')
+    setPromptScope(sessionName ? 'project' : 'global')
+    setPromptSuccess(null)
+
+    try {
+      // Fetch file content for AI name generation
+      const res = await fetch(`http://${apiHost}/api/shared/files/${encodeURIComponent(filename)}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+
+      // Ask AI to generate a name
+      const nameRes = await fetch(`http://${apiHost}/api/ai/generate/prompt-name`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: data.content }),
+      })
+      if (nameRes.ok) {
+        const nameData = await nameRes.json()
+        setPromptName(nameData.name)
+      } else {
+        // Fallback: use filename without extension
+        setPromptName(filename.replace(/\.[^.]+$/, '').replace(/[\s-]+/g, '_').toLowerCase())
+      }
+    } catch {
+      setPromptName(filename.replace(/\.[^.]+$/, '').replace(/[\s-]+/g, '_').toLowerCase())
+    }
+  }
+
+  const confirmSaveAsPrompt = async () => {
+    if (!savingPrompt || !promptName.trim()) return
+    setPromptSaving(true)
+
+    try {
+      const res = await fetch(
+        `http://${apiHost}/api/shared/files/${encodeURIComponent(savingPrompt)}/save-as-prompt`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: promptName.trim(),
+            scope: promptScope,
+            session_name: sessionName || undefined,
+          }),
+        }
+      )
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      setPromptSuccess(savingPrompt)
+      setSavingPrompt(null)
+      setTimeout(() => setPromptSuccess(null), 3000)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save prompt')
+    } finally {
+      setPromptSaving(false)
+    }
+  }
+
+  const cancelSaveAsPrompt = () => {
+    setSavingPrompt(null)
+    setPromptName('')
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full text-text-muted">
@@ -220,7 +288,7 @@ export default function SharedFiles({
             {files.map((file) => (
               <div
                 key={file.name}
-                className="flex items-center gap-2 p-2 bg-bg-surface rounded hover:bg-bg-surface-hover cursor-pointer"
+                className="relative flex items-center gap-2 p-2 bg-bg-surface rounded hover:bg-bg-surface-hover cursor-pointer"
                 onClick={() => openPreview(file)}
               >
                 {/* Send buttons (left side) */}
@@ -266,6 +334,30 @@ export default function SharedFiles({
 
                 {/* Action buttons (right side) */}
                 <div className="flex gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                  {isMarkdown(file.name) && (
+                    <button
+                      onClick={() => startSaveAsPrompt(file.name)}
+                      className={`p-1.5 hover:bg-control-bg rounded ${
+                        promptSuccess === file.name
+                          ? 'text-green-400'
+                          : savingPrompt === file.name
+                            ? 'text-yellow-400 animate-pulse'
+                            : 'text-text-tertiary hover:text-purple-400'
+                      }`}
+                      title={promptSuccess === file.name ? 'Saved!' : 'Save as prompt template'}
+                      disabled={savingPrompt === file.name}
+                    >
+                      {promptSuccess === file.name ? (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                        </svg>
+                      )}
+                    </button>
+                  )}
                   {(isMarkdown(file.name) || isTextFile(file.name)) && (
                     <CopyTextButton apiHost={apiHost} filename={file.name} />
                   )}
@@ -287,6 +379,60 @@ export default function SharedFiles({
                     </svg>
                   </button>
                 </div>
+
+                {/* Inline save-as-prompt confirmation */}
+                {savingPrompt === file.name && promptName && (
+                  <div
+                    className="absolute right-0 top-full mt-1 z-10 bg-bg-sunken border border-border-default rounded p-2 shadow-lg min-w-[240px]"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="text"
+                      value={promptName}
+                      onChange={(e) => setPromptName(e.target.value)}
+                      className="w-full bg-control-bg text-text-primary text-sm px-2 py-1 rounded border border-border-subtle focus:border-blue-500 focus:outline-none mb-2 font-mono"
+                      placeholder="prompt_name"
+                    />
+                    <div className="flex items-center gap-2 mb-2">
+                      <label className="flex items-center gap-1 text-xs text-text-secondary cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`scope-${file.name}`}
+                          checked={promptScope === 'project'}
+                          onChange={() => setPromptScope('project')}
+                          disabled={!sessionName}
+                          className="accent-blue-500"
+                        />
+                        Project
+                      </label>
+                      <label className="flex items-center gap-1 text-xs text-text-secondary cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`scope-${file.name}`}
+                          checked={promptScope === 'global'}
+                          onChange={() => setPromptScope('global')}
+                          className="accent-blue-500"
+                        />
+                        Global
+                      </label>
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={confirmSaveAsPrompt}
+                        disabled={promptSaving || !promptName.trim()}
+                        className="flex-1 text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded disabled:opacity-50"
+                      >
+                        {promptSaving ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        onClick={cancelSaveAsPrompt}
+                        className="flex-1 text-xs px-2 py-1 bg-control-bg hover:bg-control-bg-hover text-text-secondary rounded"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
