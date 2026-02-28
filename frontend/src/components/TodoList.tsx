@@ -119,7 +119,13 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
   }
 
   const handleEditKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && e.shiftKey) {
+      e.preventDefault()
+      const idx = editingIndex!
+      handleSaveEdit()
+      setExpandedIndex(idx)
+      setEditingDescription(todos[idx].description || '')
+    } else if (e.key === 'Enter') {
       handleSaveEdit()
     } else if (e.key === 'Escape') {
       setEditingIndex(null)
@@ -407,6 +413,7 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
                           placeholder="Add details, context, acceptance criteria... (use @ to reference prompts)"
                           multiline
                           rows={5}
+                          autoFocus
                           className="w-full h-32 px-3 py-2 bg-input-bg text-text-primary text-sm rounded border border-input-border focus:outline-none focus:border-blue-500 resize-y"
                         />
                       </div>
