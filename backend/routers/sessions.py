@@ -52,6 +52,7 @@ from models import (
     SessionUpdate,
     StatusSummaryInput,
     TodoList,
+    TodoMoveRequest,
 )
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
@@ -789,6 +790,39 @@ async def save_session_todos(name: str, todo_list: TodoList):
         todos = [{"text": t.text, "done": t.done, "description": t.description} for t in todo_list.todos]
         save_single_document_items(todos_table, todos)
         return {"todos": todos}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{name}/todos/move")
+async def move_session_todo(name: str, req: TodoMoveRequest):
+    """Move a todo from one session to another."""
+    try:
+        # Load source todos
+        source_db = get_session_data_db(name)
+        source_table = source_db.table("todos")
+        source_todos = get_single_document_items(source_table)
+
+        if req.todo_index < 0 or req.todo_index >= len(source_todos):
+            raise HTTPException(status_code=400, detail="Invalid todo index")
+
+        # Pop the todo from source
+        todo = source_todos.pop(req.todo_index)
+        todo["done"] = False  # Reset to unchecked in target
+
+        # Load target todos and prepend
+        target_db = get_session_data_db(req.target_session)
+        target_table = target_db.table("todos")
+        target_todos = get_single_document_items(target_table)
+        target_todos.insert(0, todo)
+
+        # Save both
+        save_single_document_items(source_table, source_todos)
+        save_single_document_items(target_table, target_todos)
+
+        return {"source_todos": source_todos}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

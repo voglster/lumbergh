@@ -92,6 +92,13 @@ class SessionUpdate(BaseModel):
     description: str | None = None
 
 
+class TodoMoveRequest(BaseModel):
+    """Request to move a todo between sessions."""
+
+    target_session: str
+    todo_index: int
+
+
 class StatusSummaryInput(BaseModel):
     """Input for generating a status summary."""
 

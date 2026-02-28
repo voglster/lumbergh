@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { usePrompts } from '../hooks/usePrompts'
 import { useLocalStorageDraft } from '../hooks/useLocalStorageDraft'
 import { expandPromptReferences } from '../utils/promptResolver'
@@ -29,6 +29,9 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
   const [editingText, setEditingText] = useState('')
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
   const [editingDescription, setEditingDescription] = useState('')
+  const [movePickerIndex, setMovePickerIndex] = useState<number | null>(null)
+  const [availableSessions, setAvailableSessions] = useState<{ name: string; displayName?: string }[]>([])
+  const movePickerRef = useRef<HTMLDivElement>(null)
 
   // Fetch prompts for @ mention autocomplete
   const { allPrompts } = usePrompts(apiHost, sessionName)
@@ -151,6 +154,51 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
     if (e.key === 'Escape') {
       setEditingDescription(todos[expandedIndex!]?.description || '')
       setExpandedIndex(null)
+    }
+  }
+
+  // Close move picker on click outside
+  useEffect(() => {
+    if (movePickerIndex === null) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (movePickerRef.current && !movePickerRef.current.contains(e.target as Node)) {
+        setMovePickerIndex(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [movePickerIndex])
+
+  const handleOpenMovePicker = async (index: number) => {
+    if (movePickerIndex === index) {
+      setMovePickerIndex(null)
+      return
+    }
+    setMovePickerIndex(index)
+    try {
+      const res = await fetch(`http://${apiHost}/api/sessions`)
+      const data = await res.json()
+      const sessions = (data.sessions || []).filter(
+        (s: { name: string; alive: boolean }) => s.name !== sessionName && s.alive
+      )
+      setAvailableSessions(sessions)
+    } catch (err) {
+      console.error('Failed to fetch sessions:', err)
+    }
+  }
+
+  const handleMoveTodo = async (index: number, targetSession: string) => {
+    try {
+      const res = await fetch(`http://${apiHost}/api/sessions/${sessionName}/todos/move`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_session: targetSession, todo_index: index }),
+      })
+      const data = await res.json()
+      setTodos(data.source_todos || [])
+      setMovePickerIndex(null)
+    } catch (err) {
+      console.error('Failed to move todo:', err)
     }
   }
 
@@ -297,6 +345,13 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
                       {sessionName && !todo.done && (
                         <>
                           <button
+                            onClick={() => handleOpenMovePicker(index)}
+                            className={`text-sm text-text-muted hover:text-green-400 transition-colors px-1 ${movePickerIndex === index ? 'text-green-400' : ''}`}
+                            title="Move to another session"
+                          >
+                            ↗
+                          </button>
+                          <button
                             onClick={() => handleSendToTerminal(index, false)}
                             className="text-xl text-text-muted hover:text-yellow-400 transition-colors px-1"
                             title="Send text (no Enter)"
@@ -319,6 +374,26 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
                         className="w-5 h-5 rounded bg-bg-surface border-input-border text-blue-500 focus:ring-blue-500 accent-blue-500"
                       />
                     </div>
+                    {movePickerIndex === index && (
+                      <div ref={movePickerRef} className="px-3 py-2 border-t border-border-default">
+                        <div className="text-xs text-text-muted mb-1">Move to:</div>
+                        {availableSessions.length === 0 ? (
+                          <div className="text-xs text-text-muted">No other sessions available</div>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {availableSessions.map((s) => (
+                              <button
+                                key={s.name}
+                                onClick={() => handleMoveTodo(index, s.name)}
+                                className="px-2 py-1 text-xs bg-control-bg hover:bg-blue-600 text-text-secondary hover:text-white rounded transition-colors"
+                              >
+                                {s.displayName || s.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {expandedIndex === index && (
                       <div className="px-3 pb-3 pt-0">
                         <PromptMentionInput
