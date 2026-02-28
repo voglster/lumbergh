@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import hljs from 'highlight.js'
-import 'highlight.js/styles/github-dark.css'
-import 'highlight.js/styles/github.css'
+import hljsDarkUrl from 'highlight.js/styles/github-dark.css?url'
+import hljsLightUrl from 'highlight.js/styles/github.css?url'
 import MarkdownPreview from '@uiw/react-markdown-preview'
 import mermaid from 'mermaid'
 import { useTheme } from '../hooks/useTheme'
@@ -159,6 +159,19 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
       theme: theme === 'dark' ? 'dark' : 'default',
       securityLevel: 'loose',
     })
+  }, [theme])
+
+  // Swap highlight.js stylesheet based on theme
+  useEffect(() => {
+    const id = 'hljs-theme'
+    let link = document.getElementById(id) as HTMLLinkElement | null
+    if (!link) {
+      link = document.createElement('link')
+      link.id = id
+      link.rel = 'stylesheet'
+      document.head.appendChild(link)
+    }
+    link.href = theme === 'dark' ? hljsDarkUrl : hljsLightUrl
   }, [theme])
 
   const handleSendPathToTerminal = async () => {

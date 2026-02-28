@@ -63,12 +63,6 @@
   --terminal-fg: #073642;
 }
 
-/* ── highlight.js theme scoping ── */
-:root:not(.dark) .hljs {
-  background: var(--bg-elevated) !important;
-  color: var(--text-primary) !important;
-}
-
 html,
 body,
 #root {
