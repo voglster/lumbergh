@@ -6,6 +6,7 @@ interface Props {
   loading: boolean
   onSelectCommit: (hash: string | null) => void
   onRefresh: () => void
+  onSendToTerminal?: (text: string, sendEnter: boolean) => void
 }
 
 export default function CommitList({
@@ -14,6 +15,7 @@ export default function CommitList({
   loading,
   onSelectCommit,
   onRefresh,
+  onSendToTerminal,
 }: Props) {
   const hasWorkingChanges = workingChanges && workingChanges.files.length > 0
 
@@ -58,20 +60,39 @@ export default function CommitList({
 
         {/* Commit entries */}
         {commits.map((commit) => (
-          <button
+          <div
             key={commit.hash}
-            onClick={() => onSelectCommit(commit.hash)}
-            className="w-full flex items-center gap-3 px-3 py-3 hover:bg-bg-surface border-b border-border-default/50 text-left"
+            className="flex items-center border-b border-border-default/50"
           >
-            <span className="text-blue-400 font-mono text-xs">{commit.shortHash}</span>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm text-text-secondary truncate">{commit.message}</div>
-              <div className="text-xs text-text-muted">
-                {commit.author} · {commit.relativeDate}
+            <button
+              onClick={() => onSelectCommit(commit.hash)}
+              className="flex-1 flex items-center gap-3 px-3 py-3 hover:bg-bg-surface text-left min-w-0"
+            >
+              <span className="text-blue-400 font-mono text-xs shrink-0">{commit.shortHash}</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm text-text-secondary truncate">{commit.message}</div>
+                <div className="text-xs text-text-muted">
+                  {commit.author} · {commit.relativeDate}
+                </div>
               </div>
-            </div>
-            <span className="text-text-muted">›</span>
-          </button>
+              <span className="text-text-muted">›</span>
+            </button>
+            {onSendToTerminal && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onSendToTerminal(
+                    `Review commit ${commit.shortHash}: "${commit.message}"\nRun \`git show ${commit.hash}\` to see the full diff.`,
+                    false
+                  )
+                }}
+                className="px-2 py-1 mr-2 text-xs text-text-muted hover:text-yellow-400 transition-colors shrink-0"
+                title="Send commit info to terminal"
+              >
+                ▷
+              </button>
+            )}
+          </div>
         ))}
 
         {commits.length === 0 && !loading && (

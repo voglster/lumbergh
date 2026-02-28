@@ -11,6 +11,7 @@ interface Props {
   onRefresh: () => void
   commit?: { hash: string; shortHash: string; message: string } | null
   onNavigateToHistory?: () => void
+  onSendToTerminal?: (text: string, sendEnter: boolean) => void
 }
 
 const FileList = memo(function FileList({
@@ -21,6 +22,7 @@ const FileList = memo(function FileList({
   onRefresh,
   commit,
   onNavigateToHistory,
+  onSendToTerminal,
 }: Props) {
   const [commitMessage, setCommitMessage] = useState('')
   const [isCommitting, setIsCommitting] = useState(false)
@@ -165,6 +167,20 @@ const FileList = memo(function FileList({
               </>
             )}
           </span>
+          {!isWorkingChanges && commit && onSendToTerminal && (
+            <button
+              onClick={() =>
+                onSendToTerminal(
+                  `Review commit ${commit.shortHash}: "${commit.message}"\nRun \`git show ${commit.hash}\` to see the full diff.`,
+                  false
+                )
+              }
+              className="text-sm text-text-muted hover:text-yellow-400 transition-colors shrink-0"
+              title="Send commit info to terminal"
+            >
+              ▷
+            </button>
+          )}
           {isWorkingChanges && sessionName && (
             <BranchSelector
               gitBaseUrl={`http://${apiHost}/api/sessions/${sessionName}/git`}

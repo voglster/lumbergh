@@ -318,6 +318,23 @@ const DiffViewer = memo(function DiffViewer({
     return null
   }
 
+  const handleSendToTerminal = useCallback(
+    async (text: string, sendEnter: boolean) => {
+      if (!sessionName) return
+      try {
+        await fetch(`http://${apiHost}/api/session/${sessionName}/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, send_enter: sendEnter }),
+        })
+        onFocusTerminal?.()
+      } catch (err) {
+        console.error('Failed to send to terminal:', err)
+      }
+    },
+    [apiHost, sessionName, onFocusTerminal]
+  )
+
   // Loading state
   if (loading && view.level !== 'history') {
     return (
@@ -349,6 +366,7 @@ const DiffViewer = memo(function DiffViewer({
         loading={loading}
         onSelectCommit={handleSelectCommit}
         onRefresh={loadHistory}
+        onSendToTerminal={sessionName ? handleSendToTerminal : undefined}
       />
     )
   }
@@ -553,6 +571,7 @@ const DiffViewer = memo(function DiffViewer({
       onRefresh={handleRefresh}
       commit={getCurrentCommitInfo()}
       onNavigateToHistory={handleNavigateToHistory}
+      onSendToTerminal={sessionName ? handleSendToTerminal : undefined}
     />
   )
 })
