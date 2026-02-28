@@ -29,6 +29,7 @@ const FileDiff = memo(function FileDiff({
   const { theme } = useTheme()
   const [showMarkdownPreview, setShowMarkdownPreview] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
+  const [buttonPos, setButtonPos] = useState({ top: 0 })
   const [fontSize, setFontSize] = useState(() => {
     const stored = localStorage.getItem(FONT_SIZE_KEY)
     return stored ? Number(stored) : DEFAULT_FONT_SIZE
@@ -66,9 +67,16 @@ const FileDiff = memo(function FileDiff({
   // Track text selection in the diff area
   const handleSelectionChange = useCallback(() => {
     const selection = window.getSelection()
-    if (selection && contentRef.current?.contains(selection.anchorNode)) {
+    if (selection && selection.rangeCount > 0 && contentRef.current?.contains(selection.anchorNode)) {
       const text = selection.toString()
       selectedTextRef.current = text
+      if (text.length > 0) {
+        const range = selection.getRangeAt(0)
+        const rangeRect = range.getBoundingClientRect()
+        const containerRect = contentRef.current.getBoundingClientRect()
+        const top = rangeRect.top - containerRect.top + contentRef.current.scrollTop - 32
+        setButtonPos({ top: Math.max(0, top) })
+      }
       setHasSelection(text.length > 0)
     } else {
       setHasSelection(false)
@@ -84,11 +92,26 @@ const FileDiff = memo(function FileDiff({
     const text = selectedTextRef.current
     if (!text || !sessionName || !apiHost) return
 
+    let message = text
+    let offset = newContent.indexOf(text)
+    let source = newContent
+    if (offset === -1) {
+      offset = oldContent.indexOf(text)
+      source = oldContent
+    }
+    if (offset !== -1) {
+      const startLine = source.substring(0, offset).split('\n').length
+      const endLine = startLine + text.split('\n').length - 1
+      message = `From ${file.path}:${startLine}-${endLine}:\n${text}`
+    } else {
+      message = `From ${file.path}:\n${text}`
+    }
+
     try {
       const response = await fetch(`http://${apiHost}/api/session/${sessionName}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, send_enter: false }),
+        body: JSON.stringify({ text: message, send_enter: false }),
       })
       if (!response.ok) {
         console.error('Failed to send to terminal:', await response.text())
@@ -150,10 +173,11 @@ const FileDiff = memo(function FileDiff({
               e.preventDefault()
               handleSendToTerminal()
             }}
-            className="absolute top-2 right-4 z-10 px-2 py-1 text-xs bg-blue-600 hover:bg-blue-500 rounded"
+            className="z-10 text-lg bg-blue-600 hover:bg-blue-500 text-white rounded px-1.5 py-0.5"
+            style={{ position: 'absolute', top: buttonPos.top, right: 16 }}
             title="Send selected text to terminal (no Enter)"
           >
-            Send to Terminal
+            &#x25B7;
           </button>
         )}
         {hunks.length > 0 ? (

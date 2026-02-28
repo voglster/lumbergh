@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
 import 'highlight.js/styles/github.css'
@@ -68,6 +68,25 @@ function Code({ children, className }: { children?: React.ReactNode; className?:
   return <code className={className}>{children}</code>
 }
 
+// Memoized code block so parent re-renders (e.g. selection state) don't recreate DOM nodes
+const HighlightedCode = React.memo(function HighlightedCode({
+  content,
+  language,
+  getHighlightedCode,
+}: {
+  content: string
+  language: string
+  getHighlightedCode: (content: string, language: string) => string
+}) {
+  const html = useMemo(() => getHighlightedCode(content, language), [content, language, getHighlightedCode])
+  return (
+    <code
+      className="hljs"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  )
+})
+
 interface FileEntry {
   path: string
   type: 'file' | 'directory'
@@ -98,16 +117,31 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
   const [rootDir, setRootDir] = useState('')
   const [showMarkdownPreview, setShowMarkdownPreview] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
+  const [buttonPos, setButtonPos] = useState({ top: 0, right: 0 })
   const selectedTextRef = useRef('')
   const contentRef = useRef<HTMLDivElement>(null)
 
   // Track text selection in the content area
   const handleSelectionChange = useCallback(() => {
     const selection = window.getSelection()
-    if (selection && contentRef.current?.contains(selection.anchorNode)) {
-      const text = selection.toString()
+    if (!selection || selection.rangeCount === 0) {
+      setHasSelection(false)
+      return
+    }
+
+    const inContainer = contentRef.current?.contains(selection.anchorNode)
+    const text = selection.toString()
+
+    if (inContainer && text.length > 0) {
       selectedTextRef.current = text
-      setHasSelection(text.length > 0)
+      const range = selection.getRangeAt(0)
+      const rangeRect = range.getBoundingClientRect()
+      const containerRect = contentRef.current!.getBoundingClientRect()
+      setButtonPos({
+        top: rangeRect.top - 32,
+        right: window.innerWidth - containerRect.right + 16,
+      })
+      setHasSelection(true)
     } else {
       setHasSelection(false)
     }
@@ -150,11 +184,24 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
     const text = selectedTextRef.current
     if (!text || !sessionName) return
 
+    let message = text
+    if (selectedFile) {
+      const fullPath = rootDir ? `${rootDir}/${selectedFile.path}` : selectedFile.path
+      const offset = selectedFile.content.indexOf(text)
+      if (offset !== -1) {
+        const startLine = selectedFile.content.substring(0, offset).split('\n').length
+        const endLine = startLine + text.split('\n').length - 1
+        message = `From ${fullPath}:${startLine}-${endLine}:\n${text}`
+      } else {
+        message = `From ${fullPath}:\n${text}`
+      }
+    }
+
     try {
       const response = await fetch(`http://${apiHost}/api/session/${sessionName}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, send_enter: false }),
+        body: JSON.stringify({ text: message, send_enter: false }),
       })
       if (!response.ok) {
         console.error('Failed to send to terminal:', await response.text())
@@ -445,24 +492,12 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
 
       {/* File content viewer */}
       <div className="flex-1 overflow-auto relative">
-        {hasSelection && sessionName && (
-          <button
-            onMouseDown={(e) => {
-              e.preventDefault()
-              handleSendToTerminal()
-            }}
-            className="absolute top-14 right-4 z-10 px-2 py-1 text-xs bg-blue-600 hover:bg-blue-500 rounded"
-            title="Send selected text to terminal (no Enter)"
-          >
-            Send to Terminal
-          </button>
-        )}
         {loadingFile ? (
           <div className="flex items-center justify-center h-full text-text-muted">
             Loading file...
           </div>
         ) : selectedFile ? (
-          <div className="h-full flex flex-col" ref={contentRef}>
+          <div className="h-full flex flex-col">
             <div className="p-2 bg-bg-surface border-b border-border-default flex items-center justify-between">
               <div className="font-mono text-sm flex items-center gap-2">
                 {sidebarCollapsed && (
@@ -517,13 +552,8 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
                 </div>
               </div>
             ) : (
-              <pre className="flex-1 p-4 overflow-auto text-sm font-mono">
-                <code
-                  className="hljs"
-                  dangerouslySetInnerHTML={{
-                    __html: getHighlightedCode(selectedFile.content, selectedFile.language),
-                  }}
-                />
+              <pre className="flex-1 p-4 overflow-auto text-sm font-mono" ref={contentRef}>
+                <HighlightedCode content={selectedFile.content} language={selectedFile.language} getHighlightedCode={getHighlightedCode} />
               </pre>
             )}
           </div>
@@ -546,6 +576,24 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
           </div>
         )}
       </div>
+      {sessionName && (
+        <button
+          onMouseDown={(e) => {
+            e.preventDefault()
+            handleSendToTerminal()
+          }}
+          className="z-50 text-lg bg-blue-600 hover:bg-blue-500 text-white rounded px-1.5 py-0.5 pointer-events-auto"
+          style={{
+            position: 'fixed',
+            top: buttonPos.top,
+            right: buttonPos.right,
+            visibility: hasSelection ? 'visible' : 'hidden',
+          }}
+          title="Send selected text to terminal (no Enter)"
+        >
+          &#x25B7;
+        </button>
+      )}
     </div>
   )
 }

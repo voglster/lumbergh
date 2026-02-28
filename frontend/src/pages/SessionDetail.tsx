@@ -76,6 +76,11 @@ export default function SessionDetail() {
     focusFnRef.current?.()
   }, [])
 
+  const handleSwitchToTerminal = useCallback(() => {
+    setMobileTab('terminal')
+    focusFnRef.current?.()
+  }, [])
+
   const handleJumpToTodos = useCallback(() => {
     setRightPanel('todos')
     setMobileTab('todos')
@@ -321,6 +326,7 @@ export default function SessionDetail() {
                 sessionName={name}
                 onFocusTerminal={handleFocusTerminal}
                 onTodoSent={handleTodoSent}
+                onSwitchToTerminal={handleSwitchToTerminal}
               />
             }
             bottom={
@@ -446,6 +452,7 @@ export default function SessionDetail() {
                     sessionName={name}
                     onFocusTerminal={handleFocusTerminal}
                     onTodoSent={handleTodoSent}
+                    onSwitchToTerminal={handleSwitchToTerminal}
                   />
                 }
                 bottom={

@@ -16,9 +16,10 @@ interface TodoListProps {
   sessionName: string
   onFocusTerminal?: () => void
   onTodoSent?: (text: string) => void
+  onSwitchToTerminal?: () => void
 }
 
-export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodoSent }: TodoListProps) {
+export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodoSent, onSwitchToTerminal }: TodoListProps) {
   const [todos, setTodos] = useState<Todo[]>([])
   const [newTodo, setNewTodo, clearNewTodoDraft] = useLocalStorageDraft(`todo:${sessionName}:new`)
   const [loading, setLoading] = useState(true)
@@ -225,6 +226,7 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
       setTodos(reordered)
       saveTodos(reordered)
       onFocusTerminal?.()
+      onSwitchToTerminal?.()
       onTodoSent?.(textToSend)
     } catch (err) {
       console.error('Failed to send to terminal:', err)
