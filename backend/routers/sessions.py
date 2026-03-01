@@ -29,6 +29,7 @@ from file_utils import get_file_language, list_project_files, validate_path_with
 from git_utils import (
     amend_commit,
     checkout_branch,
+    create_branch_at,
     create_worktree,
     get_branches,
     get_branches_for_worktree,
@@ -45,6 +46,7 @@ from git_utils import (
     git_stash,
     git_stash_pop,
     remove_worktree,
+    reset_to_commit,
     reset_to_head,
     stage_all_and_commit,
 )
@@ -52,8 +54,10 @@ from models import (
     AmendInput,
     CheckoutInput,
     CommitInput,
+    CreateBranchInput,
     CreateSessionRequest,
     PromptTemplateList,
+    ResetToInput,
     ScratchpadContent,
     SessionUpdate,
     StatusSummaryInput,
@@ -829,6 +833,41 @@ async def session_git_pull(name: str):
 
     try:
         result = git_pull_rebase(workdir)
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+        from diff_cache import diff_cache
+        diff_cache.invalidate(name)
+        _files_cache.pop(name, None)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{name}/git/create-branch")
+async def session_git_create_branch(name: str, body: CreateBranchInput):
+    """Create a new branch at a specific commit."""
+    workdir = get_session_workdir(name)
+
+    try:
+        result = create_branch_at(workdir, body.name, body.start_point)
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{name}/git/reset-to")
+async def session_git_reset_to(name: str, body: ResetToInput):
+    """Reset HEAD to a specific commit (hard or soft)."""
+    workdir = get_session_workdir(name)
+
+    try:
+        result = reset_to_commit(workdir, body.hash, body.mode)
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
         from diff_cache import diff_cache

@@ -1142,6 +1142,77 @@ def remove_worktree(repo_path: Path, worktree_path: Path, force: bool = False) -
         return {"error": f"Failed to remove worktree: {e}"}
 
 
+def create_branch_at(cwd: Path, branch_name: str, start_point: str | None = None) -> dict:
+    """
+    Create a new branch at a given commit (or HEAD if no start_point).
+
+    Returns:
+        Dict with status, branch, hash on success, or error on failure
+    """
+    try:
+        repo = get_repo(cwd)
+    except InvalidGitRepositoryError:
+        return {"error": "Not a git repository"}
+
+    try:
+        if start_point:
+            repo.git.branch(branch_name, start_point)
+        else:
+            repo.git.branch(branch_name)
+
+        # Resolve the hash the branch points to
+        commit = repo.commit(start_point) if start_point else repo.head.commit
+        return {
+            "status": "created",
+            "branch": branch_name,
+            "hash": commit.hexsha[:7],
+        }
+    except GitCommandError as e:
+        error_str = str(e)
+        if "already exists" in error_str:
+            return {"error": f"Branch '{branch_name}' already exists"}
+        if "not a valid object" in error_str:
+            return {"error": f"Invalid start point: {start_point}"}
+        return {"error": f"Failed to create branch: {e}"}
+
+
+def reset_to_commit(cwd: Path, commit_hash: str, mode: str = "hard") -> dict:
+    """
+    Reset HEAD to a specific commit.
+
+    Args:
+        cwd: Repository working directory
+        commit_hash: The commit to reset to
+        mode: 'hard' (discard all changes) or 'soft' (keep changes staged)
+
+    Returns:
+        Dict with status, hash, message on success, or error on failure
+    """
+    if mode not in ("hard", "soft"):
+        return {"error": f"Invalid mode: {mode}. Use 'hard' or 'soft'."}
+
+    try:
+        repo = get_repo(cwd)
+    except InvalidGitRepositoryError:
+        return {"error": "Not a git repository"}
+
+    try:
+        repo.git.reset(f"--{mode}", commit_hash)
+
+        # For hard reset, also clean untracked files (same as reset_to_head)
+        if mode == "hard":
+            repo.git.clean("-fd")
+
+        commit = repo.commit(commit_hash)
+        return {
+            "status": f"reset_{mode}",
+            "hash": commit.hexsha[:7],
+            "message": f"Reset {mode} to {commit.hexsha[:7]}",
+        }
+    except GitCommandError as e:
+        return {"error": f"git reset --{mode} failed: {e}"}
+
+
 def get_branches_for_worktree(repo_path: Path) -> dict:
     """
     Get branches available for creating a worktree.

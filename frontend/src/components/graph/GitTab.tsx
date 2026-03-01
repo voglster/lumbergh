@@ -45,6 +45,7 @@ export default function GitTab({
           onSelectCommit={handleSelectCommit}
           selectedCommit={selectedCommit}
           refreshTrigger={graphRefreshTrigger}
+          onGitAction={handleGitAction}
         />
       }
       bottom={

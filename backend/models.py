@@ -38,6 +38,20 @@ class CheckoutInput(BaseModel):
     branch: str
 
 
+class CreateBranchInput(BaseModel):
+    """Input for creating a branch at a specific commit."""
+
+    name: str
+    start_point: str | None = None
+
+
+class ResetToInput(BaseModel):
+    """Input for resetting to a specific commit."""
+
+    hash: str
+    mode: str = "hard"  # "hard" | "soft"
+
+
 class TodoItem(BaseModel):
     """A single todo item."""
 

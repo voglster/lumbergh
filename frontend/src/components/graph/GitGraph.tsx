@@ -15,14 +15,17 @@ interface Props {
   onSelectCommit?: (hash: string | null) => void
   selectedCommit?: string | null
   refreshTrigger?: number
+  onGitAction?: () => void
 }
 
-export default function GitGraph({ apiHost, sessionName, onSelectCommit, selectedCommit, refreshTrigger }: Props) {
+export default function GitGraph({ apiHost, sessionName, onSelectCommit, selectedCommit, refreshTrigger, onGitAction }: Props) {
   const [graphData, setGraphData] = useState<GraphData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [commitLimit, setCommitLimit] = useState(100)
+  const [menuCommit, setMenuCommit] = useState<{ hash: string; shortHash: string } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   // Fetch configured commit limit from settings
   useEffect(() => {
@@ -57,6 +60,100 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
     const interval = setInterval(fetchGraph, 5000)
     return () => clearInterval(interval)
   }, [fetchGraph, refreshTrigger])
+
+  // Close menu on click-outside or Escape
+  useEffect(() => {
+    if (!menuCommit) return
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuCommit(null)
+      }
+    }
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuCommit(null)
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [menuCommit])
+
+  const afterAction = useCallback(() => {
+    setMenuCommit(null)
+    fetchGraph()
+    onGitAction?.()
+  }, [fetchGraph, onGitAction])
+
+  const handleCreateBranch = useCallback(async () => {
+    if (!menuCommit || !sessionName) return
+    const name = prompt('Branch name:')
+    if (!name) return
+
+    try {
+      const res = await fetch(`http://${apiHost}/api/sessions/${sessionName}/git/create-branch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, start_point: menuCommit.hash }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.detail || `Failed to create branch (HTTP ${res.status})`)
+        return
+      }
+      afterAction()
+    } catch {
+      alert('Failed to create branch')
+    }
+  }, [apiHost, sessionName, menuCommit, afterAction])
+
+  const handleResetSoft = useCallback(async () => {
+    if (!menuCommit || !sessionName) return
+
+    try {
+      const res = await fetch(`http://${apiHost}/api/sessions/${sessionName}/git/reset-to`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hash: menuCommit.hash, mode: 'soft' }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.detail || `Reset failed (HTTP ${res.status})`)
+        return
+      }
+      afterAction()
+    } catch {
+      alert('Reset failed')
+    }
+  }, [apiHost, sessionName, menuCommit, afterAction])
+
+  const handleResetHard = useCallback(async () => {
+    if (!menuCommit || !sessionName) return
+
+    const confirmed = confirm(
+      `Reset HARD to ${menuCommit.shortHash}?\n\nThis will DESTROY all uncommitted changes (staged, unstaged, and untracked files). This cannot be undone.`
+    )
+    if (!confirmed) return
+
+    try {
+      const res = await fetch(`http://${apiHost}/api/sessions/${sessionName}/git/reset-to`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hash: menuCommit.hash, mode: 'hard' }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.detail || `Reset failed (HTTP ${res.status})`)
+        return
+      }
+      afterAction()
+    } catch {
+      alert('Reset failed')
+    }
+  }, [apiHost, sessionName, menuCommit, afterAction])
 
   const nodes = useMemo(() => {
     if (!graphData) return []
@@ -333,13 +430,19 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
                 <span className="text-xs text-text-muted whitespace-nowrap shrink-0">
                   {node.commit.relativeDate}
                 </span>
-                {/* Overflow menu placeholder for future git actions */}
+                {/* Context menu button */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
-                    // TODO: context menu with git actions (checkout, create branch, cherry-pick, etc.)
+                    setMenuCommit(
+                      menuCommit?.hash === node.commit.hash
+                        ? null
+                        : { hash: node.commit.hash, shortHash: node.commit.shortHash }
+                    )
                   }}
-                  className="shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-control-bg-hover text-text-muted hover:text-text-secondary transition-opacity"
+                  className={`shrink-0 p-0.5 rounded hover:bg-control-bg-hover text-text-muted hover:text-text-secondary transition-opacity ${
+                    menuCommit?.hash === node.commit.hash ? 'opacity-100 bg-control-bg-hover' : 'opacity-0 group-hover:opacity-100'
+                  }`}
                   title="Actions"
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -349,6 +452,40 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
               </div>
               )
             })}
+
+            {/* Context menu dropdown */}
+            {menuCommit && (() => {
+              const menuRow = nodes.findIndex((n) => n.commit.hash === menuCommit.hash)
+              if (menuRow === -1) return null
+              const topPx = (menuRow + rowOffset) * ROW_HEIGHT + ROW_HEIGHT
+              return (
+                <div
+                  ref={menuRef}
+                  className="absolute right-2 z-50 w-52 py-1 bg-bg-surface border border-border-default rounded-lg shadow-xl"
+                  style={{ top: topPx }}
+                >
+                  <button
+                    onClick={handleCreateBranch}
+                    className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
+                  >
+                    Create branch here...
+                  </button>
+                  <div className="mx-2 my-1 border-t border-border-default" />
+                  <button
+                    onClick={handleResetSoft}
+                    className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
+                  >
+                    Reset soft to here
+                  </button>
+                  <button
+                    onClick={handleResetHard}
+                    className="w-full text-left px-3 py-1.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                  >
+                    Reset hard to here
+                  </button>
+                </div>
+              )
+            })()}
           </div>
         )}
       </div>
