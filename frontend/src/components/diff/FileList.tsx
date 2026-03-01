@@ -11,6 +11,7 @@ interface Props {
   onRefresh: () => void
   commit?: { hash: string; shortHash: string; message: string } | null
   onSendToTerminal?: (text: string, sendEnter: boolean) => void
+  onGitAction?: () => void
 }
 
 const FileList = memo(function FileList({
@@ -21,6 +22,7 @@ const FileList = memo(function FileList({
   onRefresh,
   commit,
   onSendToTerminal,
+  onGitAction,
 }: Props) {
   const [commitMessage, setCommitMessage] = useState('')
   const [isCommitting, setIsCommitting] = useState(false)
@@ -69,6 +71,7 @@ const FileList = memo(function FileList({
       } else {
         setCommitResult({ type: 'success', message: 'All changes reverted' })
         onRefresh()
+        onGitAction?.()
       }
     } catch {
       setCommitResult({ type: 'error', message: 'Failed to reset changes' })
@@ -97,6 +100,7 @@ const FileList = memo(function FileList({
         setCommitResult({ type: 'success', message: `Committed: ${result.hash}` })
         setCommitMessage('')
         onRefresh()
+        onGitAction?.()
       }
     } catch {
       setCommitResult({ type: 'error', message: 'Failed to commit' })

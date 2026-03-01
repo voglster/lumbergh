@@ -14,9 +14,10 @@ interface Props {
   sessionName?: string
   onSelectCommit?: (hash: string | null) => void
   selectedCommit?: string | null
+  refreshTrigger?: number
 }
 
-export default function GitGraph({ apiHost, sessionName, onSelectCommit, selectedCommit }: Props) {
+export default function GitGraph({ apiHost, sessionName, onSelectCommit, selectedCommit, refreshTrigger }: Props) {
   const [graphData, setGraphData] = useState<GraphData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +41,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
 
   useEffect(() => {
     fetchGraph()
-  }, [apiHost, sessionName])
+  }, [apiHost, sessionName, refreshTrigger])
 
   const nodes = useMemo(() => {
     if (!graphData) return []

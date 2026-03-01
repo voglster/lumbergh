@@ -12,6 +12,8 @@ interface Props {
   onJumpToTodos?: () => void
   /** Controlled by parent (GitTab). null = working changes, string = commit hash */
   selectedCommit?: string | null
+  /** Called after git actions (commit, push, pull, reset) to refresh siblings like the graph */
+  onGitAction?: () => void
 }
 
 interface RemoteStatus {
@@ -34,6 +36,7 @@ const DiffViewer = memo(function DiffViewer({
   onFocusTerminal,
   onJumpToTodos,
   selectedCommit: controlledCommit,
+  onGitAction,
 }: Props) {
   // Build base URL for git endpoints
   const gitBaseUrl = sessionName
@@ -115,6 +118,7 @@ const DiffViewer = memo(function DiffViewer({
       const res = await fetch(`${gitBaseUrl}/push`, { method: 'POST' })
       if (res.ok) {
         fetchRemoteStatus()
+        onGitAction?.()
       } else {
         const data = await res.json()
         const errorMsg = data.detail || 'Push failed'
@@ -149,6 +153,7 @@ const DiffViewer = memo(function DiffViewer({
         }
         fetchRemoteStatus()
         refreshWorkingChanges()
+        onGitAction?.()
       }
     } catch {
       alert('Pull failed: network error')
@@ -180,6 +185,7 @@ const DiffViewer = memo(function DiffViewer({
       if (pushRes.ok) {
         fetchRemoteStatus()
         refreshWorkingChanges()
+        onGitAction?.()
       } else {
         const data = await pushRes.json()
         alert(`Push failed after pull: ${data.detail || 'Unknown error'}`)
@@ -517,6 +523,7 @@ const DiffViewer = memo(function DiffViewer({
       onRefresh={handleRefresh}
       commit={getCurrentCommitInfo()}
       onSendToTerminal={sessionName ? handleSendToTerminal : undefined}
+      onGitAction={onGitAction}
     />
   )
 })

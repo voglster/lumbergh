@@ -26,9 +26,14 @@ export default function GitTab({
   onJumpToTodos,
 }: Props) {
   const [selectedCommit, setSelectedCommit] = useState<string | null>(null)
+  const [graphRefreshTrigger, setGraphRefreshTrigger] = useState(0)
 
   const handleSelectCommit = useCallback((hash: string | null) => {
     setSelectedCommit(hash)
+  }, [])
+
+  const handleGitAction = useCallback(() => {
+    setGraphRefreshTrigger((n) => n + 1)
   }, [])
 
   return (
@@ -39,6 +44,7 @@ export default function GitTab({
           sessionName={sessionName}
           onSelectCommit={handleSelectCommit}
           selectedCommit={selectedCommit}
+          refreshTrigger={graphRefreshTrigger}
         />
       }
       bottom={
@@ -50,6 +56,7 @@ export default function GitTab({
           onFocusTerminal={onFocusTerminal}
           onJumpToTodos={onJumpToTodos}
           selectedCommit={selectedCommit}
+          onGitAction={handleGitAction}
         />
       }
       defaultTopHeight={40}
