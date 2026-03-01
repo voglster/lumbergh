@@ -19,6 +19,7 @@ settings_table = settings_db.table("settings")
 # Default settings
 DEFAULTS = {
     "repoSearchDir": str(Path.home() / "src"),
+    "gitGraphCommits": 100,
     "ai": {
         "provider": "ollama",
         "providers": {
@@ -61,6 +62,7 @@ class AISettings(BaseModel):
 
 class SettingsUpdate(BaseModel):
     repoSearchDir: str | None = None
+    gitGraphCommits: int | None = None
     ai: AISettings | None = None
 
 
@@ -111,6 +113,14 @@ async def update_settings(updates: SettingsUpdate):
             )
 
         update_data["repoSearchDir"] = str(path)
+
+    if updates.gitGraphCommits is not None:
+        if updates.gitGraphCommits < 10 or updates.gitGraphCommits > 1000:
+            raise HTTPException(
+                status_code=400,
+                detail="Git graph commits must be between 10 and 1000",
+            )
+        update_data["gitGraphCommits"] = updates.gitGraphCommits
 
     if updates.ai is not None:
         ai_update = updates.ai.model_dump(exclude_none=True)

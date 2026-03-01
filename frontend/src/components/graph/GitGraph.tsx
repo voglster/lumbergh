@@ -21,14 +21,25 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
   const [graphData, setGraphData] = useState<GraphData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [commitLimit, setCommitLimit] = useState(100)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // Fetch configured commit limit from settings
+  useEffect(() => {
+    fetch(`http://${apiHost}/api/settings`)
+      .then((r) => r.json())
+      .then((s) => {
+        if (s.gitGraphCommits) setCommitLimit(s.gitGraphCommits)
+      })
+      .catch(() => {})
+  }, [apiHost])
 
   const fetchGraph = async () => {
     if (!sessionName) return
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`http://${apiHost}/api/sessions/${sessionName}/git/graph?limit=100`)
+      const res = await fetch(`http://${apiHost}/api/sessions/${sessionName}/git/graph?limit=${commitLimit}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data: GraphData = await res.json()
       setGraphData(data)
@@ -41,7 +52,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
 
   useEffect(() => {
     fetchGraph()
-  }, [apiHost, sessionName, refreshTrigger])
+  }, [apiHost, sessionName, refreshTrigger, commitLimit])
 
   const nodes = useMemo(() => {
     if (!graphData) return []

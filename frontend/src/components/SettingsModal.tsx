@@ -18,6 +18,7 @@ interface AISettings {
 
 interface Settings {
   repoSearchDir: string
+  gitGraphCommits: number
   ai: AISettings
 }
 
@@ -131,6 +132,7 @@ const PROVIDERS: ProviderDef[] = [
 export default function SettingsModal({ apiHost, onClose }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>('general')
   const [repoSearchDir, setRepoSearchDir] = useState('')
+  const [gitGraphCommits, setGitGraphCommits] = useState(100)
   const [aiProvider, setAiProvider] = useState('ollama')
   const [providerConfigs, setProviderConfigs] = useState<Record<string, AIProviderConfig>>(() => {
     const initial: Record<string, AIProviderConfig> = {}
@@ -156,6 +158,7 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
         if (!res.ok) throw new Error('Failed to fetch settings')
         const data: Settings = await res.json()
         setRepoSearchDir(data.repoSearchDir || '')
+        if (data.gitGraphCommits) setGitGraphCommits(data.gitGraphCommits)
 
         if (data.ai) {
           setAiProvider(data.ai.provider || 'ollama')
@@ -218,6 +221,7 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
       if (repoSearchDir.trim()) {
         payload.repoSearchDir = repoSearchDir.trim()
       }
+      payload.gitGraphCommits = gitGraphCommits
       payload.ai = {
         provider: aiProvider,
         providers: providerConfigs,
@@ -350,20 +354,39 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
           <form onSubmit={handleSubmit} className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
             {/* General Tab */}
             {activeTab === 'general' && (
-              <div>
-                <label className="block text-sm text-text-tertiary mb-1">
-                  Repository Search Directory
-                </label>
-                <input
-                  type="text"
-                  value={repoSearchDir}
-                  onChange={(e) => setRepoSearchDir(e.target.value)}
-                  placeholder="e.g., ~/src or /home/user/projects"
-                  className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-sm"
-                />
-                <p className="text-xs text-text-muted mt-1">
-                  Directory to search for git repositories
-                </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-text-tertiary mb-1">
+                    Repository Search Directory
+                  </label>
+                  <input
+                    type="text"
+                    value={repoSearchDir}
+                    onChange={(e) => setRepoSearchDir(e.target.value)}
+                    placeholder="e.g., ~/src or /home/user/projects"
+                    className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-sm"
+                  />
+                  <p className="text-xs text-text-muted mt-1">
+                    Directory to search for git repositories
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm text-text-tertiary mb-1">
+                    Git Graph Commits
+                  </label>
+                  <input
+                    type="number"
+                    min={10}
+                    max={1000}
+                    step={10}
+                    value={gitGraphCommits}
+                    onChange={(e) => setGitGraphCommits(parseInt(e.target.value) || 100)}
+                    className="w-32 px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-sm"
+                  />
+                  <p className="text-xs text-text-muted mt-1">
+                    Number of commits to show in the git graph (10-1000)
+                  </p>
+                </div>
               </div>
             )}
 
