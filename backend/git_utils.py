@@ -380,7 +380,7 @@ def get_graph_log(cwd: Path, limit: int = 100) -> dict:
             "author": commit.author.name,
             "authorEmail": email,
             "authorGravatar": gravatar_url(email) if email else None,
-            "relativeDate": commit.committed_datetime.strftime("%Y-%m-%d %H:%M"),
+            "relativeDate": commit.committed_datetime.isoformat(),
             "parents": [p.hexsha for p in commit.parents],
             "refs": ref_map.get(commit.hexsha, []),
             "pushed": commit.hexsha not in unpushed_set,
@@ -440,7 +440,7 @@ def get_commit_log(cwd: Path, limit: int = 20) -> list[dict]:
                 "shortHash": commit.hexsha[:7],
                 "message": commit.summary,
                 "author": commit.author.name,
-                "relativeDate": commit.committed_datetime.strftime("%Y-%m-%d %H:%M"),
+                "relativeDate": commit.committed_datetime.isoformat(),
             }
         )
 
@@ -461,7 +461,7 @@ def get_commit_info(cwd: Path, commit_hash: str) -> dict | None:
             "hash": commit.hexsha,
             "message": commit.summary,
             "author": commit.author.name,
-            "relativeDate": commit.committed_datetime.strftime("%Y-%m-%d %H:%M"),
+            "relativeDate": commit.committed_datetime.isoformat(),
         }
     except Exception:
         return None
@@ -484,7 +484,7 @@ def get_commit_diff(cwd: Path, commit_hash: str) -> dict | None:
         "hash": commit.hexsha,
         "message": commit.summary,
         "author": commit.author.name,
-        "relativeDate": commit.committed_datetime.strftime("%Y-%m-%d %H:%M"),
+        "relativeDate": commit.committed_datetime.isoformat(),
     }
 
     # Determine parent ref for getting old content

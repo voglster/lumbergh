@@ -336,6 +336,8 @@ const DiffViewer = memo(function DiffViewer({
         hash: commitData.hash,
         shortHash: commitData.hash.slice(0, 7),
         message: commitData.message,
+        author: commitData.author,
+        relativeDate: commitData.relativeDate,
       }
     }
     return null

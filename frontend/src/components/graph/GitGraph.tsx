@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import type { GraphData } from '../diff/types'
 import { computeGraphLayout, laneColor } from './graphLayout'
+import { relativeDate } from '../../utils/relativeDate'
 
-const ROW_HEIGHT = 36
-const LANE_WIDTH = 24
-const NODE_RADIUS = 10
-const HEAD_RADIUS = 10
-const SVG_PADDING_LEFT = 12
+const ROW_HEIGHT = 38
+const LANE_WIDTH = 28
+const NODE_RADIUS = 12
+const HEAD_RADIUS = 12
+const SVG_PADDING_LEFT = 14
 const WIP_COLOR = '#ffb74d' // orange for WIP
 
 function getInitials(author: string, email?: string): string {
@@ -369,7 +370,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
             textAnchor="middle"
             dominantBaseline="central"
             fill="white"
-            fontSize="9"
+            fontSize="10"
             fontWeight="bold"
             fontFamily="system-ui, sans-serif"
             style={{ pointerEvents: 'none' }}
@@ -474,10 +475,10 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
                   paddingLeft: svgWidth + 4,
                 }}
               >
-                <span className="px-1.5 py-0.5 text-[10px] rounded font-semibold leading-none bg-orange-500/25 text-orange-300 ring-1 ring-orange-400/50 shrink-0">
+                <span className="px-1.5 py-0.5 text-xs rounded font-semibold leading-none bg-orange-500/25 text-orange-300 ring-1 ring-orange-400/50 shrink-0">
                   WIP
                 </span>
-                <span className="text-sm text-orange-200/90 truncate min-w-0">
+                <span className="text-base text-orange-200/90 truncate min-w-0">
                   {graphData.workingChanges.files} uncommitted {graphData.workingChanges.files === 1 ? 'change' : 'changes'}
                 </span>
               </div>
@@ -513,7 +514,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
                       return (
                         <span
                           key={ref.name}
-                          className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] rounded font-medium leading-none ${
+                          className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded font-medium leading-none ${
                             isCurrent
                               ? 'bg-blue-500/25 text-blue-300 ring-1 ring-blue-400/50'
                               : 'bg-bg-surface text-text-tertiary ring-1 ring-border-default'
@@ -521,12 +522,12 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
                         >
                           {ref.name}
                           {ref.local && (
-                            <svg className="w-2.5 h-2.5 ml-0.5 opacity-70" viewBox="0 0 16 16" fill="currentColor" title="Local">
+                            <svg className="w-3 h-3 ml-0.5 opacity-70" viewBox="0 0 16 16" fill="currentColor" title="Local">
                               <path d="M2 4a1 1 0 011-1h10a1 1 0 011 1v7a1 1 0 01-1 1H3a1 1 0 01-1-1V4zm2 0v6h8V4H4zm1 9h6l.5 1H4.5l.5-1z"/>
                             </svg>
                           )}
                           {ref.remote && (
-                            <svg className="w-2.5 h-2.5 ml-0.5 opacity-70" viewBox="0 0 16 16" fill="currentColor" title="Remote">
+                            <svg className="w-3 h-3 ml-0.5 opacity-70" viewBox="0 0 16 16" fill="currentColor" title="Remote">
                               <path d="M4.5 7a3.5 3.5 0 116.4 2H12a2 2 0 010 4H4a2.5 2.5 0 01-.5-4.95A3.5 3.5 0 014.5 7z"/>
                             </svg>
                           )}
@@ -536,25 +537,15 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
                   </div>
                 )}
                 {node.isHead && node.commit.refs.length === 0 && (
-                  <span className="px-1.5 py-0.5 text-[10px] rounded font-medium leading-none bg-yellow-500/20 text-yellow-300 ring-1 ring-yellow-500/40 shrink-0">
+                  <span className="px-1.5 py-0.5 text-xs rounded font-medium leading-none bg-yellow-500/20 text-yellow-300 ring-1 ring-yellow-500/40 shrink-0">
                     HEAD
                   </span>
                 )}
                 {/* Commit message */}
-                <span className={`text-sm truncate min-w-0 ${
+                <span className={`text-base truncate min-w-0 ${
                   node.onCurrentBranch ? 'text-text-primary' : 'text-text-tertiary'
                 }`}>
                   {node.commit.message}
-                </span>
-                {/* Author + date */}
-                <span className="ml-auto text-xs text-text-muted whitespace-nowrap shrink-0 hidden sm:inline">
-                  {node.commit.shortHash}
-                </span>
-                <span className="text-xs text-text-muted whitespace-nowrap shrink-0 hidden lg:inline">
-                  {node.commit.author}
-                </span>
-                <span className="text-xs text-text-muted whitespace-nowrap shrink-0">
-                  {node.commit.relativeDate}
                 </span>
                 {/* Context menu button */}
                 <button
@@ -566,12 +557,12 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
                         : { hash: node.commit.hash, shortHash: node.commit.shortHash, message: node.commit.message, pushed: node.commit.pushed ?? true, refs: node.commit.refs }
                     )
                   }}
-                  className={`shrink-0 p-0.5 rounded hover:bg-control-bg-hover text-text-muted hover:text-text-secondary transition-opacity ${
+                  className={`ml-auto shrink-0 p-0.5 rounded hover:bg-control-bg-hover text-text-muted hover:text-text-secondary transition-opacity ${
                     menuCommit?.hash === node.commit.hash ? 'opacity-100 bg-control-bg-hover' : 'opacity-0 group-hover:opacity-100'
                   }`}
-                  title="Actions"
+                  title={`${node.commit.shortHash} · ${node.commit.author} · ${relativeDate(node.commit.relativeDate)}`}
                 >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                   </svg>
                 </button>

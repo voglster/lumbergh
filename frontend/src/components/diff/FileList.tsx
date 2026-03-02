@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, memo } from 'react'
+import { relativeDate } from '../../utils/relativeDate'
 import type { DiffData } from './types'
 import { getFileStats } from './utils'
 import BranchSelector from './BranchSelector'
@@ -9,7 +10,7 @@ interface Props {
   sessionName?: string
   onSelectFile: (path: string) => void
   onRefresh: () => void
-  commit?: { hash: string; shortHash: string; message: string } | null
+  commit?: { hash: string; shortHash: string; message: string; author?: string; relativeDate?: string } | null
   onSendToTerminal?: (text: string, sendEnter: boolean) => void
   onGitAction?: () => void
   onExpand?: () => void
@@ -32,6 +33,7 @@ const FileList = memo(function FileList({
   const [isGenerating, setIsGenerating] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
+  const [copiedSha, setCopiedSha] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const menuBtnRef = useRef<HTMLButtonElement>(null)
   const [commitResult, setCommitResult] = useState<{
@@ -236,18 +238,31 @@ const FileList = memo(function FileList({
     <div className="h-full flex flex-col">
       {/* Breadcrumb header */}
       <div className="flex items-center justify-between p-3 bg-bg-surface border-b border-border-default">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <span className="text-sm text-text-secondary truncate">
-            {isWorkingChanges ? (
-              'Working Changes'
-            ) : (
-              <>
-                <span className="text-blue-400 font-mono">{commit.shortHash}</span>
-                <span className="text-text-muted">: </span>
-                <span className="text-text-tertiary">{commit.message}</span>
-              </>
-            )}
-          </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-text-secondary truncate">
+              {isWorkingChanges ? (
+                'Working Changes'
+              ) : (
+                <>
+                  <span
+                    className="text-blue-400 font-mono cursor-pointer hover:underline"
+                    title="Click to copy SHA"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigator.clipboard.writeText(commit.hash)
+                      setCopiedSha(true)
+                      setTimeout(() => setCopiedSha(false), 1500)
+                    }}
+                  >{commit.shortHash}</span>
+                  {copiedSha && (
+                    <span className="ml-1 text-xs text-green-400">Copied!</span>
+                  )}
+                  <span className="text-text-muted">: </span>
+                  <span className="text-text-tertiary">{commit.message}</span>
+                </>
+              )}
+            </span>
           {!isWorkingChanges && commit && onSendToTerminal && (
             <button
               onClick={() =>
@@ -267,6 +282,12 @@ const FileList = memo(function FileList({
               gitBaseUrl={gitBaseUrl}
               onBranchChange={onRefresh}
             />
+          )}
+          </div>
+          {!isWorkingChanges && commit?.author && (
+            <div className="text-xs text-text-muted mt-0.5">
+              {commit.author}{commit.relativeDate ? ` · ${relativeDate(commit.relativeDate)}` : ''}
+            </div>
           )}
         </div>
         <div className="flex items-center gap-3 shrink-0 ml-2">
