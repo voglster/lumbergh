@@ -36,6 +36,7 @@ class CheckoutInput(BaseModel):
     """Input for checking out a git branch."""
 
     branch: str
+    reset_to: str | None = None
 
 
 class CreateBranchInput(BaseModel):
