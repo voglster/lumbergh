@@ -40,7 +40,7 @@ export default function SharedFiles({
       const res = await fetch(`http://${apiHost}/api/shared/files`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
-      setFiles(data.files || [])
+      setFiles((data.files || []).sort((a: SharedFile, b: SharedFile) => b.modified - a.modified))
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch files')
