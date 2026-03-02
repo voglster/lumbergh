@@ -57,6 +57,7 @@ export interface GraphCommit {
   relativeDate: string
   parents: string[]
   refs: string[]
+  pushed?: boolean
 }
 
 export interface GraphData {

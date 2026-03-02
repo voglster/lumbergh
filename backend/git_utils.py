@@ -5,6 +5,10 @@ Git utilities for the Lumbergh backend using GitPython.
 from dataclasses import dataclass
 from pathlib import Path
 
+import os
+import subprocess
+import tempfile
+
 from git import InvalidGitRepositoryError, Repo
 from git.exc import GitCommandError
 
@@ -272,6 +276,33 @@ def get_graph_log(cwd: Path, limit: int = 100) -> dict:
         except TypeError:
             pass
 
+    # Determine unpushed commits for the current branch
+    unpushed_set: set[str] = set()
+    if head_branch and not repo.head.is_detached:
+        try:
+            tracking = repo.active_branch.tracking_branch()
+            if tracking:
+                tracking_ref = tracking.name
+            else:
+                # Try origin/<branch> as fallback
+                tracking_ref = f"origin/{head_branch}"
+                try:
+                    repo.git.rev_parse("--verify", tracking_ref)
+                except GitCommandError:
+                    tracking_ref = None
+
+            if tracking_ref:
+                unpushed_hashes = repo.git.rev_list(f"{tracking_ref}..{head_branch}").strip()
+                if unpushed_hashes:
+                    unpushed_set = set(unpushed_hashes.splitlines())
+            else:
+                # No remote tracking at all — treat all commits as unpushed
+                all_hashes = repo.git.rev_list(head_branch).strip()
+                if all_hashes:
+                    unpushed_set = set(all_hashes.splitlines())
+        except GitCommandError:
+            pass
+
     # Collect commits (--all walks all refs, not just HEAD)
     commits = []
     for commit in repo.iter_commits(rev="--all", max_count=limit, topo_order=True):
@@ -283,6 +314,7 @@ def get_graph_log(cwd: Path, limit: int = 100) -> dict:
             "relativeDate": commit.committed_datetime.strftime("%Y-%m-%d %H:%M"),
             "parents": [p.hexsha for p in commit.parents],
             "refs": ref_map.get(commit.hexsha, []),
+            "pushed": commit.hexsha not in unpushed_set,
         })
 
     # Branch list
@@ -1211,6 +1243,126 @@ def reset_to_commit(cwd: Path, commit_hash: str, mode: str = "hard") -> dict:
         }
     except GitCommandError as e:
         return {"error": f"git reset --{mode} failed: {e}"}
+
+
+def reword_commit(cwd: Path, commit_hash: str, message: str) -> dict:
+    """
+    Reword (edit the message of) a commit.
+
+    For HEAD: uses `git commit --amend -m <message>` (no staging changes).
+    For non-HEAD: uses `git rebase` with GIT_SEQUENCE_EDITOR to automate the reword.
+
+    Guards:
+    - Rejects if working tree is dirty (for non-HEAD commits)
+    - Rejects if commit is not an ancestor of HEAD on the current branch
+
+    Returns:
+        Dict with status, hash, message on success, or error on failure
+    """
+    try:
+        repo = get_repo(cwd)
+    except InvalidGitRepositoryError:
+        return {"error": "Not a git repository"}
+
+    if not repo.head.is_valid():
+        return {"error": "No commits to reword"}
+
+    if repo.head.is_detached:
+        return {"error": "Cannot reword: HEAD is detached"}
+
+    # Resolve the commit
+    try:
+        target = repo.commit(commit_hash)
+    except Exception:
+        return {"error": f"Commit not found: {commit_hash}"}
+
+    head_commit = repo.head.commit
+
+    # Check if this is HEAD
+    is_head = target.hexsha == head_commit.hexsha
+
+    if is_head:
+        # Simple amend — only change the message, don't stage anything
+        try:
+            repo.git.commit("--amend", "--only", "-m", message)
+            return {
+                "status": "reworded",
+                "hash": repo.head.commit.hexsha[:7],
+                "message": message,
+            }
+        except GitCommandError as e:
+            return {"error": f"Amend failed: {e}"}
+
+    # Non-HEAD: require clean working tree
+    if repo.is_dirty(untracked_files=True):
+        return {"error": "Working tree is dirty. Commit or stash changes before rewording non-HEAD commits."}
+
+    # Verify commit is an ancestor of HEAD
+    try:
+        repo.git.merge_base("--is-ancestor", commit_hash, "HEAD")
+    except GitCommandError:
+        return {"error": "Commit is not an ancestor of HEAD on the current branch"}
+
+    # Use rebase with automated editors
+    # GIT_SEQUENCE_EDITOR: replaces "pick <hash>" with "reword <hash>"
+    # GIT_EDITOR: writes the new message to the file git provides
+    short = target.hexsha[:7]
+    seq_editor_script = f"sed -i 's/^pick {short}/reword {short}/' \"$1\""
+
+    # Write new message to a temp file, then use a script that copies it
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, prefix='lumbergh-reword-') as f:
+            f.write(message)
+            msg_file = f.name
+
+        editor_script = f'cp {msg_file} "$1"'
+
+        env = {
+            "GIT_SEQUENCE_EDITOR": seq_editor_script,
+            "GIT_EDITOR": f'sh -c \'{editor_script}\'',
+        }
+
+        # Run rebase interactively on the parent of the target commit
+        parent_ref = f"{commit_hash}^"
+        result = subprocess.run(
+            ["git", "rebase", "-i", parent_ref],
+            cwd=str(cwd),
+            capture_output=True,
+            text=True,
+            env={**os.environ, **env},
+            timeout=30,
+        )
+
+        # Clean up temp file
+        Path(msg_file).unlink(missing_ok=True)
+
+        if result.returncode != 0:
+            # Try to abort rebase if it failed
+            subprocess.run(
+                ["git", "rebase", "--abort"],
+                cwd=str(cwd),
+                capture_output=True,
+                timeout=10,
+            )
+            return {"error": f"Rebase failed: {result.stderr.strip()}"}
+
+        # Refresh repo state
+        new_head = repo.head.commit
+        return {
+            "status": "reworded",
+            "hash": new_head.hexsha[:7],
+            "message": message,
+        }
+    except subprocess.TimeoutExpired:
+        subprocess.run(
+            ["git", "rebase", "--abort"],
+            cwd=str(cwd),
+            capture_output=True,
+            timeout=10,
+        )
+        return {"error": "Rebase timed out"}
+    except Exception as e:
+        return {"error": f"Reword failed: {e}"}
 
 
 def get_branches_for_worktree(repo_path: Path) -> dict:

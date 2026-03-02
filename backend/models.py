@@ -52,6 +52,13 @@ class ResetToInput(BaseModel):
     mode: str = "hard"  # "hard" | "soft"
 
 
+class RewordInput(BaseModel):
+    """Input for rewording a commit message."""
+
+    hash: str
+    message: str
+
+
 class TodoItem(BaseModel):
     """A single todo item."""
 

@@ -23,7 +23,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [commitLimit, setCommitLimit] = useState(100)
-  const [menuCommit, setMenuCommit] = useState<{ hash: string; shortHash: string } | null>(null)
+  const [menuCommit, setMenuCommit] = useState<{ hash: string; shortHash: string; message: string; pushed: boolean } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -152,6 +152,28 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
       afterAction()
     } catch {
       alert('Reset failed')
+    }
+  }, [apiHost, sessionName, menuCommit, afterAction])
+
+  const handleReword = useCallback(async () => {
+    if (!menuCommit || !sessionName) return
+    const newMessage = prompt('Edit commit message:', menuCommit.message)
+    if (newMessage === null || newMessage === menuCommit.message) return
+
+    try {
+      const res = await fetch(`http://${apiHost}/api/sessions/${sessionName}/git/reword`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hash: menuCommit.hash, message: newMessage }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.detail || `Reword failed (HTTP ${res.status})`)
+        return
+      }
+      afterAction()
+    } catch {
+      alert('Failed to reword commit')
     }
   }, [apiHost, sessionName, menuCommit, afterAction])
 
@@ -446,7 +468,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
                     setMenuCommit(
                       menuCommit?.hash === node.commit.hash
                         ? null
-                        : { hash: node.commit.hash, shortHash: node.commit.shortHash }
+                        : { hash: node.commit.hash, shortHash: node.commit.shortHash, message: node.commit.message, pushed: node.commit.pushed ?? true }
                     )
                   }}
                   className={`shrink-0 p-0.5 rounded hover:bg-control-bg-hover text-text-muted hover:text-text-secondary transition-opacity ${
@@ -473,6 +495,17 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
                   className="absolute right-2 z-50 w-52 py-1 bg-bg-surface border border-border-default rounded-lg shadow-xl"
                   style={{ top: topPx }}
                 >
+                  {!menuCommit.pushed && (
+                    <>
+                      <button
+                        onClick={handleReword}
+                        className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
+                      >
+                        Edit commit message...
+                      </button>
+                      <div className="mx-2 my-1 border-t border-border-default" />
+                    </>
+                  )}
                   <button
                     onClick={handleCreateBranch}
                     className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"

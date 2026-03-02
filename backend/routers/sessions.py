@@ -48,6 +48,7 @@ from git_utils import (
     remove_worktree,
     reset_to_commit,
     reset_to_head,
+    reword_commit,
     stage_all_and_commit,
 )
 from models import (
@@ -58,6 +59,7 @@ from models import (
     CreateSessionRequest,
     PromptTemplateList,
     ResetToInput,
+    RewordInput,
     ScratchpadContent,
     SessionUpdate,
     StatusSummaryInput,
@@ -868,6 +870,25 @@ async def session_git_reset_to(name: str, body: ResetToInput):
 
     try:
         result = reset_to_commit(workdir, body.hash, body.mode)
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+        from diff_cache import diff_cache
+        diff_cache.invalidate(name)
+        _files_cache.pop(name, None)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{name}/git/reword")
+async def session_git_reword(name: str, body: RewordInput):
+    """Reword a commit message (amend for HEAD, rebase for older commits)."""
+    workdir = get_session_workdir(name)
+
+    try:
+        result = reword_commit(workdir, body.hash, body.message)
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
         from diff_cache import diff_cache
