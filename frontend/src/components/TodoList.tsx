@@ -82,12 +82,11 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
     saveTodos(updated)
   }
 
-  const _handleDelete = (index: number) => {
+  const handleDelete = (index: number) => {
     const updated = todos.filter((_, i) => i !== index)
     setTodos(updated)
     saveTodos(updated)
   }
-  void _handleDelete // keep for future use
 
   const handleDeleteAllDone = () => {
     const updated = todos.filter((t) => !t.done)
@@ -375,6 +374,15 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
                             ➤
                           </button>
                         </>
+                      )}
+                      {todo.done && (
+                        <button
+                          onClick={() => handleDelete(index)}
+                          className="text-sm text-text-muted hover:text-red-400 transition-colors px-1"
+                          title="Delete task"
+                        >
+                          🗑
+                        </button>
                       )}
                       <input
                         type="checkbox"
