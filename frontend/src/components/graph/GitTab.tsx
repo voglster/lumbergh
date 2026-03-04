@@ -15,6 +15,7 @@ interface Props {
   onRefreshDiff: () => void
   onFocusTerminal?: () => void
   onJumpToTodos?: () => void
+  resetTrigger?: number
 }
 
 export default function GitTab({
@@ -24,12 +25,16 @@ export default function GitTab({
   onRefreshDiff,
   onFocusTerminal,
   onJumpToTodos,
+  resetTrigger,
 }: Props) {
   const [selectedCommit, setSelectedCommit] = useState<string | null>(null)
   const [graphRefreshTrigger, setGraphRefreshTrigger] = useState(0)
 
+  const [commitSelectVersion, setCommitSelectVersion] = useState(0)
+
   const handleSelectCommit = useCallback((hash: string | null) => {
     setSelectedCommit(hash)
+    setCommitSelectVersion((n) => n + 1)
   }, [])
 
   const handleGitAction = useCallback(() => {
@@ -45,6 +50,7 @@ export default function GitTab({
           onSelectCommit={handleSelectCommit}
           selectedCommit={selectedCommit}
           refreshTrigger={graphRefreshTrigger}
+          resetTrigger={resetTrigger}
           onGitAction={handleGitAction}
         />
       }
@@ -57,6 +63,7 @@ export default function GitTab({
           onFocusTerminal={onFocusTerminal}
           onJumpToTodos={onJumpToTodos}
           selectedCommit={selectedCommit}
+          commitSelectVersion={commitSelectVersion}
           onGitAction={handleGitAction}
         />
       }

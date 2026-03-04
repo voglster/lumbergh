@@ -13,6 +13,8 @@ interface Props {
   onJumpToTodos?: () => void
   /** Controlled by parent (GitTab). null = working changes, string = commit hash */
   selectedCommit?: string | null
+  /** Increments on every commit click (even re-clicks) to reset file-level view */
+  commitSelectVersion?: number
   /** Called after git actions (commit, push, pull, reset) to refresh siblings like the graph */
   onGitAction?: () => void
 }
@@ -37,6 +39,7 @@ const DiffViewer = memo(function DiffViewer({
   onFocusTerminal,
   onJumpToTodos,
   selectedCommit: controlledCommit,
+  commitSelectVersion,
   onGitAction,
 }: Props) {
   const [expanded, setExpanded] = useState(false)
@@ -62,17 +65,15 @@ const DiffViewer = memo(function DiffViewer({
   // Navigation state — commit selection controlled by parent if provided
   const isControlled = controlledCommit !== undefined
   const activeCommit = isControlled ? controlledCommit : null
-  const prevCommitRef = useRef(activeCommit)
-
   const [view, setView] = useState<ViewState>({ level: 'changes', commit: activeCommit })
 
-  // Sync view when parent changes selectedCommit
+  // Sync view when parent changes selectedCommit (or re-clicks the same one)
   useEffect(() => {
-    if (isControlled && activeCommit !== prevCommitRef.current) {
-      prevCommitRef.current = activeCommit
+    if (isControlled) {
       setView({ level: 'changes', commit: activeCommit })
     }
-  }, [isControlled, activeCommit])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isControlled, commitSelectVersion])
 
   // Internal fetch for working changes (used when no external data provided)
   const fetchWorkingChangesInternal = useCallback(async () => {

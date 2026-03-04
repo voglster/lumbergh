@@ -52,6 +52,7 @@ export default function SessionDetail() {
     return 'git'
   })
   const [sharedRefreshTrigger, setSharedRefreshTrigger] = useState(0)
+  const [gitTabResetTrigger, setGitTabResetTrigger] = useState(0)
   const [mobileTab, setMobileTab] = useState<MobileTab>('terminal')
   const [diffData, setDiffData] = useState<DiffData | null>(null)
   const focusFnRef = useRef<(() => void) | null>(null)
@@ -245,7 +246,7 @@ export default function SessionDetail() {
       {/* Panel switcher */}
       <div className="flex gap-1 p-2 bg-bg-surface border-b border-border-default">
         <button
-          onClick={() => setRightPanel('git')}
+          onClick={() => { setRightPanel('git'); setGitTabResetTrigger((n) => n + 1) }}
           className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
             rightPanel === 'git'
               ? 'bg-control-bg-hover text-text-primary'
@@ -311,6 +312,7 @@ export default function SessionDetail() {
             onRefreshDiff={fetchDiffData}
             onJumpToTodos={handleJumpToTodos}
             onFocusTerminal={handleFocusTerminal}
+            resetTrigger={gitTabResetTrigger}
           />
         )}
         {rightPanel === 'files' && (
@@ -390,7 +392,7 @@ export default function SessionDetail() {
             {mobileTabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setMobileTab(tab.id)}
+                onClick={() => { setMobileTab(tab.id); if (tab.id === 'git') setGitTabResetTrigger((n) => n + 1) }}
                 className={`shrink-0 px-4 py-1.5 rounded text-sm font-medium transition-colors ${
                   mobileTab === tab.id
                     ? 'bg-control-bg-hover text-text-primary'
@@ -422,6 +424,7 @@ export default function SessionDetail() {
                 onRefreshDiff={fetchDiffData}
                 onJumpToTodos={handleJumpToTodos}
                 onFocusTerminal={handleFocusTerminal}
+                resetTrigger={gitTabResetTrigger}
               />
             )}
             {mobileTab === 'files' && (

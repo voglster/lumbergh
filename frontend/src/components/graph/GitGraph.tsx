@@ -31,10 +31,12 @@ interface Props {
   onSelectCommit?: (hash: string | null) => void
   selectedCommit?: string | null
   refreshTrigger?: number
+  /** Bumped when the git tab is clicked — triggers auto-select of WIP or HEAD */
+  resetTrigger?: number
   onGitAction?: () => void
 }
 
-export default function GitGraph({ apiHost, sessionName, onSelectCommit, selectedCommit, refreshTrigger, onGitAction }: Props) {
+export default function GitGraph({ apiHost, sessionName, onSelectCommit, selectedCommit, refreshTrigger, resetTrigger, onGitAction }: Props) {
   const [graphData, setGraphData] = useState<GraphData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -42,6 +44,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
   const [menuCommit, setMenuCommit] = useState<{ hash: string; shortHash: string; message: string; pushed: boolean; refs: { name: string; local: boolean; remote: boolean }[] } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const didAutoSelect = useRef(false)
 
   // Fetch configured commit limit from settings
   useEffect(() => {
@@ -62,6 +65,15 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data: GraphData = await res.json()
       setGraphData(data)
+      // Auto-select on first load: WIP if uncommitted changes, else HEAD commit
+      if (!didAutoSelect.current && onSelectCommit) {
+        didAutoSelect.current = true
+        if (data.workingChanges) {
+          onSelectCommit(null)
+        } else if (data.head?.hash) {
+          onSelectCommit(data.head.hash)
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch graph')
     } finally {
@@ -76,6 +88,21 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
     const interval = setInterval(fetchGraph, 5000)
     return () => clearInterval(interval)
   }, [fetchGraph, refreshTrigger])
+
+  // Re-run auto-select when resetTrigger bumps (git tab clicked while already visible)
+  const prevResetTrigger = useRef(resetTrigger)
+  useEffect(() => {
+    if (resetTrigger !== prevResetTrigger.current) {
+      prevResetTrigger.current = resetTrigger
+      if (graphData && onSelectCommit) {
+        if (graphData.workingChanges) {
+          onSelectCommit(null)
+        } else if (graphData.head?.hash) {
+          onSelectCommit(graphData.head.hash)
+        }
+      }
+    }
+  }, [resetTrigger, graphData, onSelectCommit])
 
   // Close menu on click-outside or Escape
   useEffect(() => {
