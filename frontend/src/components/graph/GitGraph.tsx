@@ -42,8 +42,10 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
   const [error, setError] = useState<string | null>(null)
   const [commitLimit, setCommitLimit] = useState(100)
   const [menuCommit, setMenuCommit] = useState<{ hash: string; shortHash: string; message: string; pushed: boolean; refs: { name: string; local: boolean; remote: boolean }[] } | null>(null)
+  const [menuBranch, setMenuBranch] = useState<{ name: string; local: boolean; remote: boolean; commitHash: string; commitShortHash: string; x: number; y: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const branchMenuRef = useRef<HTMLDivElement>(null)
   const didAutoSelect = useRef(false)
 
   // Fetch configured commit limit from settings
@@ -124,6 +126,27 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
       document.removeEventListener('keydown', handleEscape)
     }
   }, [menuCommit])
+
+  // Close branch menu on click-outside or Escape
+  useEffect(() => {
+    if (!menuBranch) return
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (branchMenuRef.current && !branchMenuRef.current.contains(e.target as Node)) {
+        setMenuBranch(null)
+      }
+    }
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuBranch(null)
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [menuBranch])
 
   const afterAction = useCallback(() => {
     setMenuCommit(null)
@@ -252,6 +275,56 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
       alert('Checkout failed')
     }
   }, [apiHost, sessionName, menuCommit, afterAction])
+
+  const handleBranchCheckout = useCallback(async () => {
+    if (!sessionName || !menuBranch) return
+
+    if (!menuBranch.local && menuBranch.remote) {
+      const confirmed = confirm(
+        `"${menuBranch.name}" exists locally at a different commit.\n\nCheckout and reset it to ${menuBranch.commitShortHash}?`
+      )
+      if (!confirmed) return
+    }
+
+    const body: { branch: string; reset_to?: string } = { branch: menuBranch.name }
+    if (!menuBranch.local && menuBranch.remote) {
+      body.reset_to = menuBranch.commitHash
+    }
+
+    try {
+      const res = await fetch(`http://${apiHost}/api/sessions/${sessionName}/git/checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.detail || `Checkout failed (HTTP ${res.status})`)
+        return
+      }
+      setMenuBranch(null)
+      afterAction()
+    } catch {
+      alert('Checkout failed')
+    }
+  }, [apiHost, sessionName, menuBranch, afterAction])
+
+  const handleBranchPush = useCallback(async () => {
+    if (!sessionName || !menuBranch) return
+
+    try {
+      const res = await fetch(`http://${apiHost}/api/sessions/${sessionName}/git/push`, { method: 'POST' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.detail || `Push failed (HTTP ${res.status})`)
+        return
+      }
+      setMenuBranch(null)
+      afterAction()
+    } catch {
+      alert('Push failed: network error')
+    }
+  }, [apiHost, sessionName, menuBranch, afterAction])
 
   const nodes = useMemo(() => {
     if (!graphData) return []
@@ -539,13 +612,35 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
                   <div className="flex gap-1 shrink-0">
                     {node.commit.refs.map((ref) => {
                       const isCurrent = graphData?.head?.branch === ref.name
+                      const isMenuOpen = menuBranch?.name === ref.name && menuBranch?.commitHash === node.commit.hash
                       return (
-                        <span
+                        <button
                           key={ref.name}
-                          className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded font-medium leading-none ${
-                            isCurrent
-                              ? 'bg-blue-500/25 text-blue-300 ring-1 ring-blue-400/50'
-                              : 'bg-bg-surface text-text-tertiary ring-1 ring-border-default'
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (isMenuOpen) {
+                              setMenuBranch(null)
+                            } else {
+                              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                              const containerRect = containerRef.current?.getBoundingClientRect()
+                              setMenuBranch({
+                                name: ref.name,
+                                local: ref.local,
+                                remote: ref.remote,
+                                commitHash: node.commit.hash,
+                                commitShortHash: node.commit.shortHash,
+                                x: rect.left - (containerRect?.left ?? 0),
+                                y: rect.bottom - (containerRect?.top ?? 0) + (containerRef.current?.scrollTop ?? 0),
+                              })
+                              setMenuCommit(null)
+                            }
+                          }}
+                          className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded font-medium leading-none cursor-pointer transition-colors ${
+                            isMenuOpen
+                              ? 'bg-blue-500/40 text-blue-200 ring-1 ring-blue-400/70'
+                              : isCurrent
+                                ? 'bg-blue-500/25 text-blue-300 ring-1 ring-blue-400/50 hover:bg-blue-500/35'
+                                : 'bg-bg-surface text-text-tertiary ring-1 ring-border-default hover:bg-control-bg-hover hover:text-text-secondary'
                           }`}
                         >
                           {ref.name}
@@ -555,7 +650,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
                           {ref.remote && (
                             <Cloud size={12} className="ml-0.5 opacity-70" />
                           )}
-                        </span>
+                        </button>
                       )
                     })}
                   </div>
@@ -575,6 +670,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
+                    setMenuBranch(null)
                     setMenuCommit(
                       menuCommit?.hash === node.commit.hash
                         ? null
@@ -644,6 +740,39 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
                   >
                     Reset hard to here
                   </button>
+                </div>
+              )
+            })()}
+
+            {/* Branch context menu */}
+            {menuBranch && (() => {
+              const isCurrent = graphData?.head?.branch === menuBranch.name
+              const hasUnpushed = isCurrent && graphData?.commits.some((c) => c.pushed === false)
+              return (
+                <div
+                  ref={branchMenuRef}
+                  className="absolute z-50 w-52 py-1 bg-bg-surface border border-border-default rounded-lg shadow-xl"
+                  style={{ left: menuBranch.x, top: menuBranch.y + 4 }}
+                >
+                  <div className="px-3 py-1.5 text-xs text-text-muted border-b border-border-default truncate">
+                    <span className="font-mono font-medium text-text-secondary">{menuBranch.name}</span>
+                  </div>
+                  {!isCurrent && (
+                    <button
+                      onClick={handleBranchCheckout}
+                      className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
+                    >
+                      Checkout
+                    </button>
+                  )}
+                  {hasUnpushed && (
+                    <button
+                      onClick={handleBranchPush}
+                      className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
+                    >
+                      Push
+                    </button>
+                  )}
                 </div>
               )
             })()}
