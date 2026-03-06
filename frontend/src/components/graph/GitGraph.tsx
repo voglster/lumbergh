@@ -51,6 +51,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
   const [commitLimit, setCommitLimit] = useState(100)
   const [menuCommit, setMenuCommit] = useState<{ hash: string; shortHash: string; message: string; pushed: boolean; refs: { name: string; local: boolean; remote: boolean }[] } | null>(null)
   const [menuBranch, setMenuBranch] = useState<{ name: string; local: boolean; remote: boolean; commitHash: string; commitShortHash: string; x: number; y: number } | null>(null)
+  const [expandedRow, setExpandedRow] = useState<number | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const branchMenuRef = useRef<HTMLDivElement>(null)
@@ -442,9 +443,15 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
   // Compute branch label positions for left panel
   const branchEntries = useMemo(() => {
     const labels: { row: number; refs: { name: string; local: boolean; remote: boolean }[]; }[] = []
+    const currentBranch = graphData?.head?.branch
     for (let row = 0; row < nodes.length; row++) {
       if (nodes[row].commit.refs.length > 0) {
-        labels.push({ row, refs: nodes[row].commit.refs })
+        const sorted = [...nodes[row].commit.refs].sort((a, b) => {
+          if (a.name === currentBranch) return -1
+          if (b.name === currentBranch) return 1
+          return a.name.localeCompare(b.name)
+        })
+        labels.push({ row, refs: sorted })
       }
     }
     // Gap counts between labeled rows
@@ -475,7 +482,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
       }
     }
     return { labels, gaps }
-  }, [nodes, rowToY, totalRows])
+  }, [nodes, rowToY, totalRows, graphData])
 
   const renderWipSvg = () => {
     if (!hasWip) return null
@@ -669,55 +676,81 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
               className="absolute top-0 left-0 bottom-0 border-r border-border-default/50"
               style={{ width: branchPanelWidth }}
             >
-              {branchEntries.labels.map(({ row, refs }) => (
-                <div
-                  key={row}
-                  className="absolute left-0 right-0 flex flex-col justify-center gap-0.5 px-2 overflow-hidden"
-                  style={{ top: rowToY(row), height: ROW_HEIGHT }}
-                >
-                  {refs.map((ref) => {
-                    const isCurrent = ref.name === graphData?.head?.branch
-                    const isMenuOpen = menuBranch?.name === ref.name && menuBranch?.commitHash === nodes[row].commit.hash
-                    return (
-                      <button
-                        key={ref.name}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (isMenuOpen) {
-                            setMenuBranch(null)
-                          } else {
-                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                            const containerRect = containerRef.current?.getBoundingClientRect()
-                            setMenuBranch({
-                              name: ref.name,
-                              local: ref.local,
-                              remote: ref.remote,
-                              commitHash: nodes[row].commit.hash,
-                              commitShortHash: nodes[row].commit.shortHash,
-                              x: rect.left - (containerRect?.left ?? 0),
-                              y: rect.bottom - (containerRect?.top ?? 0) + (containerRef.current?.scrollTop ?? 0),
-                            })
-                            setMenuCommit(null)
-                          }
-                        }}
-                        className={`inline-flex items-center gap-1 px-2 py-1 text-base rounded font-medium leading-none cursor-pointer transition-colors max-w-full ${
-                          isMenuOpen
-                            ? 'bg-blue-500/40 text-blue-200 ring-1 ring-blue-400/70'
-                            : isCurrent
-                              ? 'bg-blue-500/25 text-blue-300 ring-1 ring-blue-400/50 hover:bg-blue-500/35'
-                              : 'bg-bg-surface text-text-tertiary ring-1 ring-border-default hover:bg-control-bg-hover hover:text-text-secondary'
-                        }`}
-                      >
-                        <span className="truncate">{ref.name}</span>
-                        <span className="ml-auto flex items-center gap-0.5 shrink-0">
-                          {ref.local && <Monitor size={12} className="opacity-70" />}
-                          {ref.remote && <Cloud size={12} className="opacity-70" />}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-              ))}
+              {branchEntries.labels.map(({ row, refs }) => {
+                const primaryRef = refs[0]
+                const extraCount = refs.length - 1
+                const isExpanded = expandedRow === row
+
+                const renderBranchBadge = (ref: { name: string; local: boolean; remote: boolean }, commitRow: number) => {
+                  const refIsCurrent = ref.name === graphData?.head?.branch
+                  const refIsMenuOpen = menuBranch?.name === ref.name && menuBranch?.commitHash === nodes[commitRow].commit.hash
+                  return (
+                    <button
+                      key={ref.name}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (refIsMenuOpen) {
+                          setMenuBranch(null)
+                        } else {
+                          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                          const containerRect = containerRef.current?.getBoundingClientRect()
+                          setMenuBranch({
+                            name: ref.name,
+                            local: ref.local,
+                            remote: ref.remote,
+                            commitHash: nodes[commitRow].commit.hash,
+                            commitShortHash: nodes[commitRow].commit.shortHash,
+                            x: rect.left - (containerRect?.left ?? 0),
+                            y: rect.bottom - (containerRect?.top ?? 0) + (containerRef.current?.scrollTop ?? 0),
+                          })
+                          setMenuCommit(null)
+                        }
+                      }}
+                      className={`inline-flex items-center gap-1 px-2 py-1 text-base rounded font-medium leading-none cursor-pointer transition-colors max-w-full ${
+                        refIsMenuOpen
+                          ? 'bg-blue-500/40 text-blue-200 ring-1 ring-blue-400/70'
+                          : refIsCurrent
+                            ? 'bg-blue-500/25 text-blue-300 ring-1 ring-blue-400/50 hover:bg-blue-500/35'
+                            : 'bg-bg-surface text-text-tertiary ring-1 ring-border-default hover:bg-control-bg-hover hover:text-text-secondary'
+                      }`}
+                    >
+                      <span className="truncate">{ref.name}</span>
+                      <span className="ml-auto flex items-center gap-0.5 shrink-0">
+                        {ref.local && <Monitor size={12} className="opacity-70" />}
+                        {ref.remote && <Cloud size={12} className="opacity-70" />}
+                      </span>
+                    </button>
+                  )
+                }
+
+                return (
+                  <div
+                    key={row}
+                    className="absolute left-0 right-0"
+                    style={{ top: rowToY(row), height: ROW_HEIGHT }}
+                  >
+                    <div className="flex flex-row items-center gap-1 px-2 h-full overflow-hidden">
+                      {renderBranchBadge(primaryRef, row)}
+                      {extraCount > 0 && (
+                        <div
+                          className="relative"
+                          onMouseEnter={() => setExpandedRow(row)}
+                          onMouseLeave={() => setExpandedRow(null)}
+                        >
+                          <span className="inline-flex items-center px-1.5 py-1 text-xs rounded font-medium leading-none bg-bg-surface text-text-muted ring-1 ring-border-default cursor-default">
+                            +{extraCount}
+                          </span>
+                          {isExpanded && (
+                            <div className="absolute top-full left-0 mt-1 z-50 flex flex-col gap-1 p-1.5 bg-bg-surface border border-border-default rounded-lg shadow-xl min-w-[160px]">
+                              {refs.slice(1).map((ref) => renderBranchBadge(ref, row))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
               {/* Detached HEAD indicator */}
               {nodes.some(n => n.isHead && n.commit.refs.length === 0) && (() => {
                 const headIdx = nodes.findIndex(n => n.isHead)
