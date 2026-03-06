@@ -52,6 +52,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
   const [menuCommit, setMenuCommit] = useState<{ hash: string; shortHash: string; message: string; pushed: boolean; refs: { name: string; local: boolean; remote: boolean }[] } | null>(null)
   const [menuBranch, setMenuBranch] = useState<{ name: string; local: boolean; remote: boolean; commitHash: string; commitShortHash: string; x: number; y: number } | null>(null)
   const [expandedRow, setExpandedRow] = useState<number | null>(null)
+  const expandedRowTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const branchMenuRef = useRef<HTMLDivElement>(null)
@@ -726,28 +727,41 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
                 return (
                   <div
                     key={row}
-                    className="absolute left-0 right-0"
+                    className={`absolute left-0 right-0 ${isExpanded ? 'z-40' : ''}`}
                     style={{ top: rowToY(row), height: ROW_HEIGHT }}
                   >
                     <div className="flex flex-row items-center gap-1 px-2 h-full overflow-hidden">
                       {renderBranchBadge(primaryRef, row)}
                       {extraCount > 0 && (
-                        <div
-                          className="relative"
-                          onMouseEnter={() => setExpandedRow(row)}
-                          onMouseLeave={() => setExpandedRow(null)}
+                        <span
+                          className="inline-flex items-center px-1.5 py-1 text-xs rounded font-medium leading-none bg-bg-surface text-text-muted ring-1 ring-border-default cursor-default shrink-0"
+                          onMouseEnter={() => {
+                            if (expandedRowTimeout.current) { clearTimeout(expandedRowTimeout.current); expandedRowTimeout.current = null }
+                            setExpandedRow(row)
+                          }}
+                          onMouseLeave={() => {
+                            expandedRowTimeout.current = setTimeout(() => setExpandedRow(null), 300)
+                          }}
                         >
-                          <span className="inline-flex items-center px-1.5 py-1 text-xs rounded font-medium leading-none bg-bg-surface text-text-muted ring-1 ring-border-default cursor-default">
-                            +{extraCount}
-                          </span>
-                          {isExpanded && (
-                            <div className="absolute top-full left-0 mt-1 z-50 flex flex-col gap-1 p-1.5 bg-bg-surface border border-border-default rounded-lg shadow-xl min-w-[160px]">
-                              {refs.slice(1).map((ref) => renderBranchBadge(ref, row))}
-                            </div>
-                          )}
-                        </div>
+                          +{extraCount}
+                        </span>
                       )}
                     </div>
+                    {isExpanded && extraCount > 0 && (
+                      <div
+                        className="absolute left-2 z-50 flex flex-col gap-1 p-1.5 bg-bg-surface border border-border-default rounded-lg shadow-xl min-w-[160px]"
+                        style={{ top: ROW_HEIGHT }}
+                        onMouseEnter={() => {
+                          if (expandedRowTimeout.current) { clearTimeout(expandedRowTimeout.current); expandedRowTimeout.current = null }
+                          setExpandedRow(row)
+                        }}
+                        onMouseLeave={() => {
+                          expandedRowTimeout.current = setTimeout(() => setExpandedRow(null), 300)
+                        }}
+                      >
+                        {refs.slice(1).map((ref) => renderBranchBadge(ref, row))}
+                      </div>
+                    )}
                   </div>
                 )
               })}
