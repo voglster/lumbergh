@@ -40,3 +40,6 @@ build/
 
 # uv
 uv.lock
+
+# Playwright
+.playwright-cli/
