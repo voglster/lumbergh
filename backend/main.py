@@ -183,8 +183,8 @@ async def list_files():
 
 
 @app.get("/api/files/{file_path:path}")
-async def get_file(file_path: str):
-    """Get contents of a specific file."""
+async def get_file(file_path: str, raw: bool = False):
+    """Get contents of a specific file. Pass ?raw=1 for raw bytes."""
     try:
         full_path = PROJECT_ROOT / file_path
 
@@ -198,6 +198,9 @@ async def get_file(file_path: str):
         if not full_path.is_file():
             raise HTTPException(status_code=400, detail="Path is not a file")
 
+        if raw:
+            return FileResponse(full_path)
+
         language = get_file_language(full_path)
         content = full_path.read_text(errors="replace")
         return {"content": content, "language": language, "path": file_path}
@@ -205,21 +208,6 @@ async def get_file(file_path: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/api/files/{file_path:path}/raw")
-async def get_file_raw(file_path: str):
-    """Serve a file's raw bytes (for images, etc.)."""
-    full_path = PROJECT_ROOT / file_path
-
-    if not validate_path_within_root(full_path, PROJECT_ROOT):
-        raise HTTPException(status_code=403, detail="Access denied")
-    if not full_path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
-    if not full_path.is_file():
-        raise HTTPException(status_code=400, detail="Path is not a file")
-
-    return FileResponse(full_path)
 
 
 @app.post("/api/session/{session_name}/send")

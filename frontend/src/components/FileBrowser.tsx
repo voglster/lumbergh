@@ -557,8 +557,9 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
             {isImagePath(selectedFile.path) ? (
               <div className="flex-1 overflow-auto flex items-center justify-center p-4 bg-[repeating-conic-gradient(#80808018_0%_25%,transparent_0%_50%)] bg-[length:20px_20px]">
                 <img
-                  src={`http://${apiHost}${sessionName ? `/api/sessions/${sessionName}/files/${encodeURIComponent(selectedFile.path)}/raw` : `/api/files/${encodeURIComponent(selectedFile.path)}/raw`}`}
+                  src={`http://${apiHost}${sessionName ? `/api/sessions/${sessionName}/files/${selectedFile.path}` : `/api/files/${selectedFile.path}`}?raw=1`}
                   alt={selectedFile.path}
+                  crossOrigin="anonymous"
                   className="max-w-full max-h-full object-contain"
                 />
               </div>

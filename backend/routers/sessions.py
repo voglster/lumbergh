@@ -1127,8 +1127,11 @@ async def session_list_files(name: str):
 
 
 @router.get("/{name}/files/{file_path:path}")
-async def session_get_file(name: str, file_path: str):
-    """Get contents of a file in the session's working directory."""
+async def session_get_file(name: str, file_path: str, raw: bool = False):
+    """Get contents of a file in the session's working directory.
+
+    Pass ?raw=1 to serve the raw file bytes (for images, etc.).
+    """
     workdir = get_session_workdir(name)
 
     try:
@@ -1143,6 +1146,9 @@ async def session_get_file(name: str, file_path: str):
         if not full_path.is_file():
             raise HTTPException(status_code=400, detail="Path is not a file")
 
+        if raw:
+            return FileResponse(full_path)
+
         language = get_file_language(full_path)
         content = full_path.read_text(errors="replace")
         return {"content": content, "language": language, "path": file_path}
@@ -1150,22 +1156,6 @@ async def session_get_file(name: str, file_path: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/{name}/files/{file_path:path}/raw")
-async def session_get_file_raw(name: str, file_path: str):
-    """Serve raw file bytes from the session's working directory."""
-    workdir = get_session_workdir(name)
-    full_path = workdir / file_path
-
-    if not validate_path_within_root(full_path, workdir):
-        raise HTTPException(status_code=403, detail="Access denied")
-    if not full_path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
-    if not full_path.is_file():
-        raise HTTPException(status_code=400, detail="Path is not a file")
-
-    return FileResponse(full_path)
 
 
 # --- Message Buffer Endpoints ---
