@@ -57,6 +57,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
   const menuRef = useRef<HTMLDivElement>(null)
   const branchMenuRef = useRef<HTMLDivElement>(null)
   const didAutoSelect = useRef(false)
+  const didAutoScroll = useRef(false)
 
   // Draggable branch panel width
   const [branchPanelWidth, setBranchPanelWidth] = useState(() => {
@@ -168,10 +169,13 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
   }, [fetchGraph, refreshTrigger])
 
   // Re-run auto-select when resetTrigger bumps (git tab clicked while already visible)
+  // (scrollToActive called in a separate effect below, after nodes/rowToY are defined)
   const prevResetTrigger = useRef(resetTrigger)
+  const resetTriggerFired = useRef(false)
   useEffect(() => {
     if (resetTrigger !== prevResetTrigger.current) {
       prevResetTrigger.current = resetTrigger
+      resetTriggerFired.current = true
       if (graphData && onSelectCommit) {
         if (graphData.workingChanges) {
           onSelectCommit(null)
@@ -440,6 +444,30 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
     const headNode = nodes.find((n) => n.isHead)
     return headNode?.lane ?? 0
   }, [nodes])
+
+  // Scroll to WIP/HEAD — on first data load and when resetTrigger fires
+  const scrollToActive = useCallback(() => {
+    if (!containerRef.current || !graphData) return
+    const headIdx = nodes.findIndex((n) => n.isHead)
+    if (headIdx === -1) return
+    const targetY = graphData.workingChanges ? headIdx * ROW_HEIGHT : rowToY(headIdx)
+    const container = containerRef.current
+    container.scrollTop = Math.max(0, targetY - container.clientHeight / 2 + ROW_HEIGHT / 2)
+  }, [graphData, nodes, rowToY])
+
+  useEffect(() => {
+    if (!didAutoScroll.current && nodes.length > 0 && graphData) {
+      didAutoScroll.current = true
+      scrollToActive()
+    }
+  }, [nodes, graphData, scrollToActive])
+
+  useEffect(() => {
+    if (resetTriggerFired.current) {
+      resetTriggerFired.current = false
+      scrollToActive()
+    }
+  }, [resetTrigger, scrollToActive])
 
   // Compute branch label positions for left panel
   const branchEntries = useMemo(() => {

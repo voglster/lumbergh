@@ -21,6 +21,20 @@ export function computeGraphLayout(
   commits: GraphCommit[],
   headHash: string | null
 ): GraphNode[] {
+  // Pre-compute the current branch hashes (first-parent chain from HEAD)
+  // so we can reserve lane 0 for them
+  const currentBranchSet = new Set<string>()
+  if (headHash) {
+    const hashToCommit = new Map(commits.map(c => [c.hash, c]))
+    let h: string | null = headHash
+    while (h) {
+      currentBranchSet.add(h)
+      const c = hashToCommit.get(h)
+      if (!c) break
+      h = c.parents[0] ?? null
+    }
+  }
+
   // activeLanes[i] = hash that lane i is expecting (the parent we're waiting for)
   const activeLanes: (string | null)[] = []
   // Map from hash to row index for connecting edges
@@ -37,10 +51,20 @@ export function computeGraphLayout(
 
     if (lane === -1) {
       // Not expected by any lane — allocate a new one
-      lane = activeLanes.indexOf(null)
-      if (lane === -1) {
-        lane = activeLanes.length
-        activeLanes.push(null)
+      // Reserve lane 0 for the current branch
+      if (currentBranchSet.has(commit.hash) && (activeLanes.length === 0 || activeLanes[0] === null)) {
+        lane = 0
+        if (activeLanes.length === 0) activeLanes.push(null)
+      } else {
+        const start = activeLanes.length > 0 && currentBranchSet.size > 0 ? 1 : 0
+        lane = -1
+        for (let i = start; i < activeLanes.length; i++) {
+          if (activeLanes[i] === null) { lane = i; break }
+        }
+        if (lane === -1) {
+          lane = activeLanes.length
+          activeLanes.push(null)
+        }
       }
     }
 
@@ -104,20 +128,9 @@ export function computeGraphLayout(
     }
   }
 
-  // Third pass: mark commits on the current branch (first-parent chain from HEAD)
-  const currentBranchHashes = new Set<string>()
-  if (headHash) {
-    let hash: string | null = headHash
-    while (hash) {
-      currentBranchHashes.add(hash)
-      const row = hashToRow.get(hash)
-      if (row === undefined) break
-      // Follow first parent
-      hash = commits[row].parents[0] ?? null
-    }
-  }
+  // Third pass: mark commits on the current branch
   for (const node of nodes) {
-    node.onCurrentBranch = currentBranchHashes.has(node.commit.hash)
+    node.onCurrentBranch = currentBranchSet.has(node.commit.hash)
   }
 
   return nodes
