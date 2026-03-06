@@ -545,11 +545,14 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
             />
           )
         } else {
-          const midY = (y1 + y2) / 2
+          // L-shaped: vertical in child's lane, rounded corner, horizontal to parent's lane
+          const maxR = 10
+          const r = Math.min(maxR, Math.abs(y2 - y1) / 2, Math.abs(x2 - x1) / 2)
+          const dx = x2 > x1 ? r : -r
           lines.push(
             <path
               key={key}
-              d={`M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`}
+              d={`M ${x1} ${y1} L ${x1} ${y2 - r} Q ${x1} ${y2} ${x1 + dx} ${y2} L ${x2} ${y2}`}
               stroke={color}
               strokeWidth={width}
               strokeOpacity={opacity}
