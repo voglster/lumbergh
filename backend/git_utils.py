@@ -281,6 +281,8 @@ def get_graph_log(cwd: Path, limit: int = 100) -> dict:
             kind = "remote"
         if name == "origin/HEAD":
             continue  # symref to default branch, not a real branch
+        if name.startswith("refs/stash"):
+            continue  # stash entries are not branches
         try:
             hexsha = ref.commit.hexsha
         except Exception:
