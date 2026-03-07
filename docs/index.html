@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lumbergh - Supervise Your AI Interns</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --accent-dim: #1f6feb;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --red: #f85149;
+    --purple: #bc8cff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  code, pre {
+    font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.9em;
+  }
+
+  code {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.15em 0.4em;
+  }
+
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+  }
+
+  pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 0.95em;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  .wide-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  /* Hero */
+  .hero {
+    text-align: center;
+    padding: 4rem 1.5rem 2rem;
+    position: relative;
+  }
+
+  .hero h1 {
+    font-size: 3.5rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin-bottom: 0.5rem;
+  }
+
+  .hero h1 span { color: var(--accent); }
+
+  .hero .tagline {
+    font-size: 1.3rem;
+    color: var(--text-muted);
+    margin-bottom: 2rem;
+    max-width: 550px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 3rem;
+  }
+
+  .hero .cta {
+    display: inline-block;
+    background: var(--accent-dim);
+    color: #fff;
+    padding: 0.75rem 2rem;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    transition: background 0.2s;
+  }
+
+  .hero .cta:hover {
+    background: var(--accent);
+    text-decoration: none;
+  }
+
+  .hero .cta-secondary {
+    display: inline-block;
+    background: transparent;
+    color: var(--text-muted);
+    padding: 0.75rem 2rem;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+  }
+
+  .hero .cta-secondary:hover {
+    color: var(--text);
+    border-color: var(--text-muted);
+    text-decoration: none;
+  }
+
+  /* Hero screenshot */
+  .hero-screenshot {
+    max-width: 900px;
+    margin: 0 auto;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+  }
+
+  .hero-screenshot img {
+    width: 100%;
+    display: block;
+  }
+
+  /* Sections */
+  section {
+    padding: 4rem 0;
+  }
+
+  section h2 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.02em;
+  }
+
+  section h2 .num {
+    color: var(--accent);
+    font-size: 0.9em;
+    margin-right: 0.3rem;
+  }
+
+  section p, section li {
+    color: var(--text-muted);
+    font-size: 1.05rem;
+  }
+
+  section p { margin-bottom: 1rem; }
+
+  /* Feature grid */
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+
+  .feature {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+  }
+
+  .feature h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    color: var(--text);
+  }
+
+  .feature p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  /* Screenshot showcase */
+  .showcase {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin: 2.5rem 0;
+    align-items: start;
+  }
+
+  .showcase-item {
+    text-align: center;
+  }
+
+  .showcase-item img {
+    width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+    transition: transform 0.3s;
+  }
+
+  .showcase-item img:hover {
+    transform: scale(1.02);
+  }
+
+  .showcase-item .caption {
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+  }
+
+  .showcase-single {
+    text-align: center;
+    margin: 2.5rem 0;
+  }
+
+  .showcase-single img {
+    max-width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+  }
+
+  .showcase-single .caption {
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+  }
+
+  /* Mobile showcase - side by side phones */
+  .showcase-mobile {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    align-items: start;
+    margin: 2.5rem 0;
+  }
+
+  .showcase-mobile .showcase-item {
+    max-width: 260px;
+  }
+
+  /* Prerequisites table */
+  .prereqs {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+  }
+
+  .prereqs th, .prereqs td {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .prereqs th {
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .prereqs td { font-size: 0.95rem; }
+  .prereqs td code { font-size: 0.85em; }
+
+  /* Steps */
+  .steps { list-style: none; counter-reset: step; }
+
+  .steps > li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 3rem;
+    margin-bottom: 2rem;
+  }
+
+  .steps > li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 2rem;
+    height: 2rem;
+    background: var(--accent-dim);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+
+  .steps > li h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text);
+  }
+
+  /* Callout */
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin: 1.5rem 0;
+  }
+
+  .callout.tip { border-left-color: var(--green); }
+  .callout.warn { border-left-color: var(--yellow); }
+
+  .callout strong {
+    display: block;
+    margin-bottom: 0.3rem;
+    color: var(--text);
+  }
+
+  .callout p { margin: 0; font-size: 0.95rem; }
+
+  /* Divider */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 1rem auto;
+    max-width: 600px;
+  }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    border-top: 1px solid var(--border);
+    margin-top: 2rem;
+  }
+
+  /* Nav */
+  nav {
+    position: sticky;
+    top: 0;
+    background: rgba(13, 17, 23, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 1.5rem;
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    font-size: 0.9rem;
+  }
+
+  nav a { color: var(--text-muted); }
+  nav a:hover { color: var(--text); text-decoration: none; }
+
+  /* Lightbox */
+  .lightbox {
+    border: none;
+    background: rgba(0, 0, 0, 0.9);
+    max-width: 100vw;
+    max-height: 100vh;
+    width: 100vw;
+    height: 100vh;
+    padding: 2rem;
+    cursor: zoom-out;
+  }
+
+  .lightbox[open] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .lightbox::backdrop {
+    background: rgba(0, 0, 0, 0.9);
+  }
+
+  .lightbox img {
+    max-width: 95vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 8px;
+  }
+
+  .lightbox .lb-caption {
+    position: absolute;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  .showcase-item img, .showcase-single img, .hero-screenshot img {
+    cursor: zoom-in;
+  }
+
+  /* Responsive */
+  @media (max-width: 700px) {
+    .hero h1 { font-size: 2.5rem; }
+    .hero .tagline { font-size: 1.1rem; }
+    section h2 { font-size: 1.4rem; }
+    .features { grid-template-columns: 1fr; }
+    .showcase { grid-template-columns: 1fr; }
+    .showcase-mobile { flex-direction: column; align-items: center; }
+    nav { gap: 1rem; font-size: 0.8rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#features">Features</a>
+  <a href="#install">Install</a>
+  <a href="#usage">Usage</a>
+  <a href="#config">Config</a>
+  <a href="#mobile">Mobile</a>
+  <a href="https://github.com/voglster/lumbergh">GitHub</a>
+</nav>
+
+<header class="hero">
+  <h1><span>Lumbergh</span></h1>
+  <p class="tagline">A self-hosted dashboard for supervising multiple Claude Code sessions. Micromanage your AI interns from any device.</p>
+  <div class="hero-buttons">
+    <a href="#install" class="cta">Get Started</a>
+    <a href="https://github.com/voglster/lumbergh" class="cta-secondary">View on GitHub</a>
+  </div>
+  <div class="hero-screenshot">
+    <img src="screenshots/dashboard.png" alt="Lumbergh dashboard showing multiple active Claude Code sessions">
+  </div>
+</header>
+
+<div class="divider"></div>
+
+<main>
+
+  <!-- FEATURES -->
+  <section id="features" class="container">
+    <h2>What You Get</h2>
+    <div class="features">
+      <div class="feature">
+        <h3>Live Terminals</h3>
+        <p>Stream and interact with real terminal sessions via xterm.js and WebSockets.</p>
+      </div>
+      <div class="feature">
+        <h3>Git Diff Viewer</h3>
+        <p>Watch diffs, commits, and branch changes in real time as the AI works.</p>
+      </div>
+      <div class="feature">
+        <h3>Git Graph</h3>
+        <p>Interactive commit graph visualization per session.</p>
+      </div>
+      <div class="feature">
+        <h3>File Browser</h3>
+        <p>Browse project files with syntax highlighting, right from the dashboard.</p>
+      </div>
+      <div class="feature">
+        <h3>Multi-Session</h3>
+        <p>Run and monitor multiple Claude Code sessions from a single dashboard.</p>
+      </div>
+      <div class="feature">
+        <h3>Todos &amp; Notes</h3>
+        <p>Per-project todo lists and scratchpads to keep your sessions organized.</p>
+      </div>
+      <div class="feature">
+        <h3>Prompt Templates</h3>
+        <p>Reusable prompts with variables. Fire them at any session with one click.</p>
+      </div>
+      <div class="feature">
+        <h3>Manager AI</h3>
+        <p>Built-in AI chat pane for reviewing and coordinating work across sessions.</p>
+      </div>
+      <div class="feature">
+        <h3>Mobile-First</h3>
+        <p>Responsive design + PWA support. Install it on your phone or tablet.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREENSHOTS -->
+  <section class="wide-container">
+    <h2 style="text-align: center;">See It In Action</h2>
+    <div class="showcase">
+      <div class="showcase-item">
+        <img src="screenshots/terminal.png" alt="Live terminal with Claude Code session and git diff panel">
+        <div class="caption">Live terminal + real-time git diff side by side</div>
+      </div>
+      <div class="showcase-item">
+        <img src="screenshots/files.png" alt="File browser with syntax-highlighted code preview">
+        <div class="caption">Browse project files with syntax highlighting</div>
+      </div>
+      <div class="showcase-item">
+        <img src="screenshots/diff.png" alt="Git diff viewer showing commits and changes">
+        <div class="caption">Track every change the AI makes</div>
+      </div>
+      <div class="showcase-item">
+        <img src="screenshots/todo.png" alt="Todo list for tracking tasks per project">
+        <div class="caption">Per-project todos to keep sessions on track</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- PREREQUISITES -->
+  <section id="install" class="container">
+    <h2><span class="num">1.</span> Prerequisites</h2>
+    <p>Lumbergh runs on Linux or macOS. You'll need a few standard tools:</p>
+
+    <table class="prereqs">
+      <thead>
+        <tr><th>Tool</th><th>How to Install</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>tmux</strong></td>
+          <td><code>sudo apt install tmux</code> or <code>brew install tmux</code></td>
+        </tr>
+        <tr>
+          <td><strong>git</strong></td>
+          <td><code>sudo apt install git</code> or <code>brew install git</code></td>
+        </tr>
+        <tr>
+          <td><strong>uv</strong></td>
+          <td><code>curl -LsSf https://astral.sh/uv/install.sh | sh</code></td>
+        </tr>
+        <tr>
+          <td><strong>Node.js</strong></td>
+          <td>Via <a href="https://github.com/nvm-sh/nvm">nvm</a>: <code>nvm install --lts</code></td>
+        </tr>
+        <tr>
+          <td><strong>Claude Code</strong></td>
+          <td><code>npm install -g @anthropic-ai/claude-code</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout tip">
+      <strong>Already have these?</strong>
+      <p>Skip to the next step. The bootstrap script will check for you and tell you what's missing.</p>
+    </div>
+  </section>
+
+  <!-- INSTALL -->
+  <section class="container">
+    <h2><span class="num">2.</span> Install &amp; Launch</h2>
+    <ol class="steps">
+      <li>
+        <h3>Clone the repo</h3>
+<pre><code>git clone https://github.com/voglster/lumbergh.git
+cd lumbergh</code></pre>
+      </li>
+      <li>
+        <h3>Run the bootstrap script</h3>
+<pre><code>./bootstrap.sh</code></pre>
+        <p>That's it. This single command will:</p>
+        <ul>
+          <li>Check that all prerequisites are installed</li>
+          <li>Install Python and Node dependencies automatically</li>
+          <li>Create a tmux session called <code>lumbergh</code> with three windows (claude, backend, frontend)</li>
+          <li>Open <code>http://localhost:5420</code> in your browser</li>
+        </ul>
+      </li>
+      <li>
+        <h3>You're in</h3>
+        <p>The dashboard opens in your browser. You'll see your Claude Code session ready to go.</p>
+      </li>
+    </ol>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- USAGE -->
+  <section id="usage" class="container">
+    <h2><span class="num">3.</span> Using Lumbergh</h2>
+
+    <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">The Dashboard</h3>
+    <p>The home page shows all your sessions as cards, split into <strong>Active</strong> and <strong>Inactive</strong> groups. Each card shows:</p>
+    <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+      <li>Session status (working, waiting for input, idle, error)</li>
+      <li>What the AI is currently doing &mdash; auto-detected from terminal activity</li>
+      <li>Number of tmux windows and whether a client is attached</li>
+      <li>Quick actions: edit, reset, or delete the session</li>
+    </ul>
+    <p>Click any card to open the session detail view.</p>
+
+    <h3 style="margin-top: 2rem; margin-bottom: 0.75rem;">Terminal Tips</h3>
+    <div class="callout warn">
+      <strong>Selecting &amp; copying text in terminals</strong>
+      <p>Since tmux captures mouse events, you need to <strong>hold Shift</strong> while clicking and dragging to select text in the browser terminal. Shift+click bypasses tmux and lets your browser handle selection normally. This applies to copy and paste too &mdash; use <strong>Shift+Right-click</strong> for the browser context menu.</p>
+    </div>
+
+    <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">Session Detail Tabs</h3>
+    <p>Each session has a left pane (terminal) and a right pane with these tabs:</p>
+    <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+      <li><strong>Git</strong> &mdash; live diff viewer showing unstaged changes, staged changes, and recent commit history. See line-by-line additions and deletions as the AI writes code.</li>
+      <li><strong>Files</strong> &mdash; browse the project file tree with syntax-highlighted previews. Select code to send as context to the terminal.</li>
+      <li><strong>Todo</strong> &mdash; per-project task list. Add tasks, check them off, drag to reorder. Great for tracking what you've asked the AI to do.</li>
+      <li><strong>Prompts</strong> &mdash; reusable prompt templates (see below).</li>
+      <li><strong>Shared</strong> &mdash; files shared across sessions for cross-project context.</li>
+    </ul>
+
+    <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">Quick Input Bar</h3>
+    <p>The input bar at the bottom of the terminal lets you type and send text to the active session. You can choose to send text only (for composing multi-line input) or send with Enter to execute immediately. Switch between tmux windows using the window selector buttons.</p>
+
+    <h3 style="margin-top: 2rem; margin-bottom: 0.75rem;">Creating Sessions</h3>
+    <p>Click <strong>"+ New Session"</strong> on the dashboard. There are two modes:</p>
+    <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+      <li><strong>Direct</strong> &mdash; point at any existing working directory. Give it a name, pick the directory using the repo finder (searches your configured repo directory), and optionally add a description.</li>
+      <li><strong>Worktree</strong> &mdash; create a git worktree from an existing repo. Pick the parent repo, choose an existing branch or create a new one, and Lumbergh sets up the worktree automatically. Great for running parallel feature branches.</li>
+    </ul>
+    <p>Lumbergh auto-generates a URL-safe session ID from the name (e.g., "Auth Feature" becomes <code>auth-feature</code>) and creates the tmux session for you.</p>
+
+    <div class="showcase-single">
+      <img src="screenshots/new-session.png" alt="Create new session modal with Direct and Worktree modes">
+      <div class="caption">Create a session by pointing at a repo or creating a git worktree</div>
+    </div>
+
+    <h3 style="margin-top: 2rem; margin-bottom: 0.75rem;">Prompt Templates</h3>
+    <p>Build a library of reusable prompts to fire at any session with one click. Templates support two scopes:</p>
+    <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+      <li><strong>Project</strong> &mdash; templates specific to one session/project.</li>
+      <li><strong>Global</strong> &mdash; available across all sessions. Promote any project template to global with one click.</li>
+    </ul>
+    <p>In edit mode you can reorder templates via drag-and-drop, move between scopes, and delete. Templates persist across restarts.</p>
+
+    <div class="callout">
+      <strong>Running without the bootstrap script</strong>
+      <p>If you prefer to manage servers yourself, run <code>./start.sh</code> (or <code>./backend/start.sh</code> and <code>./frontend/start.sh</code> separately). You won't get the bootstrap tmux session, but the dashboard works the same &mdash; just point it at your existing tmux sessions.</p>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- CONFIGURATION -->
+  <section id="config" class="container">
+    <h2><span class="num">4.</span> Configuration</h2>
+    <p>Click the gear icon in the top-right corner of the dashboard to open Settings.</p>
+
+    <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">General Settings</h3>
+    <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+      <li><strong>Repository search directory</strong> &mdash; the root path Lumbergh scans to find git repos when creating sessions (defaults to <code>~/src</code>). Set this to wherever you keep your projects.</li>
+      <li><strong>Git graph commits</strong> &mdash; how many commits to load in the graph visualization (10&ndash;1000, default 100).</li>
+    </ul>
+
+    <div class="showcase-single">
+      <img src="screenshots/settings-general.png" alt="Settings modal showing general configuration">
+      <div class="caption">General settings: repo search directory and git graph config</div>
+    </div>
+
+    <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">AI Provider Setup</h3>
+    <p>Lumbergh uses AI to auto-detect what each session is working on and to generate context-aware commit summaries. Configure an AI provider in the <strong>AI tab</strong> of Settings. Supported providers:</p>
+    <table class="prereqs">
+      <thead>
+        <tr><th>Provider</th><th>What You Need</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Ollama</strong> (local)</td>
+          <td>Base URL (default <code>http://localhost:11434</code>). Models auto-discovered.</td>
+        </tr>
+        <tr>
+          <td><strong>OpenAI</strong></td>
+          <td>API key. Models: gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-3.5-turbo.</td>
+        </tr>
+        <tr>
+          <td><strong>Anthropic</strong></td>
+          <td>API key. Models: Claude Sonnet, Opus, Haiku.</td>
+        </tr>
+        <tr>
+          <td><strong>Google AI</strong></td>
+          <td>API key. Models: Gemini Flash, Gemini Flash Lite.</td>
+        </tr>
+        <tr>
+          <td><strong>OpenAI Compatible</strong></td>
+          <td>Base URL + optional API key. Use with any OpenAI-compatible endpoint.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="showcase-single">
+      <img src="screenshots/settings-ai.png" alt="AI provider settings with model selection">
+      <div class="caption">Pick your AI provider and model &mdash; supports Ollama, OpenAI, Anthropic, Google AI, and any OpenAI-compatible endpoint</div>
+    </div>
+
+    <div class="callout tip">
+      <strong>Recommendation: use a fast, cheap model</strong>
+      <p>AI is used for short summaries and status detection, not complex reasoning. A small local Ollama model or gpt-4o-mini works great and keeps costs near zero.</p>
+    </div>
+
+    <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">What the AI does</h3>
+    <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+      <li><strong>Session status</strong> &mdash; reads terminal output to detect if the AI is working, waiting for input, idle, or in an error state. This powers the status indicators on dashboard cards.</li>
+      <li><strong>Activity summaries</strong> &mdash; generates a short description of what each session is currently doing (e.g., "Fixing actor sync", "Hiding view buttons").</li>
+      <li><strong>Commit context</strong> &mdash; summarizes recent commits using conventional commit format for the diff viewer.</li>
+    </ul>
+
+    <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">Dark Mode / Light Mode</h3>
+    <p>Toggle between dark and light themes using the sun/moon icon in the top-right corner of the dashboard. Your preference is saved to local storage and persists across sessions. Theme applies to everything including syntax highlighting, diff colors, and the git graph.</p>
+
+    <div class="showcase-single">
+      <img src="screenshots/light-mode.png" alt="Lumbergh dashboard in light mode">
+      <div class="caption">Light mode &mdash; easy on the eyes for daytime use</div>
+    </div>
+
+    <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">Data Storage</h3>
+    <p>All data lives in <code>~/.config/lumbergh/</code>:</p>
+    <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+      <li><code>sessions.json</code> &mdash; session registry (names, workdirs, descriptions)</li>
+      <li><code>session_data/&lt;name&gt;.json</code> &mdash; per-session data (todos, scratchpad)</li>
+      <li><code>settings.json</code> &mdash; AI provider config, repo search path</li>
+      <li><code>global.json</code> &mdash; global prompt templates</li>
+      <li><code>shared/</code> &mdash; shared files accessible from all sessions</li>
+    </ul>
+    <p>No database server needed &mdash; it's all flat JSON files via TinyDB.</p>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- MOBILE -->
+  <section id="mobile" class="container">
+    <h2><span class="num">5.</span> Use From Your Phone</h2>
+    <p>Lumbergh is designed to be used from a phone or tablet. The UI is fully responsive and supports installation as a PWA (Progressive Web App).</p>
+
+    <div class="showcase-mobile">
+      <div class="showcase-item">
+        <img src="screenshots/mobile-dashboard.png" alt="Lumbergh mobile dashboard view">
+        <div class="caption">Dashboard on mobile</div>
+      </div>
+      <div class="showcase-item">
+        <img src="screenshots/mobile-session.png" alt="Lumbergh mobile session detail with terminal">
+        <div class="caption">Session detail with live terminal</div>
+      </div>
+    </div>
+
+    <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">Secure Remote Access with Tailscale</h3>
+    <p>The recommended way to access Lumbergh from your phone is via <a href="https://tailscale.com/">Tailscale</a>, which gives you a private, encrypted connection without exposing ports to the internet.</p>
+
+    <ol class="steps">
+      <li>
+        <h3>Install Tailscale</h3>
+        <p>Install on both your server and your phone/tablet. It's free for personal use.</p>
+      </li>
+      <li>
+        <h3>Connect and browse</h3>
+        <p>Open <code>http://&lt;your-tailscale-ip&gt;:5420</code> on your phone. That's it.</p>
+      </li>
+      <li>
+        <h3>Install as PWA (optional)</h3>
+        <p>In your mobile browser, tap "Add to Home Screen" for an app-like experience with no browser chrome.</p>
+      </li>
+    </ol>
+
+    <div class="callout warn">
+      <strong>No authentication built in</strong>
+      <p>Lumbergh has no login system &mdash; it trusts your network. Don't expose it directly to the public internet. Use Tailscale or an SSH tunnel for remote access.</p>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- TROUBLESHOOTING -->
+  <section id="troubleshooting" class="container">
+    <h2>Troubleshooting</h2>
+
+    <h3 style="margin-top: 1rem; margin-bottom: 0.5rem;">Terminal not connecting?</h3>
+    <p>Make sure tmux mouse mode is on: <code>tmux set -g mouse on</code>. The bootstrap script does this automatically, but if you started manually you may need to set it.</p>
+
+    <h3 style="margin-top: 1rem; margin-bottom: 0.5rem;">Port already in use?</h3>
+    <p>Backend runs on <code>:8420</code>, frontend on <code>:5420</code>. If something else is using those ports, kill the conflicting process or modify the port in the respective <code>start.sh</code> scripts.</p>
+
+    <h3 style="margin-top: 1rem; margin-bottom: 0.5rem;">Dependencies not installing?</h3>
+    <p>Run <code>./bootstrap.sh</code> again &mdash; it will tell you exactly what's missing. For Node issues, make sure <code>nvm</code> is loaded in your shell (<code>source ~/.nvm/nvm.sh</code>).</p>
+  </section>
+
+</main>
+
+<footer>
+  <p>Lumbergh is MIT licensed and built with FastAPI, React, xterm.js, and too much coffee.</p>
+  <p style="margin-top: 0.5rem;"><a href="https://github.com/voglster/lumbergh">Source on GitHub</a></p>
+</footer>
+
+<dialog class="lightbox" id="lightbox">
+  <img id="lb-img" src="" alt="">
+  <div class="lb-caption" id="lb-caption"></div>
+</dialog>
+
+<script>
+const dlg = document.getElementById('lightbox');
+
+document.querySelectorAll('.showcase-item img, .showcase-single img, .hero-screenshot img').forEach(img => {
+  img.addEventListener('click', () => {
+    document.getElementById('lb-img').src = img.src;
+    document.getElementById('lb-caption').textContent =
+      img.closest('.showcase-item')?.querySelector('.caption')?.textContent || '';
+    dlg.showModal();
+  });
+});
+
+dlg.addEventListener('click', () => dlg.close());
+</script>
+
+</body>
+</html>

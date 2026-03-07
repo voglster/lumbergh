@@ -1,5 +1,5 @@
 #!/bin/bash
-# Bootstrap lumbergh: tmux session 0 with claude, backend, and frontend
+# Bootstrap lumbergh: tmux session lumbergh with claude, backend, and frontend
 # Then open the browser and exit.
 
 cd "$(dirname "$0")"
@@ -37,28 +37,35 @@ if [ "$has_missing" = true ]; then
     exit 1
 fi
 
-if tmux has-session -t 0 2>/dev/null; then
-    echo "Session '0' already exists. Attach with: tmux at -t 0"
+if tmux has-session -t lumbergh 2>/dev/null; then
+    echo "Session 'lumbergh' already exists. Attach with: tmux at -t lumbergh"
     exit 1
 fi
 
 # Window 0: claude
-tmux new-session -d -s 0 -n claude
-tmux send-keys -t 0:claude "claude --continue 2>/dev/null || claude" Enter
+tmux new-session -d -s lumbergh -n claude
+tmux send-keys -t lumbergh:claude "claude --continue 2>/dev/null || claude" Enter
 
 # Window 1: backend
-tmux new-window -t 0: -n backend
-tmux send-keys -t 0:backend "cd $(pwd)/backend && ./start.sh" Enter
+tmux new-window -t lumbergh: -n backend
+tmux send-keys -t lumbergh:backend "cd $(pwd)/backend && ./start.sh" Enter
 
 # Window 2: frontend
-tmux new-window -t 0: -n frontend
-tmux send-keys -t 0:frontend "cd $(pwd)/frontend && ./start.sh" Enter
+tmux new-window -t lumbergh: -n frontend
+tmux send-keys -t lumbergh:frontend "cd $(pwd)/frontend && ./start.sh" Enter
+
+# Ensure tmux mouse mode is on (required for xterm.js terminal interaction)
+if [ "$(tmux show-option -gv mouse 2>/dev/null)" != "on" ]; then
+    tmux set -g mouse on
+    echo "Enabled tmux mouse mode (needed for browser terminals)"
+    echo "Tip: install a full tmux config from the Lumbergh dashboard for persistence"
+fi
 
 # Select the claude window
-tmux select-window -t 0:claude
+tmux select-window -t lumbergh:claude
 
 # Give the frontend a moment to start, then open browser
 sleep 2
 xdg-open http://localhost:5420 2>/dev/null || open http://localhost:5420 2>/dev/null
 
-echo "Lumbergh bootstrapped in tmux session '0'"
+echo "Lumbergh bootstrapped in tmux session 'lumbergh'"

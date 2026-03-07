@@ -57,6 +57,15 @@ If you prefer to run the servers directly (e.g., in separate terminals):
 ./frontend/start.sh     # Frontend on :5420
 ```
 
+### Remote access (phone/tablet)
+
+Lumbergh binds to `0.0.0.0` so it's accessible from other devices on your network. For secure remote access (especially from mobile), we recommend [Tailscale](https://tailscale.com/):
+
+1. Install Tailscale on your server and your phone/tablet
+2. Access Lumbergh at `http://<tailscale-ip>:5420`
+
+This gives you a private, encrypted connection without exposing ports to the internet.
+
 ## Tech Stack
 
 - **Backend:** Python 3.11+, FastAPI, libtmux, TinyDB
