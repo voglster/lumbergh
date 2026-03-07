@@ -564,7 +564,11 @@ def get_session_workdir(name: str) -> Path:
             text=True,
         )
         if result.returncode == 0 and result.stdout.strip():
-            return Path(result.stdout.strip())
+            path = Path(result.stdout.strip())
+            # Persist so future calls skip the tmux subprocess
+            Session = Query()
+            sessions_table.upsert({"name": name, "workdir": str(path)}, Session.name == name)
+            return path
     except Exception:
         pass
 
