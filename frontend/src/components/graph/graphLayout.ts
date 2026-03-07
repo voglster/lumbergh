@@ -52,9 +52,33 @@ export function computeGraphLayout(
     if (lane === -1) {
       // Not expected by any lane — allocate a new one
       // Reserve lane 0 for the current branch
-      if (currentBranchSet.has(commit.hash) && (activeLanes.length === 0 || activeLanes[0] === null)) {
-        lane = 0
-        if (activeLanes.length === 0) activeLanes.push(null)
+      if (currentBranchSet.has(commit.hash)) {
+        if (activeLanes.length === 0) {
+          activeLanes.push(null)
+          lane = 0
+        } else if (activeLanes[0] === null) {
+          lane = 0
+        } else {
+          // Lane 0 is occupied by another branch — evict it
+          const displaced = activeLanes[0]
+          // Find a free lane for the displaced hash
+          let newLane = -1
+          for (let i = 1; i < activeLanes.length; i++) {
+            if (activeLanes[i] === null) { newLane = i; break }
+          }
+          if (newLane === -1) {
+            newLane = activeLanes.length
+            activeLanes.push(null)
+          }
+          activeLanes[newLane] = displaced
+          // Move all previously placed non-current-branch nodes from lane 0
+          for (let prev = 0; prev < row; prev++) {
+            if (nodes[prev].lane === 0 && !currentBranchSet.has(nodes[prev].commit.hash)) {
+              nodes[prev].lane = newLane
+            }
+          }
+          lane = 0
+        }
       } else {
         const start = activeLanes.length > 0 && currentBranchSet.size > 0 ? 1 : 0
         lane = -1
