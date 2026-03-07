@@ -67,32 +67,47 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
   })
   const isDraggingPanel = useRef(false)
 
-  const handlePanelDragStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
+  const startPanelDrag = useCallback((startX: number) => {
     isDraggingPanel.current = true
-    const startX = e.clientX
     const startWidth = branchPanelWidth
-    const containerLeft = containerRef.current?.getBoundingClientRect().left ?? 0
 
-    const onMove = (ev: MouseEvent) => {
+    const onMouseMove = (ev: MouseEvent) => {
       if (!isDraggingPanel.current) return
       const newWidth = Math.max(MIN_BRANCH_PANEL_WIDTH, Math.min(MAX_BRANCH_PANEL_WIDTH, startWidth + (ev.clientX - startX)))
       setBranchPanelWidth(newWidth)
     }
-    const onUp = () => {
+    const onTouchMove = (ev: TouchEvent) => {
+      if (!isDraggingPanel.current) return
+      const newWidth = Math.max(MIN_BRANCH_PANEL_WIDTH, Math.min(MAX_BRANCH_PANEL_WIDTH, startWidth + (ev.touches[0].clientX - startX)))
+      setBranchPanelWidth(newWidth)
+    }
+    const onEnd = () => {
       isDraggingPanel.current = false
-      document.removeEventListener('mousemove', onMove)
-      document.removeEventListener('mouseup', onUp)
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onEnd)
+      document.removeEventListener('touchmove', onTouchMove)
+      document.removeEventListener('touchend', onEnd)
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
-      // Persist
       setBranchPanelWidth((w) => { localStorage.setItem(BRANCH_PANEL_STORAGE_KEY, String(w)); return w })
     }
     document.body.style.cursor = 'col-resize'
     document.body.style.userSelect = 'none'
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseup', onUp)
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onEnd)
+    document.addEventListener('touchmove', onTouchMove)
+    document.addEventListener('touchend', onEnd)
   }, [branchPanelWidth])
+
+  const handlePanelDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    startPanelDrag(e.clientX)
+  }, [startPanelDrag])
+
+  const handlePanelTouchStart = useCallback((e: React.TouchEvent) => {
+    e.preventDefault()
+    startPanelDrag(e.touches[0].clientX)
+  }, [startPanelDrag])
 
   // Draggable graph panel width
   const [graphPanelWidth, setGraphPanelWidth] = useState(() => {
@@ -101,30 +116,47 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
   })
   const isDraggingGraph = useRef(false)
 
-  const handleGraphDragStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
+  const startGraphDrag = useCallback((startX: number) => {
     isDraggingGraph.current = true
-    const startX = e.clientX
     const startWidth = graphPanelWidth
 
-    const onMove = (ev: MouseEvent) => {
+    const onMouseMove = (ev: MouseEvent) => {
       if (!isDraggingGraph.current) return
       const newWidth = Math.max(MIN_GRAPH_PANEL_WIDTH, Math.min(MAX_GRAPH_PANEL_WIDTH, startWidth + (ev.clientX - startX)))
       setGraphPanelWidth(newWidth)
     }
-    const onUp = () => {
+    const onTouchMove = (ev: TouchEvent) => {
+      if (!isDraggingGraph.current) return
+      const newWidth = Math.max(MIN_GRAPH_PANEL_WIDTH, Math.min(MAX_GRAPH_PANEL_WIDTH, startWidth + (ev.touches[0].clientX - startX)))
+      setGraphPanelWidth(newWidth)
+    }
+    const onEnd = () => {
       isDraggingGraph.current = false
-      document.removeEventListener('mousemove', onMove)
-      document.removeEventListener('mouseup', onUp)
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onEnd)
+      document.removeEventListener('touchmove', onTouchMove)
+      document.removeEventListener('touchend', onEnd)
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
       setGraphPanelWidth((w) => { localStorage.setItem(GRAPH_PANEL_STORAGE_KEY, String(w)); return w })
     }
     document.body.style.cursor = 'col-resize'
     document.body.style.userSelect = 'none'
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseup', onUp)
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onEnd)
+    document.addEventListener('touchmove', onTouchMove)
+    document.addEventListener('touchend', onEnd)
   }, [graphPanelWidth])
+
+  const handleGraphDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    startGraphDrag(e.clientX)
+  }, [startGraphDrag])
+
+  const handleGraphTouchStart = useCallback((e: React.TouchEvent) => {
+    e.preventDefault()
+    startGraphDrag(e.touches[0].clientX)
+  }, [startGraphDrag])
 
   // Fetch configured commit limit from settings
   useEffect(() => {
@@ -843,8 +875,9 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
             {/* Drag handle for branch panel resize */}
             <div
               onMouseDown={handlePanelDragStart}
-              className="absolute top-0 bottom-0 z-10 w-1 cursor-col-resize hover:bg-blue-500/40 active:bg-blue-500/60 transition-colors"
-              style={{ left: branchPanelWidth - 2 }}
+              onTouchStart={handlePanelTouchStart}
+              className="absolute top-0 bottom-0 z-10 w-3 cursor-col-resize hover:bg-blue-500/40 active:bg-blue-500/60 transition-colors touch-none"
+              style={{ left: branchPanelWidth - 6 }}
             />
 
             {/* Graph area (clipped to graphPanelWidth) */}
@@ -866,8 +899,9 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
             {/* Drag handle for graph panel resize */}
             <div
               onMouseDown={handleGraphDragStart}
-              className="absolute top-0 bottom-0 z-10 w-1 cursor-col-resize hover:bg-blue-500/40 active:bg-blue-500/60 transition-colors"
-              style={{ left: branchPanelWidth + graphPanelWidth + 2 }}
+              onTouchStart={handleGraphTouchStart}
+              className="absolute top-0 bottom-0 z-10 w-3 cursor-col-resize hover:bg-blue-500/40 active:bg-blue-500/60 transition-colors touch-none"
+              style={{ left: branchPanelWidth + graphPanelWidth - 2 }}
             />
 
             {/* WIP row */}
