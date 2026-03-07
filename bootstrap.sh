@@ -14,11 +14,11 @@ tmux new-session -d -s 0 -n claude
 tmux send-keys -t 0:claude "claude --continue" Enter
 
 # Window 1: backend
-tmux new-window -t 0 -n backend
+tmux new-window -t 0: -n backend
 tmux send-keys -t 0:backend "cd $(pwd)/backend && ./start.sh" Enter
 
 # Window 2: frontend
-tmux new-window -t 0 -n frontend
+tmux new-window -t 0: -n frontend
 tmux send-keys -t 0:frontend "cd $(pwd)/frontend && ./start.sh" Enter
 
 # Select the claude window
