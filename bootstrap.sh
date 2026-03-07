@@ -44,7 +44,7 @@ fi
 
 # Window 0: claude
 tmux new-session -d -s 0 -n claude
-tmux send-keys -t 0:claude "claude --continue" Enter
+tmux send-keys -t 0:claude "claude --continue 2>/dev/null || claude" Enter
 
 # Window 1: backend
 tmux new-window -t 0: -n backend

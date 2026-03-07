@@ -19,22 +19,42 @@ Think "micromanager for your AI interns."
 - **Mobile-friendly** — responsive design for phones and tablets
 - **PWA support** — installable as a progressive web app
 
+## Prerequisites
+
+You'll need these tools installed:
+
+| Tool | Install |
+|------|---------|
+| **tmux** | `sudo apt install tmux` or `brew install tmux` |
+| **git** | `sudo apt install git` or `brew install git` |
+| **uv** | `curl -LsSf https://astral.sh/uv/install.sh \| sh` ([docs](https://docs.astral.sh/uv/)) |
+| **npm** | Install via [nvm](https://github.com/nvm-sh/nvm): `nvm install --lts` |
+
 ## Quick Start
 
-```bash
-# Install frontend dependencies (first time only)
-cd frontend && npm install && cd ..
+The easiest way to get running — one command that checks dependencies, installs everything, and launches the app in tmux:
 
-# Start both backend and frontend
-./start.sh
+```bash
+./bootstrap.sh
 ```
 
-Backend runs on `:8000`, frontend on `:5173`.
+This creates a tmux session with three windows:
+1. **claude** — a Claude Code session (`claude --continue`)
+2. **backend** — the FastAPI server (auto-installs Python deps via uv)
+3. **frontend** — the Vite dev server (auto-installs npm deps)
 
-Or run separately:
+Then opens `http://localhost:5420` in your browser.
+
+### Running without tmux
+
+If you prefer to run the servers directly (e.g., in separate terminals):
+
 ```bash
-./backend/start.sh   # Backend on :8000
-./frontend/start.sh  # Frontend on :5173
+./start.sh              # Both in one process (Ctrl+C to stop)
+
+# Or separately:
+./backend/start.sh      # Backend on :8420
+./frontend/start.sh     # Frontend on :5420
 ```
 
 ## Tech Stack
