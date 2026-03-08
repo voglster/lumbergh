@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef, memo } from 'react'
 import '@git-diff-view/react/styles/diff-view.css'
 import { RefreshCw, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, ArrowDownUp, X } from 'lucide-react'
+import { getApiBase } from '../config'
 import { FileList, FileDiff, BranchSelector } from './diff'
 import type { DiffData, CommitDiff } from './diff'
 
 interface Props {
-  apiHost: string
   sessionName?: string
   diffData?: DiffData | null
   onRefreshDiff?: () => void
@@ -32,7 +32,6 @@ type ViewState =
   | { level: 'file'; commit: string | null; file: string }
 
 const DiffViewer = memo(function DiffViewer({
-  apiHost,
   sessionName,
   diffData: externalDiffData,
   onRefreshDiff,
@@ -46,8 +45,8 @@ const DiffViewer = memo(function DiffViewer({
   const expandedScrollRef = useRef<HTMLDivElement>(null)
   // Build base URL for git endpoints
   const gitBaseUrl = sessionName
-    ? `http://${apiHost}/api/sessions/${sessionName}/git`
-    : `http://${apiHost}/api/git`
+    ? `${getApiBase()}/sessions/${sessionName}/git`
+    : `${getApiBase()}/git`
   // Working changes data - use external data if provided, otherwise fetch internally
   const [internalWorkingData, setInternalWorkingData] = useState<DiffData | null>(null)
   const workingData = externalDiffData !== undefined ? externalDiffData : internalWorkingData
@@ -349,7 +348,7 @@ const DiffViewer = memo(function DiffViewer({
     async (text: string, sendEnter: boolean) => {
       if (!sessionName) return
       try {
-        await fetch(`http://${apiHost}/api/session/${sessionName}/send`, {
+        await fetch(`${getApiBase()}/session/${sessionName}/send`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text, send_enter: sendEnter }),
@@ -359,7 +358,7 @@ const DiffViewer = memo(function DiffViewer({
         console.error('Failed to send to terminal:', err)
       }
     },
-    [apiHost, sessionName, onFocusTerminal]
+    [sessionName, onFocusTerminal]
   )
 
   // Helper: file navigation for expanded mode
@@ -581,7 +580,6 @@ const DiffViewer = memo(function DiffViewer({
           <FileDiff
             file={file}
             onBack={handleBackToChanges}
-            apiHost={apiHost}
             sessionName={sessionName}
             onFocusTerminal={onFocusTerminal}
             onCloseExpanded={expanded ? () => setExpanded(false) : undefined}
@@ -598,7 +596,6 @@ const DiffViewer = memo(function DiffViewer({
     return (
       <FileList
         data={data}
-        apiHost={apiHost}
         sessionName={sessionName}
         onSelectFile={handleSelectFile}
         onRefresh={handleRefresh}

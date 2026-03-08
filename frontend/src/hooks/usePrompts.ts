@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { getApiBase } from '../config'
 import type { PromptTemplate } from '../utils/promptResolver'
 
 interface UsePromptsResult {
@@ -10,7 +11,7 @@ interface UsePromptsResult {
   refetch: () => void
 }
 
-export function usePrompts(apiHost: string, sessionName: string | null): UsePromptsResult {
+export function usePrompts(sessionName: string | null): UsePromptsResult {
   const [projectPrompts, setProjectPrompts] = useState<PromptTemplate[]>([])
   const [globalPrompts, setGlobalPrompts] = useState<PromptTemplate[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -27,8 +28,8 @@ export function usePrompts(apiHost: string, sessionName: string | null): UseProm
 
     try {
       const [projectRes, globalRes] = await Promise.all([
-        fetch(`http://${apiHost}/api/sessions/${sessionName}/prompts`),
-        fetch(`http://${apiHost}/api/global/prompts`),
+        fetch(`${getApiBase()}/sessions/${sessionName}/prompts`),
+        fetch(`${getApiBase()}/global/prompts`),
       ])
 
       if (!projectRes.ok || !globalRes.ok) {
@@ -57,7 +58,7 @@ export function usePrompts(apiHost: string, sessionName: string | null): UseProm
     } finally {
       setIsLoading(false)
     }
-  }, [apiHost, sessionName])
+  }, [sessionName])
 
   useEffect(() => {
     fetchPrompts()

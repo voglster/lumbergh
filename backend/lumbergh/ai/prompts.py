@@ -8,7 +8,7 @@ Stores and retrieves AI system prompts with support for:
 
 from pathlib import Path
 
-from db_utils import (
+from lumbergh.db_utils import (
     get_global_db,
     get_project_db,
     get_single_document_items,

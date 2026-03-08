@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 @pytest.fixture
 def client():
     """Create a test client for the FastAPI app."""
-    from main import app
+    from lumbergh.main import app
 
     return TestClient(app)
 
@@ -77,5 +77,9 @@ class TestFilesEndpoints:
     def test_get_file_path_traversal(self, client):
         """Test that path traversal is blocked."""
         response = client.get("/api/files/../../../etc/passwd")
-        # Either 403 (blocked) or 404 (not found after normalization) is acceptable
-        assert response.status_code in (403, 404)
+        # 403 (blocked), 404 (not found), or 200 (SPA catch-all returns index.html
+        # when test client normalizes ../  before sending the request)
+        assert response.status_code in (200, 403, 404)
+        # If 200, it must be the SPA index.html, not actual file contents
+        if response.status_code == 200:
+            assert "root:" not in response.text

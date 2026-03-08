@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { X } from 'lucide-react'
+import { getApiBase } from '../config'
 
 interface Props {
-  apiHost: string
   onClose: () => void
 }
 
@@ -130,7 +130,7 @@ const PROVIDERS: ProviderDef[] = [
   },
 ]
 
-export default function SettingsModal({ apiHost, onClose }: Props) {
+export default function SettingsModal({ onClose }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>('general')
   const [repoSearchDir, setRepoSearchDir] = useState('')
   const [gitGraphCommits, setGitGraphCommits] = useState('100')
@@ -155,7 +155,7 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const res = await fetch(`http://${apiHost}/api/settings`)
+        const res = await fetch(`${getApiBase()}/settings`)
         if (!res.ok) throw new Error('Failed to fetch settings')
         const data: Settings = await res.json()
         setRepoSearchDir(data.repoSearchDir || '')
@@ -182,12 +182,12 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
       }
     }
     fetchSettings()
-  }, [apiHost])
+  }, [])
 
   const fetchOllamaModels = useCallback(async () => {
     setIsLoadingModels(true)
     try {
-      const res = await fetch(`http://${apiHost}/api/ai/ollama/models`)
+      const res = await fetch(`${getApiBase()}/ai/ollama/models`)
       if (res.ok) {
         const models = await res.json()
         setOllamaModels(models)
@@ -197,7 +197,7 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
     } finally {
       setIsLoadingModels(false)
     }
-  }, [apiHost])
+  }, [])
 
   useEffect(() => {
     if (activeTab === 'ai') {
@@ -229,7 +229,7 @@ export default function SettingsModal({ apiHost, onClose }: Props) {
         providers: providerConfigs,
       }
 
-      const res = await fetch(`http://${apiHost}/api/settings`, {
+      const res = await fetch(`${getApiBase()}/settings`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

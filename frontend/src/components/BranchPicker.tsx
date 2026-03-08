@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getApiBase } from '../config'
 
 interface Branch {
   name: string
@@ -8,7 +9,6 @@ interface Branch {
 }
 
 interface Props {
-  apiHost: string
   repoPath: string
   value: string
   onChange: (branch: string) => void
@@ -18,7 +18,6 @@ interface Props {
 }
 
 export default function BranchPicker({
-  apiHost,
   repoPath,
   value,
   onChange,
@@ -42,7 +41,7 @@ export default function BranchPicker({
       setError(null)
       try {
         const res = await fetch(
-          `http://${apiHost}/api/sessions/branches?repo_path=${encodeURIComponent(repoPath)}`
+          `${getApiBase()}/sessions/branches?repo_path=${encodeURIComponent(repoPath)}`
         )
         if (!res.ok) {
           const data = await res.json()
@@ -59,7 +58,7 @@ export default function BranchPicker({
     }
 
     fetchBranches()
-  }, [apiHost, repoPath])
+  }, [repoPath])
 
   const availableBranches = branches.filter((b) => b.available)
   const unavailableBranches = branches.filter((b) => !b.available)

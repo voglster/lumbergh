@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Play, SendHorizonal, FileText, Bookmark, Check, Trash2, Copy, X, Trash } from 'lucide-react'
+import { getApiBase } from '../config'
 import MarkdownViewer from './MarkdownViewer'
 
 interface SharedFile {
@@ -9,7 +10,6 @@ interface SharedFile {
 }
 
 interface Props {
-  apiHost: string
   sessionName?: string
   onFocusTerminal?: () => void
   refreshTrigger?: number // Increment to trigger refresh
@@ -49,7 +49,6 @@ function groupFilesByTime(files: SharedFile[]): { group: TimeGroup; files: Share
 }
 
 export default function SharedFiles({
-  apiHost,
   sessionName,
   onFocusTerminal,
   refreshTrigger,
@@ -69,7 +68,7 @@ export default function SharedFiles({
 
   const fetchFiles = useCallback(async () => {
     try {
-      const res = await fetch(`http://${apiHost}/api/shared/files`)
+      const res = await fetch(`${getApiBase()}/shared/files`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       setFiles((data.files || []).sort((a: SharedFile, b: SharedFile) => b.modified - a.modified))
@@ -79,7 +78,7 @@ export default function SharedFiles({
     } finally {
       setLoading(false)
     }
-  }, [apiHost])
+  }, [])
 
   // Initial load and polling
   useEffect(() => {
@@ -101,7 +100,7 @@ export default function SharedFiles({
       const formData = new FormData()
       formData.append('file', file)
 
-      const res = await fetch(`http://${apiHost}/api/shared/upload`, {
+      const res = await fetch(`${getApiBase()}/shared/upload`, {
         method: 'POST',
         body: formData,
       })
@@ -120,7 +119,7 @@ export default function SharedFiles({
 
   const clearAll = async () => {
     try {
-      const res = await fetch(`http://${apiHost}/api/shared/files`, { method: 'DELETE' })
+      const res = await fetch(`${getApiBase()}/shared/files`, { method: 'DELETE' })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       await fetchFiles()
     } catch (e) {
@@ -130,7 +129,7 @@ export default function SharedFiles({
 
   const deleteFile = async (filename: string) => {
     try {
-      const res = await fetch(`http://${apiHost}/api/shared/files/${encodeURIComponent(filename)}`, {
+      const res = await fetch(`${getApiBase()}/shared/files/${encodeURIComponent(filename)}`, {
         method: 'DELETE',
       })
       if (!res.ok) throw new Error(`Delete failed: ${res.status}`)
@@ -145,7 +144,7 @@ export default function SharedFiles({
 
     const path = `${SHARED_DIR}/${filename}`
     try {
-      const res = await fetch(`http://${apiHost}/api/session/${sessionName}/send`, {
+      const res = await fetch(`${getApiBase()}/session/${sessionName}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: path, send_enter: sendEnter }),
@@ -206,7 +205,7 @@ export default function SharedFiles({
   const openPreview = async (file: SharedFile) => {
     if (isMarkdown(file.name) || isTextFile(file.name)) {
       try {
-        const res = await fetch(`http://${apiHost}/api/shared/files/${encodeURIComponent(file.name)}`)
+        const res = await fetch(`${getApiBase()}/shared/files/${encodeURIComponent(file.name)}`)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json()
         setPreviewContent(data.content)
@@ -233,12 +232,12 @@ export default function SharedFiles({
 
     try {
       // Fetch file content for AI name generation
-      const res = await fetch(`http://${apiHost}/api/shared/files/${encodeURIComponent(filename)}`)
+      const res = await fetch(`${getApiBase()}/shared/files/${encodeURIComponent(filename)}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
 
       // Ask AI to generate a name
-      const nameRes = await fetch(`http://${apiHost}/api/ai/generate/prompt-name`, {
+      const nameRes = await fetch(`${getApiBase()}/ai/generate/prompt-name`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: data.content }),
@@ -261,7 +260,7 @@ export default function SharedFiles({
 
     try {
       const res = await fetch(
-        `http://${apiHost}/api/shared/files/${encodeURIComponent(savingPrompt)}/save-as-prompt`,
+        `${getApiBase()}/shared/files/${encodeURIComponent(savingPrompt)}/save-as-prompt`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -384,7 +383,7 @@ export default function SharedFiles({
                 <div className="w-10 h-10 flex-shrink-0 rounded overflow-hidden bg-control-bg flex items-center justify-center">
                   {isImage(file.name) ? (
                     <img
-                      src={`http://${apiHost}/api/shared/files/${encodeURIComponent(file.name)}/content`}
+                      src={`${getApiBase()}/shared/files/${encodeURIComponent(file.name)}/content`}
                       alt={file.name}
                       className="w-full h-full object-cover"
                     />
@@ -424,10 +423,10 @@ export default function SharedFiles({
                     </button>
                   )}
                   {(isMarkdown(file.name) || isTextFile(file.name)) && (
-                    <CopyTextButton apiHost={apiHost} filename={file.name} />
+                    <CopyTextButton filename={file.name} />
                   )}
                   <a
-                    href={`http://${apiHost}/api/shared/files/${encodeURIComponent(file.name)}/content`}
+                    href={`${getApiBase()}/shared/files/${encodeURIComponent(file.name)}/content`}
                     download={file.name}
                     className="p-1.5 text-text-tertiary hover:text-blue-400 hover:bg-control-bg rounded"
                     title="Download file"
@@ -515,7 +514,7 @@ export default function SharedFiles({
 
       {previewFile && isImage(previewFile.name) && (
         <ImageLightbox
-          src={`http://${apiHost}/api/shared/files/${encodeURIComponent(previewFile.name)}/content`}
+          src={`${getApiBase()}/shared/files/${encodeURIComponent(previewFile.name)}/content`}
           alt={previewFile.name}
           onClose={closePreview}
         />
@@ -612,12 +611,12 @@ function TextPreview({ content, filename, onClose }: { content: string; filename
   )
 }
 
-function CopyTextButton({ apiHost, filename }: { apiHost: string; filename: string }) {
+function CopyTextButton({ filename }: { filename: string }) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
     try {
-      const res = await fetch(`http://${apiHost}/api/shared/files/${encodeURIComponent(filename)}`)
+      const res = await fetch(`${getApiBase()}/shared/files/${encodeURIComponent(filename)}`)
       if (!res.ok) return
       const data = await res.json()
       await navigator.clipboard.writeText(data.content)

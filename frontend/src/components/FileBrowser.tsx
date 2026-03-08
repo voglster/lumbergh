@@ -5,6 +5,7 @@ import hljsLightUrl from 'highlight.js/styles/github.css?url'
 import MarkdownPreview from '@uiw/react-markdown-preview'
 import mermaid from 'mermaid'
 import { ChevronDown, ChevronRight, Folder, FileText, RefreshCw, PanelLeftClose, Play } from 'lucide-react'
+import { getApiBase } from '../config'
 import { useTheme } from '../hooks/useTheme'
 
 // Initialize mermaid
@@ -108,12 +109,11 @@ function isImagePath(path: string): boolean {
 }
 
 interface Props {
-  apiHost: string
   sessionName?: string
   onFocusTerminal?: () => void
 }
 
-export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: Props) {
+export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
   const { theme } = useTheme()
   const [files, setFiles] = useState<FileEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -187,7 +187,7 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
     const fullPath = rootDir ? `${rootDir}/${selectedFile.path}` : selectedFile.path
 
     try {
-      const response = await fetch(`http://${apiHost}/api/session/${sessionName}/send`, {
+      const response = await fetch(`${getApiBase()}/session/${sessionName}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: fullPath, send_enter: false }),
@@ -219,7 +219,7 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
     }
 
     try {
-      const response = await fetch(`http://${apiHost}/api/session/${sessionName}/send`, {
+      const response = await fetch(`${getApiBase()}/session/${sessionName}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: message, send_enter: false }),
@@ -242,8 +242,8 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
       try {
         // Use session-scoped endpoint if sessionName is provided
         const url = sessionName
-          ? `http://${apiHost}/api/sessions/${sessionName}/files`
-          : `http://${apiHost}/api/files`
+          ? `${getApiBase()}/sessions/${sessionName}/files`
+          : `${getApiBase()}/files`
         const res = await fetch(url)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const json = await res.json()
@@ -259,7 +259,7 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
         }
       }
     },
-    [apiHost, sessionName]
+    [sessionName]
   )
 
   // Reset state when session changes
@@ -292,8 +292,8 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
     try {
       // Use session-scoped endpoint if sessionName is provided
       const url = sessionName
-        ? `http://${apiHost}/api/sessions/${sessionName}/files/${encodeURIComponent(path)}`
-        : `http://${apiHost}/api/files/${encodeURIComponent(path)}`
+        ? `${getApiBase()}/sessions/${sessionName}/files/${encodeURIComponent(path)}`
+        : `${getApiBase()}/files/${encodeURIComponent(path)}`
       const res = await fetch(url)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
@@ -557,7 +557,7 @@ export default function FileBrowser({ apiHost, sessionName, onFocusTerminal }: P
             {isImagePath(selectedFile.path) ? (
               <div className="flex-1 overflow-auto flex items-center justify-center p-4 bg-[repeating-conic-gradient(#80808018_0%_25%,transparent_0%_50%)] bg-[length:20px_20px]">
                 <img
-                  src={`http://${apiHost}${sessionName ? `/api/sessions/${sessionName}/files/${selectedFile.path}` : `/api/files/${selectedFile.path}`}?raw=1`}
+                  src={`${getApiBase()}${sessionName ? `/sessions/${sessionName}/files/${selectedFile.path}` : `/files/${selectedFile.path}`}?raw=1`}
                   alt={selectedFile.path}
                   crossOrigin="anonymous"
                   className="max-w-full max-h-full object-contain"

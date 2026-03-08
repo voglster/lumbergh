@@ -14,7 +14,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from ai.prompts import (
+from lumbergh.ai.prompts import (
     get_ai_prompt,
     get_global_ai_prompts,
     get_project_ai_prompts,
@@ -22,8 +22,8 @@ from ai.prompts import (
     save_global_ai_prompts,
     save_project_ai_prompts,
 )
-from ai.providers import OllamaProvider, get_provider
-from routers.settings import get_settings
+from lumbergh.ai.providers import OllamaProvider, get_provider
+from lumbergh.routers.settings import get_settings
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 

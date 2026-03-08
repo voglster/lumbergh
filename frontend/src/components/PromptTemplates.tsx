@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Play, GripVertical, X } from 'lucide-react'
+import { getApiBase } from '../config'
 import { useLocalStorageDraft } from '../hooks/useLocalStorageDraft'
 
 // Simple UUID generator that works without crypto.randomUUID()
@@ -18,13 +19,11 @@ interface PromptTemplate {
 }
 
 interface PromptTemplatesProps {
-  apiHost: string
   sessionName?: string | null
   onFocusTerminal?: () => void
 }
 
 export default function PromptTemplates({
-  apiHost,
   sessionName,
   onFocusTerminal,
 }: PromptTemplatesProps) {
@@ -47,8 +46,8 @@ export default function PromptTemplates({
       return
     }
     Promise.all([
-      fetch(`http://${apiHost}/api/sessions/${sessionName}/prompts`).then((res) => res.json()),
-      fetch(`http://${apiHost}/api/global/prompts`).then((res) => res.json()),
+      fetch(`${getApiBase()}/sessions/${sessionName}/prompts`).then((res) => res.json()),
+      fetch(`${getApiBase()}/global/prompts`).then((res) => res.json()),
     ])
       .then(([projectData, globalData]) => {
         setProjectTemplates(projectData.templates || [])
@@ -59,13 +58,13 @@ export default function PromptTemplates({
         console.error('Failed to fetch prompts:', err)
         setLoading(false)
       })
-  }, [apiHost, sessionName])
+  }, [sessionName])
 
   const saveProjectTemplates = async (templates: PromptTemplate[]) => {
     if (!sessionName) return
     setSaving(true)
     try {
-      await fetch(`http://${apiHost}/api/sessions/${sessionName}/prompts`, {
+      await fetch(`${getApiBase()}/sessions/${sessionName}/prompts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ templates }),
@@ -79,7 +78,7 @@ export default function PromptTemplates({
   const saveGlobalTemplates = async (templates: PromptTemplate[]) => {
     setSaving(true)
     try {
-      await fetch(`http://${apiHost}/api/global/prompts`, {
+      await fetch(`${getApiBase()}/global/prompts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ templates }),
@@ -93,7 +92,7 @@ export default function PromptTemplates({
   const handleSendToTerminal = async (template: PromptTemplate, sendEnter: boolean) => {
     if (!sessionName) return
     try {
-      await fetch(`http://${apiHost}/api/session/${sessionName}/send`, {
+      await fetch(`${getApiBase()}/session/${sessionName}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: template.prompt, send_enter: sendEnter }),
@@ -180,13 +179,13 @@ export default function PromptTemplates({
   const handleCopyToGlobal = async (template: PromptTemplate) => {
     if (!sessionName) return
     try {
-      await fetch(`http://${apiHost}/api/sessions/${sessionName}/prompts/${template.id}/copy-to-global`, {
+      await fetch(`${getApiBase()}/sessions/${sessionName}/prompts/${template.id}/copy-to-global`, {
         method: 'POST',
       })
       // Refresh both lists
       const [projectData, globalData] = await Promise.all([
-        fetch(`http://${apiHost}/api/sessions/${sessionName}/prompts`).then((res) => res.json()),
-        fetch(`http://${apiHost}/api/global/prompts`).then((res) => res.json()),
+        fetch(`${getApiBase()}/sessions/${sessionName}/prompts`).then((res) => res.json()),
+        fetch(`${getApiBase()}/global/prompts`).then((res) => res.json()),
       ])
       setProjectTemplates(projectData.templates || [])
       setGlobalTemplates(globalData.templates || [])
@@ -198,11 +197,11 @@ export default function PromptTemplates({
   const handleCopyToProject = async (template: PromptTemplate) => {
     if (!sessionName) return
     try {
-      await fetch(`http://${apiHost}/api/sessions/${sessionName}/global/prompts/${template.id}/copy-to-project`, {
+      await fetch(`${getApiBase()}/sessions/${sessionName}/global/prompts/${template.id}/copy-to-project`, {
         method: 'POST',
       })
       // Refresh project list
-      const projectData = await fetch(`http://${apiHost}/api/sessions/${sessionName}/prompts`).then((res) => res.json())
+      const projectData = await fetch(`${getApiBase()}/sessions/${sessionName}/prompts`).then((res) => res.json())
       setProjectTemplates(projectData.templates || [])
     } catch (err) {
       console.error('Failed to copy to project:', err)
@@ -261,7 +260,7 @@ export default function PromptTemplates({
     }
   }
 
-  const renderInlineEditForm = (template: PromptTemplate, scope: 'project' | 'global') => (
+  const renderInlineEditForm = (template: PromptTemplate, _scope: 'project' | 'global') => (
     <div key={template.id} ref={editFormRef} className="p-3 bg-bg-surface rounded border border-blue-500">
       <div className="mb-2">
         <input

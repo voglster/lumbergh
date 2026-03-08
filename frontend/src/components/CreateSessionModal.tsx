@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
+import { getApiBase } from '../config'
 import DirectoryPicker from './DirectoryPicker'
 import BranchPicker from './BranchPicker'
 
 interface Props {
-  apiHost: string
   onClose: () => void
   onCreated: () => void
 }
@@ -23,7 +23,7 @@ function toSlug(text: string): string {
     .replace(/^-|-$/g, '') // Trim leading/trailing hyphens
 }
 
-export default function CreateSessionModal({ apiHost, onClose, onCreated }: Props) {
+export default function CreateSessionModal({ onClose, onCreated }: Props) {
   const navigate = useNavigate()
   const [mode, setMode] = useState<SessionMode>('direct')
   const [name, setName] = useState('')
@@ -74,7 +74,7 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
         }
       }
 
-      const res = await fetch(`http://${apiHost}/api/sessions`, {
+      const res = await fetch(`${getApiBase()}/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -189,7 +189,6 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
                 </div>
               ) : (
                 <DirectoryPicker
-                  apiHost={apiHost}
                   value={workdir}
                   onChange={setWorkdir}
                   onManualEntry={() => setManualEntry(true)}
@@ -202,7 +201,6 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
               <div>
                 <label className="block text-sm text-text-tertiary mb-1">Parent Repository</label>
                 <DirectoryPicker
-                  apiHost={apiHost}
                   value={parentRepo}
                   onChange={(path) => {
                     setParentRepo(path)
@@ -216,8 +214,7 @@ export default function CreateSessionModal({ apiHost, onClose, onCreated }: Prop
                 <div>
                   <label className="block text-sm text-text-tertiary mb-1">Branch</label>
                   <BranchPicker
-                    apiHost={apiHost}
-                    repoPath={parentRepo}
+                      repoPath={parentRepo}
                     value={branch}
                     onChange={setBranch}
                     onCreateNew={setNewBranchName}

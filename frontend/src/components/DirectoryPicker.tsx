@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { getApiBase } from '../config'
 
 interface Directory {
   path: string
@@ -6,13 +7,12 @@ interface Directory {
 }
 
 interface Props {
-  apiHost: string
   value: string
   onChange: (path: string) => void
   onManualEntry?: () => void
 }
 
-export default function DirectoryPicker({ apiHost, value, onChange, onManualEntry }: Props) {
+export default function DirectoryPicker({ value, onChange, onManualEntry }: Props) {
   const [query, setQuery] = useState('')
   const [directories, setDirectories] = useState<Directory[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -32,7 +32,7 @@ export default function DirectoryPicker({ apiHost, value, onChange, onManualEntr
 
       try {
         const res = await fetch(
-          `http://${apiHost}/api/directories/search?query=${encodeURIComponent(searchQuery)}`
+          `${getApiBase()}/directories/search?query=${encodeURIComponent(searchQuery)}`
         )
         if (!res.ok) {
           throw new Error('Failed to fetch directories')
@@ -47,7 +47,7 @@ export default function DirectoryPicker({ apiHost, value, onChange, onManualEntr
         setIsLoading(false)
       }
     },
-    [apiHost]
+    []
   )
 
   // Debounced search

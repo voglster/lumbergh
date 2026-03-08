@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { getApiBase } from '../config'
 import { useLocalStorageDraft } from '../hooks/useLocalStorageDraft'
 
 interface ScratchpadProps {
-  apiHost: string
   sessionName: string
   onFocusTerminal?: () => void
 }
 
-export default function Scratchpad({ apiHost, sessionName, onFocusTerminal }: ScratchpadProps) {
+export default function Scratchpad({ sessionName, onFocusTerminal }: ScratchpadProps) {
   const [content, setContent] = useLocalStorageDraft(`scratchpad:${sessionName}`, '', 100)
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [loading, setLoading] = useState(true)
@@ -20,7 +20,7 @@ export default function Scratchpad({ apiHost, sessionName, onFocusTerminal }: Sc
 
   // Fetch content on mount - localStorage draft takes priority over backend
   useEffect(() => {
-    fetch(`http://${apiHost}/api/sessions/${sessionName}/scratchpad`)
+    fetch(`${getApiBase()}/sessions/${sessionName}/scratchpad`)
       .then((res) => res.json())
       .then((data) => {
         // Only use backend content if we don't have a localStorage draft
@@ -33,13 +33,13 @@ export default function Scratchpad({ apiHost, sessionName, onFocusTerminal }: Sc
         console.error('Failed to fetch scratchpad:', err)
         setLoading(false)
       })
-  }, [apiHost, sessionName])
+  }, [sessionName])
 
   const saveContent = useCallback(
     async (text: string) => {
       setStatus('saving')
       try {
-        await fetch(`http://${apiHost}/api/sessions/${sessionName}/scratchpad`, {
+        await fetch(`${getApiBase()}/sessions/${sessionName}/scratchpad`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ content: text }),
@@ -52,7 +52,7 @@ export default function Scratchpad({ apiHost, sessionName, onFocusTerminal }: Sc
         setStatus('error')
       }
     },
-    [apiHost, sessionName]
+    [sessionName]
   )
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -85,7 +85,7 @@ export default function Scratchpad({ apiHost, sessionName, onFocusTerminal }: Sc
     if (!text) return
 
     try {
-      const response = await fetch(`http://${apiHost}/api/session/${sessionName}/send`, {
+      const response = await fetch(`${getApiBase()}/session/${sessionName}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, send_enter: false }),

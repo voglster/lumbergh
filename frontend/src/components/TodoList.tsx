@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { GripVertical, Play, SendHorizonal, ChevronDown, ChevronRight, StickyNote, ExternalLink, Trash2 } from 'lucide-react'
+import { getApiBase } from '../config'
 import { usePrompts } from '../hooks/usePrompts'
 import { useLocalStorageDraft } from '../hooks/useLocalStorageDraft'
 import { expandPromptReferences } from '../utils/promptResolver'
@@ -13,14 +14,13 @@ interface Todo {
 }
 
 interface TodoListProps {
-  apiHost: string
   sessionName: string
   onFocusTerminal?: () => void
   onTodoSent?: (text: string) => void
   onSwitchToTerminal?: () => void
 }
 
-export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodoSent, onSwitchToTerminal }: TodoListProps) {
+export default function TodoList({ sessionName, onFocusTerminal, onTodoSent, onSwitchToTerminal }: TodoListProps) {
   const [todos, setTodos] = useState<Todo[]>([])
   const [newTodo, setNewTodo, clearNewTodoDraft] = useLocalStorageDraft(`todo:${sessionName}:new`)
   const [loading, setLoading] = useState(true)
@@ -38,10 +38,10 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout>>(null)
 
   // Fetch prompts for @ mention autocomplete
-  const { allPrompts } = usePrompts(apiHost, sessionName)
+  const { allPrompts } = usePrompts(sessionName)
 
   useEffect(() => {
-    fetch(`http://${apiHost}/api/sessions/${sessionName}/todos`)
+    fetch(`${getApiBase()}/sessions/${sessionName}/todos`)
       .then((res) => res.json())
       .then((data) => {
         setTodos(data.todos || [])
@@ -51,12 +51,12 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
         console.error('Failed to fetch todos:', err)
         setLoading(false)
       })
-  }, [apiHost, sessionName])
+  }, [sessionName])
 
   const saveTodos = async (updatedTodos: Todo[]) => {
     setSaving(true)
     try {
-      await fetch(`http://${apiHost}/api/sessions/${sessionName}/todos`, {
+      await fetch(`${getApiBase()}/sessions/${sessionName}/todos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ todos: updatedTodos }),
@@ -193,7 +193,7 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
     }
     setMovePickerIndex(index)
     try {
-      const res = await fetch(`http://${apiHost}/api/sessions`)
+      const res = await fetch(`${getApiBase()}/sessions`)
       const data = await res.json()
       const sessions = (data.sessions || []).filter(
         (s: { name: string; alive: boolean }) => s.name !== sessionName && s.alive
@@ -206,7 +206,7 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
 
   const handleMoveTodo = async (index: number, targetSession: string) => {
     try {
-      const res = await fetch(`http://${apiHost}/api/sessions/${sessionName}/todos/move`, {
+      const res = await fetch(`${getApiBase()}/sessions/${sessionName}/todos/move`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ target_session: targetSession, todo_index: index }),
@@ -229,7 +229,7 @@ export default function TodoList({ apiHost, sessionName, onFocusTerminal, onTodo
     // Expand @prompt references to their content
     const textToSend = expandPromptReferences(rawText, allPrompts)
     try {
-      await fetch(`http://${apiHost}/api/session/${sessionName}/send`, {
+      await fetch(`${getApiBase()}/session/${sessionName}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: textToSend, send_enter: sendEnter }),

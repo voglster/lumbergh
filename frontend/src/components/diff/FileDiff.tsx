@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react'
 import { DiffView, DiffModeEnum } from '@git-diff-view/react'
 import { ArrowLeft, Play, Maximize2 } from 'lucide-react'
+import { getApiBase } from '../../config'
 import type { DiffFile } from './types'
 import { extractDiffContent, getFileStats, getLangFromPath } from './utils'
 import MarkdownViewer from '../MarkdownViewer'
@@ -16,7 +17,6 @@ function isImagePath(path: string): boolean {
 interface Props {
   file: DiffFile
   onBack: () => void
-  apiHost?: string
   sessionName?: string
   onFocusTerminal?: () => void
   onCloseExpanded?: () => void
@@ -32,7 +32,6 @@ const FONT_SIZE_STEP = 2
 const FileDiff = memo(function FileDiff({
   file,
   onBack,
-  apiHost,
   sessionName,
   onFocusTerminal,
   onCloseExpanded,
@@ -102,7 +101,7 @@ const FileDiff = memo(function FileDiff({
 
   const handleSendToTerminal = async () => {
     const text = selectedTextRef.current
-    if (!text || !sessionName || !apiHost) return
+    if (!text || !sessionName) return
 
     let message = text
     let offset = newContent.indexOf(text)
@@ -120,7 +119,7 @@ const FileDiff = memo(function FileDiff({
     }
 
     try {
-      const response = await fetch(`http://${apiHost}/api/session/${sessionName}/send`, {
+      const response = await fetch(`${getApiBase()}/session/${sessionName}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: message, send_enter: false }),
@@ -190,9 +189,9 @@ const FileDiff = memo(function FileDiff({
       {/* Diff viewer */}
       {isImagePath(file.path) ? (
         <div className="flex-1 overflow-auto flex items-center justify-center gap-8 p-4 bg-[repeating-conic-gradient(#80808018_0%_25%,transparent_0%_50%)] bg-[length:20px_20px]">
-          {apiHost && sessionName && (
+          {sessionName && (
             <img
-              src={`http://${apiHost}/api/sessions/${sessionName}/files/${encodeURIComponent(file.path)}/raw`}
+              src={`${getApiBase()}/sessions/${sessionName}/files/${encodeURIComponent(file.path)}/raw`}
               alt={file.path}
               className="max-w-full max-h-full object-contain"
             />

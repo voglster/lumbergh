@@ -16,8 +16,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from tinydb import Query
 
-from constants import IGNORE_DIRS, REPO_SEARCH_SKIP_DIRS
-from db_utils import (
+from lumbergh.constants import IGNORE_DIRS, REPO_SEARCH_SKIP_DIRS
+from lumbergh.db_utils import (
     get_project_db,
     get_session_data_db,
     get_sessions_db,
@@ -26,8 +26,8 @@ from db_utils import (
     save_single_document_items,
     save_single_document_value,
 )
-from file_utils import get_file_language, list_project_files, validate_path_within_root
-from git_utils import (
+from lumbergh.file_utils import get_file_language, list_project_files, validate_path_within_root
+from lumbergh.git_utils import (
     amend_commit,
     checkout_branch,
     create_branch_at,
@@ -52,7 +52,7 @@ from git_utils import (
     reword_commit,
     stage_all_and_commit,
 )
-from models import (
+from lumbergh.models import (
     AmendInput,
     CheckoutInput,
     CommitInput,
@@ -591,7 +591,7 @@ async def session_git_status(name: str):
 @router.get("/{name}/git/diff")
 async def session_git_diff(name: str):
     """Get git diff for a session's workdir (served from background cache)."""
-    from diff_cache import diff_cache
+    from lumbergh.diff_cache import diff_cache
 
     diff_cache.mark_active(name)
     cached = diff_cache.get_diff(name)
@@ -609,7 +609,7 @@ async def session_git_diff(name: str):
 @router.get("/{name}/git/diff-stats")
 async def session_git_diff_stats(name: str):
     """Get lightweight diff stats (file count + additions/deletions) from cache."""
-    from diff_cache import diff_cache
+    from lumbergh.diff_cache import diff_cache
 
     diff_cache.mark_active(name)
     stats = diff_cache.get_stats(name)
@@ -668,10 +668,10 @@ async def session_git_commit(name: str, body: CommitInput):
         result = stage_all_and_commit(workdir, body.message)
         if "error" in result:
             raise HTTPException(status_code=500, detail=result["error"])
-        from diff_cache import diff_cache
+        from lumbergh.diff_cache import diff_cache
         diff_cache.invalidate(name)
         _files_cache.pop(name, None)
-        from message_buffer import message_buffer
+        from lumbergh.message_buffer import message_buffer
         message_buffer.clear(name)
         return result
     except HTTPException:
@@ -717,7 +717,7 @@ async def session_git_checkout(name: str, body: CheckoutInput):
         if "error" in result:
             status_code = 409 if "pending changes" in result["error"] else 400
             raise HTTPException(status_code=status_code, detail=result["error"])
-        from diff_cache import diff_cache
+        from lumbergh.diff_cache import diff_cache
         diff_cache.invalidate(name)
         _files_cache.pop(name, None)
         return result
@@ -736,7 +736,7 @@ async def session_git_reset(name: str):
         result = reset_to_head(workdir)
         if "error" in result:
             raise HTTPException(status_code=500, detail=result["error"])
-        from diff_cache import diff_cache
+        from lumbergh.diff_cache import diff_cache
         diff_cache.invalidate(name)
         _files_cache.pop(name, None)
         return result
@@ -771,7 +771,7 @@ async def session_git_amend(name: str, body: AmendInput):
         result = amend_commit(workdir, body.message)
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
-        from diff_cache import diff_cache
+        from lumbergh.diff_cache import diff_cache
         diff_cache.invalidate(name)
         _files_cache.pop(name, None)
         return result
@@ -806,7 +806,7 @@ async def session_git_stash(name: str):
         result = git_stash(workdir)
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
-        from diff_cache import diff_cache
+        from lumbergh.diff_cache import diff_cache
         diff_cache.invalidate(name)
         _files_cache.pop(name, None)
         return result
@@ -825,7 +825,7 @@ async def session_git_stash_pop(name: str):
         result = git_stash_pop(workdir)
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
-        from diff_cache import diff_cache
+        from lumbergh.diff_cache import diff_cache
         diff_cache.invalidate(name)
         _files_cache.pop(name, None)
         return result
@@ -844,7 +844,7 @@ async def session_git_pull(name: str):
         result = git_pull_rebase(workdir)
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
-        from diff_cache import diff_cache
+        from lumbergh.diff_cache import diff_cache
         diff_cache.invalidate(name)
         _files_cache.pop(name, None)
         return result
@@ -879,7 +879,7 @@ async def session_git_reset_to(name: str, body: ResetToInput):
         result = reset_to_commit(workdir, body.hash, body.mode)
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
-        from diff_cache import diff_cache
+        from lumbergh.diff_cache import diff_cache
         diff_cache.invalidate(name)
         _files_cache.pop(name, None)
         return result
@@ -898,7 +898,7 @@ async def session_git_reword(name: str, body: RewordInput):
         result = reword_commit(workdir, body.hash, body.message)
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
-        from diff_cache import diff_cache
+        from lumbergh.diff_cache import diff_cache
         diff_cache.invalidate(name)
         _files_cache.pop(name, None)
         return result
@@ -1032,7 +1032,7 @@ async def save_session_prompts(name: str, template_list: PromptTemplateList):
 @router.post("/{name}/prompts/{template_id}/copy-to-global")
 async def copy_session_prompt_to_global(name: str, template_id: str):
     """Copy a project template to global, remove from project."""
-    from db_utils import get_global_db
+    from lumbergh.db_utils import get_global_db
 
     workdir = get_session_workdir(name)
     db = get_project_db(workdir)
@@ -1070,7 +1070,7 @@ async def copy_session_prompt_to_global(name: str, template_id: str):
 @router.post("/{name}/global/prompts/{template_id}/copy-to-project")
 async def copy_global_prompt_to_session(name: str, template_id: str):
     """Copy a global template to this session's project (keeps both)."""
-    from db_utils import get_global_db
+    from lumbergh.db_utils import get_global_db
 
     workdir = get_session_workdir(name)
     db = get_project_db(workdir)
@@ -1168,7 +1168,7 @@ async def session_get_file(name: str, file_path: str, raw: bool = False):
 @router.get("/{name}/message-buffer")
 async def session_get_message_buffer(name: str):
     """Get buffered user messages for a session."""
-    from message_buffer import message_buffer
+    from lumbergh.message_buffer import message_buffer
 
     return {"messages": message_buffer.get_messages(name)}
 
@@ -1176,7 +1176,7 @@ async def session_get_message_buffer(name: str):
 @router.delete("/{name}/message-buffer")
 async def session_clear_message_buffer(name: str):
     """Clear buffered user messages for a session."""
-    from message_buffer import message_buffer
+    from lumbergh.message_buffer import message_buffer
 
     message_buffer.clear(name)
     return {"status": "cleared"}
@@ -1220,7 +1220,7 @@ async def session_generate_commit_message(name: str):
             raise HTTPException(status_code=500, detail="No commit message prompt template found")
 
         # Get user instruction context
-        from message_buffer import message_buffer
+        from lumbergh.message_buffer import message_buffer
 
         user_messages = message_buffer.get_formatted(name)
 

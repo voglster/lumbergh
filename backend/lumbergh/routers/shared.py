@@ -11,8 +11,8 @@ from fastapi import APIRouter, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from constants import SHARED_DIR
-from db_utils import (
+from lumbergh.constants import SHARED_DIR
+from lumbergh.db_utils import (
     get_global_db,
     get_project_db,
     get_single_document_items,
@@ -217,7 +217,7 @@ async def save_shared_file_as_prompt(filename: str, request: SaveAsPromptRequest
     elif request.scope == "project":
         if not request.session_name:
             raise HTTPException(status_code=400, detail="session_name required for project scope")
-        from routers.sessions import get_session_workdir
+        from lumbergh.routers.sessions import get_session_workdir
 
         workdir = get_session_workdir(request.session_name)
         db = get_project_db(workdir)

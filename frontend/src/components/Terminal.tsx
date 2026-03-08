@@ -5,11 +5,11 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
 import { ArrowLeft, ChevronUp, ChevronDown, Minus, Plus, MoreHorizontal, Eraser } from 'lucide-react'
 import { useTerminalSocket } from '../hooks/useTerminalSocket'
+import { getApiBase } from '../config'
 import { useTheme } from '../hooks/useTheme'
 
 interface TerminalProps {
   sessionName: string
-  apiHost: string
   onSendReady?: (send: ((data: string) => void) | null) => void
   onFocusReady?: (focus: () => void) => void
   onBack?: () => void
@@ -19,7 +19,6 @@ interface TerminalProps {
 
 export default function Terminal({
   sessionName,
-  apiHost,
   onSendReady,
   onFocusReady,
   onBack,
@@ -75,7 +74,7 @@ export default function Terminal({
   const sendViaApi = useCallback(
     async (text: string, sendEnter: boolean = true) => {
       try {
-        await fetch(`http://${apiHost}/api/session/${sessionName}/send`, {
+        await fetch(`${getApiBase()}/session/${sessionName}/send`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text, send_enter: sendEnter }),
@@ -84,14 +83,14 @@ export default function Terminal({
         console.error('Failed to send to terminal:', err)
       }
     },
-    [apiHost, sessionName]
+    [sessionName]
   )
 
   // Send tmux window navigation commands
   const sendTmuxCommand = useCallback(
     async (command: string) => {
       try {
-        await fetch(`http://${apiHost}/api/session/${sessionName}/tmux-command`, {
+        await fetch(`${getApiBase()}/session/${sessionName}/tmux-command`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ command }),
@@ -100,7 +99,7 @@ export default function Terminal({
         console.error('Failed to send tmux command:', err)
       }
     },
-    [apiHost, sessionName]
+    [sessionName]
   )
 
   const handleData = useCallback((data: string) => {
@@ -148,7 +147,6 @@ export default function Terminal({
 
   const { send, sendResize, isConnected, error, sessionDead } = useTerminalSocket({
     sessionName,
-    apiHost,
     onData: handleData,
     onResizeSync: handleResizeSync,
     onConnect: handleConnect,

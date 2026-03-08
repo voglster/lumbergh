@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from db_utils import get_settings_db
+from lumbergh.db_utils import get_settings_db
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 

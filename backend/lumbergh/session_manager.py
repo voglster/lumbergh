@@ -12,7 +12,7 @@ from pathlib import Path
 
 from fastapi import WebSocket
 
-from tmux_pty import TmuxPtySession, capture_pane_content
+from lumbergh.tmux_pty import TmuxPtySession, capture_pane_content
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ class SessionManager:
         Auto-recreates the tmux session if it exists in TinyDB but not in tmux.
         Sends current pane content to new client for immediate display.
         """
-        from routers.sessions import create_tmux_session, get_stored_sessions
+        from lumbergh.routers.sessions import create_tmux_session, get_stored_sessions
 
         async with self._lock:
             if session_name not in self._sessions:

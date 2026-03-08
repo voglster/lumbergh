@@ -2,7 +2,7 @@
 Tests for git_utils module.
 """
 
-from git_utils import (
+from lumbergh.git_utils import (
     generate_untracked_file_diff,
     get_branches,
     get_commit_diff,

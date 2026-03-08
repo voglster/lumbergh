@@ -13,8 +13,8 @@ from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-from file_utils import get_file_language, list_project_files, validate_path_within_root
-from git_utils import (
+from lumbergh.file_utils import get_file_language, list_project_files, validate_path_within_root
+from lumbergh.git_utils import (
     get_commit_diff,
     get_commit_log,
     get_current_branch,
@@ -24,8 +24,8 @@ from git_utils import (
     reset_to_head,
     stage_all_and_commit,
 )
-from models import CommitInput, SendInput, TmuxCommand
-from routers import ai, notes, sessions, settings, shared, tmux
+from lumbergh.models import CommitInput, SendInput, TmuxCommand
+from lumbergh.routers import ai, notes, sessions, settings, shared, tmux
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +33,9 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """App lifespan handler - runs on startup/shutdown."""
-    from diff_cache import diff_cache
-    from idle_monitor import idle_monitor
-    from routers.sessions import get_live_sessions, get_stored_sessions
+    from lumbergh.diff_cache import diff_cache
+    from lumbergh.idle_monitor import idle_monitor
+    from lumbergh.routers.sessions import get_live_sessions, get_stored_sessions
 
     # Log any orphaned sessions (stored in TinyDB but no longer in tmux)
     live = set(get_live_sessions().keys())
@@ -65,7 +65,7 @@ app.include_router(shared.router)
 app.include_router(tmux.router)
 
 # Project root (parent of backend/)
-PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 # CORS for local development
 app.add_middleware(
@@ -239,7 +239,7 @@ async def send_to_session(session_name: str, body: SendInput):
 
     # Buffer the message for AI commit context
     if body.send_enter:
-        from message_buffer import message_buffer
+        from lumbergh.message_buffer import message_buffer
 
         message_buffer.add(session_name, body.text)
 
@@ -251,7 +251,7 @@ async def send_tmux_command(session_name: str, cmd: TmuxCommand):
     """Send a tmux window navigation command to a session."""
     import subprocess
 
-    from routers.sessions import get_session_workdir
+    from lumbergh.routers.sessions import get_session_workdir
 
     tmux_commands = {
         "next-window": ["tmux", "next-window", "-t", session_name],
@@ -289,7 +289,7 @@ async def session_stream(websocket: WebSocket, session_name: str):
     """
     from fastapi import WebSocketDisconnect
 
-    from session_manager import session_manager
+    from lumbergh.session_manager import session_manager
 
     await websocket.accept()
 
@@ -322,6 +322,50 @@ async def session_stream(websocket: WebSocket, session_name: str):
     finally:
         # Unregister client - PTY closes only when last client disconnects
         await session_manager.unregister_client(session_name, websocket)
+
+
+def mount_frontend(app: FastAPI):
+    """Mount frontend static files if a built frontend is available."""
+    from starlette.responses import FileResponse
+    from starlette.staticfiles import StaticFiles
+
+    # Look for frontend dist in package data first, then source tree
+    dist_dir = None
+    pkg_dist = Path(__file__).parent / "frontend_dist"
+    src_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
+
+    if pkg_dist.is_dir() and (pkg_dist / "index.html").exists():
+        dist_dir = pkg_dist
+    elif src_dist.is_dir() and (src_dist / "index.html").exists():
+        dist_dir = src_dist
+
+    if dist_dir is None:
+        return  # No frontend build found, API-only mode
+
+    # Mount Vite's hashed assets
+    assets_dir = dist_dir / "assets"
+    if assets_dir.is_dir():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="frontend-assets")
+
+    # Catch-all route for SPA - serves index.html for any non-API path
+    index_html = dist_dir / "index.html"
+
+    @app.get("/{path:path}")
+    async def serve_frontend(path: str):
+        # Don't intercept API routes
+        if path.startswith("api/") or path == "api":
+            raise HTTPException(status_code=404, detail="Not found")
+        # Try to serve static file first (only within dist_dir)
+        try:
+            static_file = (dist_dir / path).resolve()
+            if static_file.is_file() and str(static_file).startswith(str(dist_dir.resolve())):
+                return FileResponse(str(static_file))
+        except (ValueError, OSError):
+            pass
+        return FileResponse(str(index_html))
+
+
+mount_frontend(app)
 
 
 if __name__ == "__main__":

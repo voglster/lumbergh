@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { MoreVertical, Monitor, Cloud } from 'lucide-react'
+import { getApiBase } from '../../config'
 import type { GraphData } from '../diff/types'
 import { computeGraphLayout, laneColor } from './graphLayout'
 import { relativeDate } from '../../utils/relativeDate'
@@ -35,7 +36,6 @@ function getInitials(author: string, email?: string): string {
 }
 
 interface Props {
-  apiHost: string
   sessionName?: string
   onSelectCommit?: (hash: string | null) => void
   selectedCommit?: string | null
@@ -45,7 +45,7 @@ interface Props {
   onGitAction?: () => void
 }
 
-export default function GitGraph({ apiHost, sessionName, onSelectCommit, selectedCommit, refreshTrigger, resetTrigger, onGitAction }: Props) {
+export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, refreshTrigger, resetTrigger, onGitAction }: Props) {
   const branchPanelStorageKey = sessionName ? `${branchPanelStorageKey_PREFIX}:${sessionName}` : branchPanelStorageKey_PREFIX
   const graphPanelStorageKey = sessionName ? `${graphPanelStorageKey_PREFIX}:${sessionName}` : graphPanelStorageKey_PREFIX
   const [graphData, setGraphData] = useState<GraphData | null>(null)
@@ -162,20 +162,20 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
 
   // Fetch configured commit limit from settings
   useEffect(() => {
-    fetch(`http://${apiHost}/api/settings`)
+    fetch(`${getApiBase()}/settings`)
       .then((r) => r.json())
       .then((s) => {
         if (s.gitGraphCommits) setCommitLimit(s.gitGraphCommits)
       })
       .catch(() => {})
-  }, [apiHost])
+  }, [])
 
   const fetchGraph = useCallback(async () => {
     if (!sessionName) return
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`http://${apiHost}/api/sessions/${sessionName}/git/graph?limit=${commitLimit}`)
+      const res = await fetch(`${getApiBase()}/sessions/${sessionName}/git/graph?limit=${commitLimit}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data: GraphData = await res.json()
       setGraphData(data)
@@ -193,7 +193,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
     } finally {
       setLoading(false)
     }
-  }, [apiHost, sessionName, commitLimit])
+  }, [sessionName, commitLimit])
 
   // Fetch on mount + poll every 5s (matches diff polling cadence)
   // Also re-fetch when refreshTrigger bumps (after git actions)
@@ -275,7 +275,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
     if (!name) return
 
     try {
-      const res = await fetch(`http://${apiHost}/api/sessions/${sessionName}/git/create-branch`, {
+      const res = await fetch(`${getApiBase()}/sessions/${sessionName}/git/create-branch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, start_point: menuCommit.hash }),
@@ -289,13 +289,13 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
     } catch {
       alert('Failed to create branch')
     }
-  }, [apiHost, sessionName, menuCommit, afterAction])
+  }, [sessionName, menuCommit, afterAction])
 
   const handleResetSoft = useCallback(async () => {
     if (!menuCommit || !sessionName) return
 
     try {
-      const res = await fetch(`http://${apiHost}/api/sessions/${sessionName}/git/reset-to`, {
+      const res = await fetch(`${getApiBase()}/sessions/${sessionName}/git/reset-to`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ hash: menuCommit.hash, mode: 'soft' }),
@@ -309,7 +309,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
     } catch {
       alert('Reset failed')
     }
-  }, [apiHost, sessionName, menuCommit, afterAction])
+  }, [sessionName, menuCommit, afterAction])
 
   const handleResetHard = useCallback(async () => {
     if (!menuCommit || !sessionName) return
@@ -320,7 +320,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
     if (!confirmed) return
 
     try {
-      const res = await fetch(`http://${apiHost}/api/sessions/${sessionName}/git/reset-to`, {
+      const res = await fetch(`${getApiBase()}/sessions/${sessionName}/git/reset-to`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ hash: menuCommit.hash, mode: 'hard' }),
@@ -334,7 +334,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
     } catch {
       alert('Reset failed')
     }
-  }, [apiHost, sessionName, menuCommit, afterAction])
+  }, [sessionName, menuCommit, afterAction])
 
   const handleReword = useCallback(async () => {
     if (!menuCommit || !sessionName) return
@@ -342,7 +342,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
     if (newMessage === null || newMessage === menuCommit.message) return
 
     try {
-      const res = await fetch(`http://${apiHost}/api/sessions/${sessionName}/git/reword`, {
+      const res = await fetch(`${getApiBase()}/sessions/${sessionName}/git/reword`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ hash: menuCommit.hash, message: newMessage }),
@@ -356,7 +356,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
     } catch {
       alert('Failed to reword commit')
     }
-  }, [apiHost, sessionName, menuCommit, afterAction])
+  }, [sessionName, menuCommit, afterAction])
 
   const handleCheckout = useCallback(async (branchName: string, ref: { local: boolean; remote: boolean }) => {
     if (!sessionName || !menuCommit) return
@@ -375,7 +375,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
     }
 
     try {
-      const res = await fetch(`http://${apiHost}/api/sessions/${sessionName}/git/checkout`, {
+      const res = await fetch(`${getApiBase()}/sessions/${sessionName}/git/checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -389,7 +389,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
     } catch {
       alert('Checkout failed')
     }
-  }, [apiHost, sessionName, menuCommit, afterAction])
+  }, [sessionName, menuCommit, afterAction])
 
   const handleBranchCheckout = useCallback(async () => {
     if (!sessionName || !menuBranch) return
@@ -407,7 +407,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
     }
 
     try {
-      const res = await fetch(`http://${apiHost}/api/sessions/${sessionName}/git/checkout`, {
+      const res = await fetch(`${getApiBase()}/sessions/${sessionName}/git/checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -422,13 +422,13 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
     } catch {
       alert('Checkout failed')
     }
-  }, [apiHost, sessionName, menuBranch, afterAction])
+  }, [sessionName, menuBranch, afterAction])
 
   const handleBranchPush = useCallback(async () => {
     if (!sessionName || !menuBranch) return
 
     try {
-      const res = await fetch(`http://${apiHost}/api/sessions/${sessionName}/git/push`, { method: 'POST' })
+      const res = await fetch(`${getApiBase()}/sessions/${sessionName}/git/push`, { method: 'POST' })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         alert(data.detail || `Push failed (HTTP ${res.status})`)
@@ -439,7 +439,7 @@ export default function GitGraph({ apiHost, sessionName, onSelectCommit, selecte
     } catch {
       alert('Push failed: network error')
     }
-  }, [apiHost, sessionName, menuBranch, afterAction])
+  }, [sessionName, menuBranch, afterAction])
 
   const nodes = useMemo(() => {
     if (!graphData) return []

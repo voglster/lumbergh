@@ -1,8 +1,8 @@
 import { useRef, useCallback, useEffect, useState } from 'react'
+import { getWsBase } from '../config'
 
 interface UseTerminalSocketOptions {
   sessionName: string
-  apiHost: string
   onData: (data: string) => void
   onResizeSync?: (cols: number, rows: number) => void
   onConnect?: () => void
@@ -19,7 +19,6 @@ interface UseTerminalSocketResult {
 
 export function useTerminalSocket({
   sessionName,
-  apiHost,
   onData,
   onResizeSync,
   onConnect,
@@ -51,7 +50,7 @@ export function useTerminalSocket({
       return
     }
 
-    const wsUrl = `ws://${apiHost}/api/session/${encodeURIComponent(sessionName)}/stream`
+    const wsUrl = `${getWsBase()}/session/${encodeURIComponent(sessionName)}/stream`
     const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
@@ -115,7 +114,7 @@ export function useTerminalSocket({
     }
 
     wsRef.current = ws
-  }, [sessionName, apiHost])
+  }, [sessionName])
 
   // Keep connectRef updated
   useEffect(() => {

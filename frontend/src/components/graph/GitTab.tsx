@@ -9,7 +9,6 @@ interface DiffData {
 }
 
 interface Props {
-  apiHost: string
   sessionName?: string
   diffData: DiffData | null
   onRefreshDiff: () => void
@@ -19,7 +18,6 @@ interface Props {
 }
 
 export default function GitTab({
-  apiHost,
   sessionName,
   diffData,
   onRefreshDiff,
@@ -45,7 +43,6 @@ export default function GitTab({
     <VerticalResizablePanes
       top={
         <GitGraph
-          apiHost={apiHost}
           sessionName={sessionName}
           onSelectCommit={handleSelectCommit}
           selectedCommit={selectedCommit}
@@ -56,7 +53,6 @@ export default function GitTab({
       }
       bottom={
         <DiffViewer
-          apiHost={apiHost}
           sessionName={sessionName}
           diffData={diffData}
           onRefreshDiff={onRefreshDiff}

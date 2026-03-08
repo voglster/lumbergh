@@ -10,7 +10,7 @@ from pydantic import BaseModel
 router = APIRouter(prefix="/api/tmux", tags=["tmux"])
 
 TMUX_CONF = Path.home() / ".tmux.conf"
-BUNDLED_CONF = Path(__file__).parent.parent / "assets" / "tmux.conf"
+BUNDLED_CONF = Path(__file__).parent.parent.parent / "assets" / "tmux.conf"
 
 
 class EnableMouseRequest(BaseModel):

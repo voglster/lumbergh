@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
-import { getApiHost } from '../config'
+import { getApiBase } from '../config'
 import Terminal from '../components/Terminal'
 import FileBrowser from '../components/FileBrowser'
 import ResizablePanes from '../components/ResizablePanes'
@@ -57,14 +57,12 @@ export default function SessionDetail() {
   const [diffData, setDiffData] = useState<DiffData | null>(null)
   const focusFnRef = useRef<(() => void) | null>(null)
 
-  const apiHost = getApiHost()
-
   // Touch session to track last used time
   useEffect(() => {
     if (name) {
-      fetch(`http://${apiHost}/api/sessions/${name}/touch`, { method: 'POST' }).catch(() => {})
+      fetch(`${getApiBase()}/sessions/${name}/touch`, { method: 'POST' }).catch(() => {})
     }
-  }, [apiHost, name])
+  }, [name])
 
   // Persist right panel selection
   useEffect(() => {
@@ -92,7 +90,7 @@ export default function SessionDetail() {
   const handleTodoSent = useCallback(async (text: string) => {
     if (!name) return
     try {
-      await fetch(`http://${apiHost}/api/sessions/${name}/status-summary`, {
+      await fetch(`${getApiBase()}/sessions/${name}/status-summary`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
@@ -100,12 +98,12 @@ export default function SessionDetail() {
     } catch (err) {
       console.error('Failed to update status summary:', err)
     }
-  }, [apiHost, name])
+  }, [name])
 
   const handleReset = useCallback(async () => {
     if (!name) return
     try {
-      const res = await fetch(`http://${apiHost}/api/sessions/${name}/reset`, {
+      const res = await fetch(`${getApiBase()}/sessions/${name}/reset`, {
         method: 'POST',
       })
       if (!res.ok) {
@@ -115,19 +113,19 @@ export default function SessionDetail() {
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to reset session')
     }
-  }, [apiHost, name])
+  }, [name])
 
   const fetchDiffData = useCallback(async () => {
     if (!name) return
     try {
-      const res = await fetch(`http://${apiHost}/api/sessions/${name}/git/diff`)
+      const res = await fetch(`${getApiBase()}/sessions/${name}/git/diff`)
       const data = await res.json()
       // Only update state if data actually changed to prevent scroll resets
       setDiffData((prev) => (diffDataEquals(prev, data) ? prev : data))
     } catch (err) {
       console.error('Failed to fetch diff data:', err)
     }
-  }, [apiHost, name])
+  }, [name])
 
   // Lightweight stats for tab badges (polled always)
   const [diffStats, setDiffStats] = useState<{
@@ -144,7 +142,7 @@ export default function SessionDetail() {
     if (!name) return
     const fetchStats = async () => {
       try {
-        const res = await fetch(`http://${apiHost}/api/sessions/${name}/git/diff-stats`)
+        const res = await fetch(`${getApiBase()}/sessions/${name}/git/diff-stats`)
         const data = await res.json()
         // Only update state if values actually changed to avoid re-renders
         setDiffStats((prev) => {
@@ -165,7 +163,7 @@ export default function SessionDetail() {
     fetchStats()
     const interval = setInterval(fetchStats, 10000)
     return () => clearInterval(interval)
-  }, [apiHost, name])
+  }, [name])
 
   // Full diff: fetch when diff tab becomes visible + poll while visible
   useEffect(() => {
@@ -191,7 +189,7 @@ export default function SessionDetail() {
           formData.append('file', file)
 
           try {
-            const res = await fetch(`http://${apiHost}/api/shared/upload`, {
+            const res = await fetch(`${getApiBase()}/shared/upload`, {
               method: 'POST',
               body: formData,
             })
@@ -211,7 +209,7 @@ export default function SessionDetail() {
 
     document.addEventListener('paste', handlePaste)
     return () => document.removeEventListener('paste', handlePaste)
-  }, [apiHost])
+  }, [])
 
   const mobileTabs: { id: MobileTab; label: string }[] = [
     { id: 'terminal', label: 'Terminal' },
@@ -227,7 +225,6 @@ export default function SessionDetail() {
       {name ? (
         <Terminal
           sessionName={name}
-          apiHost={apiHost}
           onFocusReady={handleFocusReady}
           onBack={isDesktop ? () => navigate('/') : undefined}
           onReset={handleReset}
@@ -306,8 +303,7 @@ export default function SessionDetail() {
       <div className="flex-1 min-h-0 overflow-hidden">
         {rightPanel === 'git' && (
           <GitTab
-            apiHost={apiHost}
-            sessionName={name}
+              sessionName={name}
             diffData={diffData}
             onRefreshDiff={fetchDiffData}
             onJumpToTodos={handleJumpToTodos}
@@ -316,14 +312,13 @@ export default function SessionDetail() {
           />
         )}
         {rightPanel === 'files' && (
-          <FileBrowser apiHost={apiHost} sessionName={name} onFocusTerminal={handleFocusTerminal} />
+          <FileBrowser sessionName={name} onFocusTerminal={handleFocusTerminal} />
         )}
         {rightPanel === 'todos' && name && (
           <VerticalResizablePanes
             top={
               <TodoList
-                apiHost={apiHost}
-                sessionName={name}
+                      sessionName={name}
                 onFocusTerminal={handleFocusTerminal}
                 onTodoSent={handleTodoSent}
                 onSwitchToTerminal={handleSwitchToTerminal}
@@ -331,8 +326,7 @@ export default function SessionDetail() {
             }
             bottom={
               <Scratchpad
-                apiHost={apiHost}
-                sessionName={name}
+                      sessionName={name}
                 onFocusTerminal={handleFocusTerminal}
               />
             }
@@ -344,15 +338,13 @@ export default function SessionDetail() {
         )}
         {rightPanel === 'prompts' && (
           <PromptTemplates
-            apiHost={apiHost}
-            sessionName={name}
+              sessionName={name}
             onFocusTerminal={handleFocusTerminal}
           />
         )}
         {rightPanel === 'shared' && (
           <SharedFiles
-            apiHost={apiHost}
-            sessionName={name}
+              sessionName={name}
             onFocusTerminal={handleFocusTerminal}
             refreshTrigger={sharedRefreshTrigger}
           />
@@ -418,8 +410,7 @@ export default function SessionDetail() {
             </div>
             {mobileTab === 'git' && (
               <GitTab
-                apiHost={apiHost}
-                sessionName={name}
+                      sessionName={name}
                 diffData={diffData}
                 onRefreshDiff={fetchDiffData}
                 onJumpToTodos={handleJumpToTodos}
@@ -429,8 +420,7 @@ export default function SessionDetail() {
             )}
             {mobileTab === 'files' && (
               <FileBrowser
-                apiHost={apiHost}
-                sessionName={name}
+                      sessionName={name}
                 onFocusTerminal={handleFocusTerminal}
               />
             )}
@@ -438,8 +428,7 @@ export default function SessionDetail() {
               <VerticalResizablePanes
                 top={
                   <TodoList
-                    apiHost={apiHost}
-                    sessionName={name}
+                              sessionName={name}
                     onFocusTerminal={handleFocusTerminal}
                     onTodoSent={handleTodoSent}
                     onSwitchToTerminal={handleSwitchToTerminal}
@@ -447,8 +436,7 @@ export default function SessionDetail() {
                 }
                 bottom={
                   <Scratchpad
-                    apiHost={apiHost}
-                    sessionName={name}
+                              sessionName={name}
                     onFocusTerminal={handleFocusTerminal}
                   />
                 }
@@ -460,15 +448,13 @@ export default function SessionDetail() {
             )}
             {mobileTab === 'prompts' && (
               <PromptTemplates
-                apiHost={apiHost}
-                sessionName={name}
+                      sessionName={name}
                 onFocusTerminal={handleFocusTerminal}
               />
             )}
             {mobileTab === 'shared' && (
               <SharedFiles
-                apiHost={apiHost}
-                sessionName={name}
+                      sessionName={name}
                 onFocusTerminal={handleFocusTerminal}
                 refreshTrigger={sharedRefreshTrigger}
               />

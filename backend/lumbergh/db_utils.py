@@ -7,7 +7,7 @@ from pathlib import Path
 
 from tinydb import TinyDB
 
-from constants import CONFIG_DIR, PROJECTS_DIR, SESSIONS_DATA_DIR
+from lumbergh.constants import CONFIG_DIR, PROJECTS_DIR, SESSIONS_DATA_DIR
 
 
 def get_sessions_db() -> TinyDB:

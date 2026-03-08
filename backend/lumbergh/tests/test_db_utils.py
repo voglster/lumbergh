@@ -2,7 +2,7 @@
 Tests for db_utils module.
 """
 
-from db_utils import (
+from lumbergh.db_utils import (
     get_single_document_items,
     get_single_document_value,
     save_single_document_items,

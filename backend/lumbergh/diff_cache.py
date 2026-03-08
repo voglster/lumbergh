@@ -10,7 +10,7 @@ import asyncio
 import logging
 import time
 
-from git_utils import get_full_diff_with_untracked
+from lumbergh.git_utils import get_full_diff_with_untracked
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +90,7 @@ class DiffCache:
             await asyncio.sleep(self.POLL_INTERVAL)
 
     async def _compute_diffs(self) -> None:
-        from routers.sessions import get_session_workdir
+        from lumbergh.routers.sessions import get_session_workdir
 
         for session_name in self._active_sessions():
             try:

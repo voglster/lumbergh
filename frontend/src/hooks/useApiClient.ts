@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react'
+import { getApiBase } from '../config'
 
 interface ApiClientOptions {
-  apiHost: string
   sessionName?: string
 }
 
@@ -18,8 +18,8 @@ interface ApiError {
  * Hook providing consistent API client methods for backend communication.
  * Handles URL construction, JSON serialization, and response parsing.
  */
-export function useApiClient({ apiHost, sessionName }: ApiClientOptions) {
-  const baseUrl = useMemo(() => `http://${apiHost}/api`, [apiHost])
+export function useApiClient({ sessionName }: ApiClientOptions) {
+  const baseUrl = useMemo(() => getApiBase(), [])
 
   const sessionUrl = useMemo(
     () => (sessionName ? `${baseUrl}/sessions/${sessionName}` : null),

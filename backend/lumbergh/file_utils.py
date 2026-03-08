@@ -5,7 +5,7 @@ File system utilities for the Lumbergh backend.
 from collections.abc import Iterator
 from pathlib import Path
 
-from constants import EXT_TO_LANGUAGE, IGNORE_DIRS
+from lumbergh.constants import EXT_TO_LANGUAGE, IGNORE_DIRS
 
 
 def iter_project_files(root: Path, ignore_dirs: set[str] | None = None) -> Iterator[Path]:

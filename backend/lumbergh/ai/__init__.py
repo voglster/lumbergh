@@ -8,7 +8,7 @@ Provides provider-agnostic AI completions with support for:
 - OpenAI-compatible endpoints
 """
 
-from ai.prompts import DEFAULT_COMMIT_MESSAGE_PROMPT, get_ai_prompt
-from ai.providers import AIProvider, get_provider
+from lumbergh.ai.prompts import DEFAULT_COMMIT_MESSAGE_PROMPT, get_ai_prompt
+from lumbergh.ai.providers import AIProvider, get_provider
 
 __all__ = ["get_provider", "AIProvider", "get_ai_prompt", "DEFAULT_COMMIT_MESSAGE_PROMPT"]

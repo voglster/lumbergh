@@ -44,3 +44,7 @@ uv.lock
 # Playwright
 .playwright/
 .playwright-cli/
+
+# Lumbergh package build artifacts
+backend/lumbergh/frontend_dist/
+!backend/lumbergh/frontend_dist/.gitkeep

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, memo } from 'react'
 import { Play, RefreshCw, Undo2, ChevronRight, MoreHorizontal, Maximize2 } from 'lucide-react'
+import { getApiBase } from '../../config'
 import { relativeDate } from '../../utils/relativeDate'
 import type { DiffData } from './types'
 import { getFileStats } from './utils'
@@ -7,7 +8,6 @@ import BranchSelector from './BranchSelector'
 
 interface Props {
   data: DiffData
-  apiHost: string
   sessionName?: string
   onSelectFile: (path: string) => void
   onRefresh: () => void
@@ -19,7 +19,6 @@ interface Props {
 
 const FileList = memo(function FileList({
   data,
-  apiHost,
   sessionName,
   onSelectFile,
   onRefresh,
@@ -58,8 +57,8 @@ const FileList = memo(function FileList({
   }, [showMenu])
 
   const gitBaseUrl = sessionName
-    ? `http://${apiHost}/api/sessions/${sessionName}/git`
-    : `http://${apiHost}/api/git`
+    ? `${getApiBase()}/sessions/${sessionName}/git`
+    : `${getApiBase()}/git`
 
   const commitUrl = `${gitBaseUrl}/commit`
   const pushUrl = `${gitBaseUrl}/push`
@@ -67,7 +66,7 @@ const FileList = memo(function FileList({
 
   // Build AI generate URL (only works with sessions)
   const generateUrl = sessionName
-    ? `http://${apiHost}/api/sessions/${sessionName}/ai/generate-commit-message`
+    ? `${getApiBase()}/sessions/${sessionName}/ai/generate-commit-message`
     : null
 
   const isWorkingChanges = !commit

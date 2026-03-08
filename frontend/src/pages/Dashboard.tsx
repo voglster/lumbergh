@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Sun, Moon, Settings, Plus, Monitor, Info } from 'lucide-react'
-import { getApiHost } from '../config'
+import { getApiBase } from '../config'
 import SessionCard from '../components/SessionCard'
 import CreateSessionModal from '../components/CreateSessionModal'
 import SettingsModal from '../components/SettingsModal'
@@ -36,11 +36,9 @@ export default function Dashboard() {
   const [enablingTmuxMouse, setEnablingTmuxMouse] = useState(false)
   const { theme, setTheme } = useTheme()
 
-  const apiHost = getApiHost()
-
   const fetchSessions = useCallback(async () => {
     try {
-      const res = await fetch(`http://${apiHost}/api/sessions`)
+      const res = await fetch(`${getApiBase()}/sessions`)
       if (!res.ok) throw new Error('Failed to fetch sessions')
       const data = await res.json()
       setSessions(data.sessions || [])
@@ -50,11 +48,11 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }, [apiHost])
+  }, [])
 
   const checkLbSharedStatus = useCallback(async () => {
     try {
-      const res = await fetch(`http://${apiHost}/api/shared/claude-md-status`)
+      const res = await fetch(`${getApiBase()}/shared/claude-md-status`)
       if (res.ok) {
         const data = await res.json()
         setLbSharedInstalled(data.installed)
@@ -62,11 +60,11 @@ export default function Dashboard() {
     } catch {
       // Silently fail - not critical
     }
-  }, [apiHost])
+  }, [])
 
   const checkTmuxMouse = useCallback(async () => {
     try {
-      const res = await fetch(`http://${apiHost}/api/tmux/mouse-status`)
+      const res = await fetch(`${getApiBase()}/tmux/mouse-status`)
       if (res.ok) {
         const data = await res.json()
         setTmuxMouseEnabled(data.enabled)
@@ -74,12 +72,12 @@ export default function Dashboard() {
     } catch {
       // Silently fail - not critical
     }
-  }, [apiHost])
+  }, [])
 
   const enableTmuxMouse = async (mode: 'full' | 'mouse_only') => {
     setEnablingTmuxMouse(true)
     try {
-      const res = await fetch(`http://${apiHost}/api/tmux/enable-mouse`, {
+      const res = await fetch(`${getApiBase()}/tmux/enable-mouse`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode }),
@@ -97,7 +95,7 @@ export default function Dashboard() {
   const installLbShared = async () => {
     setInstallingLbShared(true)
     try {
-      const res = await fetch(`http://${apiHost}/api/shared/setup-claude-md`, {
+      const res = await fetch(`${getApiBase()}/shared/setup-claude-md`, {
         method: 'POST',
       })
       if (res.ok) {
@@ -121,7 +119,7 @@ export default function Dashboard() {
 
   const handleDelete = async (name: string, cleanupWorktree?: boolean) => {
     try {
-      const url = new URL(`http://${apiHost}/api/sessions/${name}`)
+      const url = new URL(`${getApiBase()}/sessions/${name}`)
       if (cleanupWorktree) {
         url.searchParams.set('cleanup_worktree', 'true')
       }
@@ -141,7 +139,7 @@ export default function Dashboard() {
 
   const handleUpdate = async (name: string, updates: { displayName?: string; description?: string }) => {
     try {
-      const res = await fetch(`http://${apiHost}/api/sessions/${name}`, {
+      const res = await fetch(`${getApiBase()}/sessions/${name}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -161,7 +159,7 @@ export default function Dashboard() {
 
   const handleReset = async (name: string) => {
     try {
-      const res = await fetch(`http://${apiHost}/api/sessions/${name}/reset`, {
+      const res = await fetch(`${getApiBase()}/sessions/${name}/reset`, {
         method: 'POST',
       })
       if (!res.ok) {
@@ -324,7 +322,6 @@ export default function Dashboard() {
       {/* Create session modal */}
       {showCreateModal && (
         <CreateSessionModal
-          apiHost={apiHost}
           onClose={() => setShowCreateModal(false)}
           onCreated={fetchSessions}
         />
@@ -332,7 +329,7 @@ export default function Dashboard() {
 
       {/* Settings modal */}
       {showSettingsModal && (
-        <SettingsModal apiHost={apiHost} onClose={() => setShowSettingsModal(false)} />
+        <SettingsModal onClose={() => setShowSettingsModal(false)} />
       )}
     </div>
   )

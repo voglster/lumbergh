@@ -5,12 +5,12 @@ Project-specific prompts are now handled via session-scoped endpoints in session
 
 from fastapi import APIRouter, HTTPException
 
-from db_utils import (
+from lumbergh.db_utils import (
     get_global_db,
     get_single_document_items,
     save_single_document_items,
 )
-from models import PromptTemplateList
+from lumbergh.models import PromptTemplateList
 
 router = APIRouter(prefix="/api", tags=["notes"])
 

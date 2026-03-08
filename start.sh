@@ -12,7 +12,7 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 echo "Starting backend on http://0.0.0.0:8420"
-cd backend && uv run python main.py &
+cd backend && uv run uvicorn lumbergh.main:app --host 0.0.0.0 --port 8420 --reload &
 BACKEND_PID=$!
 
 echo "Starting frontend on http://0.0.0.0:5420"
