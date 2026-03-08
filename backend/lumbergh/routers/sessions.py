@@ -165,7 +165,7 @@ def create_tmux_session(name: str, workdir: Path) -> None:
 @directories_router.get("/search")
 async def search_directories(query: str = ""):
     """Search for git repositories in the configured search directory."""
-    from routers.settings import get_settings
+    from lumbergh.routers.settings import get_settings
 
     settings = get_settings()
     base_dir = Path(settings.get("repoSearchDir", str(Path.home() / "src")))
@@ -1188,9 +1188,9 @@ async def session_clear_message_buffer(name: str):
 @router.post("/{name}/ai/generate-commit-message")
 async def session_generate_commit_message(name: str):
     """Generate a commit message using AI for the session's current changes."""
-    from ai.prompts import get_ai_prompt, render_prompt
-    from ai.providers import get_provider
-    from routers.settings import get_settings
+    from lumbergh.ai.prompts import get_ai_prompt, render_prompt
+    from lumbergh.ai.providers import get_provider
+    from lumbergh.routers.settings import get_settings
 
     workdir = get_session_workdir(name)
 
@@ -1264,9 +1264,9 @@ async def session_status_summary(name: str, body: StatusSummaryInput):
     """Generate a short status summary for a session based on the current task."""
     from datetime import datetime
 
-    from ai.prompts import STATUS_SUMMARY_PROMPT
-    from ai.providers import get_provider
-    from routers.settings import get_settings
+    from lumbergh.ai.prompts import STATUS_SUMMARY_PROMPT
+    from lumbergh.ai.providers import get_provider
+    from lumbergh.routers.settings import get_settings
 
     try:
         # Get AI provider and generate summary
