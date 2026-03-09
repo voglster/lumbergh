@@ -55,11 +55,13 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
   const [commitLimit, setCommitLimit] = useState(100)
   const [menuCommit, setMenuCommit] = useState<{ hash: string; shortHash: string; message: string; pushed: boolean; refs: { name: string; local: boolean; remote: boolean }[] } | null>(null)
   const [menuBranch, setMenuBranch] = useState<{ name: string; local: boolean; remote: boolean; commitHash: string; commitShortHash: string; x: number; y: number } | null>(null)
+  const [menuStash, setMenuStash] = useState<{ ref: string; hash: string; x: number; y: number } | null>(null)
   const [expandedRow, setExpandedRow] = useState<number | null>(null)
   const expandedRowTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const branchMenuRef = useRef<HTMLDivElement>(null)
+  const stashMenuRef = useRef<HTMLDivElement>(null)
   const didAutoSelect = useRef(false)
   const didAutoScroll = useRef(false)
 
@@ -264,6 +266,27 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
     }
   }, [menuBranch])
 
+  // Close stash menu on click-outside or Escape
+  useEffect(() => {
+    if (!menuStash) return
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (stashMenuRef.current && !stashMenuRef.current.contains(e.target as Node)) {
+        setMenuStash(null)
+      }
+    }
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuStash(null)
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [menuStash])
+
   const afterAction = useCallback(() => {
     setMenuCommit(null)
     fetchGraph()
@@ -441,6 +464,38 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
       alert('Push failed: network error')
     }
   }, [sessionName, menuBranch, afterAction])
+
+  const handleStashPop = useCallback(async () => {
+    if (!sessionName || !menuStash) return
+    try {
+      const res = await fetch(`${getApiBase()}/sessions/${sessionName}/git/stash-pop?ref=${encodeURIComponent(menuStash.ref)}`, { method: 'POST' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.detail || `Stash pop failed (HTTP ${res.status})`)
+        return
+      }
+      setMenuStash(null)
+      afterAction()
+    } catch {
+      alert('Stash pop failed')
+    }
+  }, [sessionName, menuStash, afterAction])
+
+  const handleStashDrop = useCallback(async () => {
+    if (!sessionName || !menuStash) return
+    try {
+      const res = await fetch(`${getApiBase()}/sessions/${sessionName}/git/stash-drop?ref=${encodeURIComponent(menuStash.ref)}`, { method: 'POST' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.detail || `Stash drop failed (HTTP ${res.status})`)
+        return
+      }
+      setMenuStash(null)
+      afterAction()
+    } catch {
+      alert('Stash drop failed')
+    }
+  }, [sessionName, menuStash, afterAction])
 
   const nodes = useMemo(() => {
     if (!graphData) return []
@@ -800,16 +855,38 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
                 const isExpanded = expandedRow === row
 
                 const renderBranchBadge = (ref: { name: string; local: boolean; remote: boolean; stash?: boolean }, commitRow: number) => {
-                  // Stash badges: distinct style, no context menu
+                  // Stash badges: clickable with pop/drop context menu
                   if (ref.stash) {
+                    const stashIsMenuOpen = menuStash?.ref === ref.name && menuStash?.hash === nodes[commitRow].commit.hash
                     return (
-                      <span
+                      <button
                         key={ref.name}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-base rounded font-medium leading-none max-w-full bg-slate-600/30 text-slate-300 ring-1 ring-slate-500/40"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (stashIsMenuOpen) {
+                            setMenuStash(null)
+                          } else {
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                            const containerRect = containerRef.current?.getBoundingClientRect()
+                            setMenuStash({
+                              ref: ref.name,
+                              hash: nodes[commitRow].commit.hash,
+                              x: rect.left - (containerRect?.left ?? 0),
+                              y: rect.bottom - (containerRect?.top ?? 0) + (containerRef.current?.scrollTop ?? 0),
+                            })
+                            setMenuCommit(null)
+                            setMenuBranch(null)
+                          }
+                        }}
+                        className={`inline-flex items-center gap-1 px-2 py-1 text-base rounded font-medium leading-none cursor-pointer transition-colors max-w-full ${
+                          stashIsMenuOpen
+                            ? 'bg-slate-500/40 text-slate-200 ring-1 ring-slate-400/70'
+                            : 'bg-slate-600/30 text-slate-300 ring-1 ring-slate-500/40 hover:bg-slate-500/30 hover:text-slate-200'
+                        }`}
                       >
                         <Archive size={12} className="opacity-70 shrink-0" />
                         <span className="truncate">{ref.name}</span>
-                      </span>
+                      </button>
                     )
                   }
 
@@ -1094,6 +1171,31 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
                 </div>
               )
             })()}
+
+            {/* Stash context menu */}
+            {menuStash && (
+              <div
+                ref={stashMenuRef}
+                className="absolute z-50 w-48 py-1 bg-bg-surface border border-border-default rounded-lg shadow-xl"
+                style={{ left: menuStash.x, top: menuStash.y + 4 }}
+              >
+                <div className="px-3 py-1.5 text-xs text-text-muted border-b border-border-default truncate">
+                  <span className="font-mono font-medium text-text-secondary">{menuStash.ref}</span>
+                </div>
+                <button
+                  onClick={handleStashPop}
+                  className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
+                >
+                  Pop
+                </button>
+                <button
+                  onClick={handleStashDrop}
+                  className="w-full text-left px-3 py-1.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                >
+                  Delete
+                </button>
+              </div>
+            )}
 
             {/* Branch context menu */}
             {menuBranch && (() => {

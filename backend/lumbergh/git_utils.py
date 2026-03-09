@@ -732,9 +732,13 @@ def git_stash(cwd: Path) -> dict:
         return {"error": f"git stash failed: {e}"}
 
 
-def git_stash_pop(cwd: Path) -> dict:
+def git_stash_pop(cwd: Path, ref: str | None = None) -> dict:
     """
-    Pop the most recent stash.
+    Pop a stash entry.
+
+    Args:
+        cwd: Working directory
+        ref: Optional stash ref (e.g. "stash@{2}"), defaults to most recent
 
     Returns:
         Dict with status and message on success, or error on failure
@@ -750,16 +754,52 @@ def git_stash_pop(cwd: Path) -> dict:
         if not stash_list:
             return {"error": "No stashes to pop"}
 
-        repo.git.stash("pop")
+        args = ["pop"]
+        if ref:
+            args.append(ref)
+        repo.git.stash(*args)
         return {
             "status": "popped",
-            "message": "Stash popped",
+            "message": f"Stash popped ({ref or 'latest'})",
         }
     except GitCommandError as e:
         error_msg = str(e)
         if "conflict" in error_msg.lower():
             return {"error": "Stash pop had conflicts. Resolve them manually."}
         return {"error": f"git stash pop failed: {e}"}
+
+
+def git_stash_drop(cwd: Path, ref: str | None = None) -> dict:
+    """
+    Drop (delete) a stash entry without applying it.
+
+    Args:
+        cwd: Working directory
+        ref: Optional stash ref (e.g. "stash@{2}"), defaults to most recent
+
+    Returns:
+        Dict with status and message on success, or error on failure
+    """
+    try:
+        repo = get_repo(cwd)
+    except InvalidGitRepositoryError:
+        return {"error": "Not a git repository"}
+
+    try:
+        stash_list = repo.git.stash("list")
+        if not stash_list:
+            return {"error": "No stashes to drop"}
+
+        args = ["drop"]
+        if ref:
+            args.append(ref)
+        repo.git.stash(*args)
+        return {
+            "status": "dropped",
+            "message": f"Stash dropped ({ref or 'latest'})",
+        }
+    except GitCommandError as e:
+        return {"error": f"git stash drop failed: {e}"}
 
 
 def get_branches(cwd: Path) -> dict:

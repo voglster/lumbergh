@@ -45,6 +45,7 @@ from lumbergh.git_utils import (
     git_pull_rebase,
     git_push,
     git_stash,
+    git_stash_drop,
     git_stash_pop,
     remove_worktree,
     reset_to_commit,
@@ -838,12 +839,31 @@ async def session_git_stash(name: str):
 
 
 @router.post("/{name}/git/stash-pop")
-async def session_git_stash_pop(name: str):
-    """Pop the most recent stash."""
+async def session_git_stash_pop(name: str, ref: str | None = None):
+    """Pop a stash entry. Optionally specify ref (e.g. stash@{2})."""
     workdir = get_session_workdir(name)
 
     try:
-        result = git_stash_pop(workdir)
+        result = git_stash_pop(workdir, ref=ref)
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+        from lumbergh.diff_cache import diff_cache
+        diff_cache.invalidate(name)
+        _files_cache.pop(name, None)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{name}/git/stash-drop")
+async def session_git_stash_drop(name: str, ref: str | None = None):
+    """Drop (delete) a stash entry. Optionally specify ref (e.g. stash@{2})."""
+    workdir = get_session_workdir(name)
+
+    try:
+        result = git_stash_drop(workdir, ref=ref)
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
         from lumbergh.diff_cache import diff_cache
