@@ -54,10 +54,11 @@ export default function PromptMentionInput({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Reset highlighted index when filtered prompts change
-  useEffect(() => {
+  // Reset highlighted index when query changes — colocate with setQuery calls
+  const resetAndSetQuery = useCallback((q: string) => {
+    setQuery(q)
     setHighlightedIndex(0)
-  }, [query])
+  }, [])
 
   const updateDropdownPosition = useCallback(() => {
     if (!inputRef.current) return
@@ -82,7 +83,7 @@ export default function PromptMentionInput({
         // Cursor moved before trigger, close dropdown
         setIsOpen(false)
         setTriggerIndex(null)
-        setQuery('')
+        resetAndSetQuery('')
       } else {
         // Extract query text between @ and cursor
         const queryText = newValue.slice(triggerIndex + 1, cursorPos)
@@ -90,9 +91,9 @@ export default function PromptMentionInput({
         if (/\s/.test(queryText)) {
           setIsOpen(false)
           setTriggerIndex(null)
-          setQuery('')
+          resetAndSetQuery('')
         } else {
-          setQuery(queryText)
+          resetAndSetQuery(queryText)
           updateDropdownPosition()
         }
       }
@@ -105,7 +106,7 @@ export default function PromptMentionInput({
         if (cursorPos === 1 || /\s/.test(charBeforeAt)) {
           setIsOpen(true)
           setTriggerIndex(cursorPos - 1)
-          setQuery('')
+          resetAndSetQuery('')
           setHighlightedIndex(0)
           updateDropdownPosition()
         }
@@ -125,7 +126,7 @@ export default function PromptMentionInput({
     onChange(newValue)
     setIsOpen(false)
     setTriggerIndex(null)
-    setQuery('')
+    resetAndSetQuery('')
 
     // Focus and set cursor after inserted mention
     setTimeout(() => {
@@ -159,7 +160,7 @@ export default function PromptMentionInput({
           e.preventDefault()
           setIsOpen(false)
           setTriggerIndex(null)
-          setQuery('')
+          resetAndSetQuery('')
           return
       }
     }

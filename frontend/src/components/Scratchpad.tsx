@@ -16,7 +16,10 @@ export default function Scratchpad({ sessionName, onFocusTerminal }: ScratchpadP
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const selectedTextRef = useRef('')
   const contentRef = useRef(content)
-  contentRef.current = content
+
+  useEffect(() => {
+    contentRef.current = content
+  }, [content])
 
   // Fetch content on mount - localStorage draft takes priority over backend
   useEffect(() => {
@@ -33,7 +36,7 @@ export default function Scratchpad({ sessionName, onFocusTerminal }: ScratchpadP
         console.error('Failed to fetch scratchpad:', err)
         setLoading(false)
       })
-  }, [sessionName])
+  }, [sessionName, setContent])
 
   const saveContent = useCallback(
     async (text: string) => {

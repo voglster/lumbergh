@@ -15,12 +15,8 @@ const MENTION_REGEX = /@([a-zA-Z0-9_-]+)/g
 export default function MentionText({ text, prompts, className = '' }: MentionTextProps) {
   const parts: ReactNode[] = []
   let lastIndex = 0
-  let match: RegExpExecArray | null
 
-  // Reset regex state
-  MENTION_REGEX.lastIndex = 0
-
-  while ((match = MENTION_REGEX.exec(text)) !== null) {
+  for (const match of text.matchAll(MENTION_REGEX)) {
     // Add text before the match
     if (match.index > lastIndex) {
       parts.push(text.slice(lastIndex, match.index))

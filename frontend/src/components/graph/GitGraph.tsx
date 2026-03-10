@@ -64,6 +64,8 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
   const stashMenuRef = useRef<HTMLDivElement>(null)
   const didAutoSelect = useRef(false)
   const didAutoScroll = useRef(false)
+  const onSelectCommitRef = useRef(onSelectCommit)
+  onSelectCommitRef.current = onSelectCommit
 
   // Draggable branch panel width
   const [branchPanelWidth, setBranchPanelWidth] = useState(() => {
@@ -183,12 +185,12 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
       const data: GraphData = await res.json()
       setGraphData(data)
       // Auto-select on first load: WIP if uncommitted changes, else HEAD commit
-      if (!didAutoSelect.current && onSelectCommit) {
+      if (!didAutoSelect.current && onSelectCommitRef.current) {
         didAutoSelect.current = true
         if (data.workingChanges) {
-          onSelectCommit(null)
+          onSelectCommitRef.current(null)
         } else if (data.head?.hash) {
-          onSelectCommit(data.head.hash)
+          onSelectCommitRef.current(data.head.hash)
         }
       }
     } catch (err) {

@@ -263,6 +263,7 @@ export default function Terminal({
       termRef.current = null
       fitAddonRef.current = null
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only recreate terminal when session changes
   }, [sessionName])
 
   // Auto-fit on container resize (debounced with stability check)

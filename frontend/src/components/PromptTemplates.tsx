@@ -29,7 +29,7 @@ export default function PromptTemplates({
 }: PromptTemplatesProps) {
   const [projectTemplates, setProjectTemplates] = useState<PromptTemplate[]>([])
   const [globalTemplates, setGlobalTemplates] = useState<PromptTemplate[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!!sessionName)
   const [saving, setSaving] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<PromptTemplate | null>(null)
@@ -41,10 +41,7 @@ export default function PromptTemplates({
   const [dragScope, setDragScope] = useState<'project' | 'global' | null>(null)
 
   useEffect(() => {
-    if (!sessionName) {
-      setLoading(false)
-      return
-    }
+    if (!sessionName) return
     Promise.all([
       fetch(`${getApiBase()}/sessions/${sessionName}/prompts`).then((res) => res.json()),
       fetch(`${getApiBase()}/global/prompts`).then((res) => res.json()),
