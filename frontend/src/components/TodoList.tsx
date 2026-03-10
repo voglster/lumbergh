@@ -52,6 +52,7 @@ export default function TodoList({
   const [highlightIndex, setHighlightIndex] = useState<number | null>(null)
   const movePickerRef = useRef<HTMLDivElement>(null)
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout>>(null)
+  const descriptionSaveTimerRef = useRef<ReturnType<typeof setTimeout>>(null)
 
   // Fetch prompts for @ mention autocomplete
   const { allPrompts } = usePrompts(sessionName)
@@ -183,8 +184,21 @@ export default function TodoList({
     }
   }
 
+  // Auto-save description on debounced change
+  useEffect(() => {
+    if (expandedIndex === null) return
+    if (descriptionSaveTimerRef.current) clearTimeout(descriptionSaveTimerRef.current)
+    descriptionSaveTimerRef.current = setTimeout(() => {
+      handleSaveDescription(expandedIndex)
+    }, 800)
+    return () => {
+      if (descriptionSaveTimerRef.current) clearTimeout(descriptionSaveTimerRef.current)
+    }
+  }, [editingDescription])
+
   const handleDescriptionKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
+      if (descriptionSaveTimerRef.current) clearTimeout(descriptionSaveTimerRef.current)
       setEditingDescription(todos[expandedIndex!]?.description || '')
       setExpandedIndex(null)
     }
