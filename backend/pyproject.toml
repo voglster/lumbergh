@@ -38,8 +38,23 @@ target-version = "py311"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["A", "ARG", "B", "C4", "C90", "E", "F", "FAST", "I", "N", "RET", "S", "SIM", "UP", "W"]
-ignore = ["E501", "B008", "B904", "S101", "S104", "S324", "S603", "S606", "S607", "SIM105"]
+select = [
+    "A", "ARG", "B", "C4", "C90", "DTZ", "E", "F", "FAST", "FLY", "FURB",
+    "I", "LOG", "N", "PERF", "PIE", "PT", "RET", "RUF", "S", "SIM", "TC", "UP", "W",
+]
+ignore = [
+    "E501",    # line length handled by formatter
+    "B008",    # function call in default argument (FastAPI Depends)
+    "B904",    # raise from within except
+    "S101",    # assert usage (fine in tests)
+    "S104",    # bind to 0.0.0.0
+    "S324",    # insecure hash (not used for crypto)
+    "S603",    # subprocess call
+    "S606",    # os.popen
+    "S607",    # partial executable path
+    "SIM105",  # contextlib.suppress
+    "RUF012",  # mutable class attributes (pydantic models)
+]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
