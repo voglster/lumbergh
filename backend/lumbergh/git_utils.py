@@ -90,13 +90,13 @@ def get_porcelain_status(cwd: Path) -> list[dict]:
     # Staged changes (index vs HEAD)
     if repo.head.is_valid():
         for diff in repo.index.diff(repo.head.commit):
-            path = diff.b_path or diff.a_path
+            path = diff.b_path or diff.a_path or ""
             files.append({"path": path, "status": _get_diff_status(diff, staged=True)})
             seen_paths.add(path)
 
     # Unstaged changes (working tree vs index)
     for diff in repo.index.diff(None):
-        path = diff.a_path or diff.b_path
+        path = diff.a_path or diff.b_path or ""
         if path not in seen_paths:
             files.append({"path": path, "status": _get_diff_status(diff, staged=False)})
 

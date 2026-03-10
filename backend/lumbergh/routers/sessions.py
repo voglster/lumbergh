@@ -84,7 +84,7 @@ SESSION_NAME_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 def find_git_repos(base_dir: Path, query: str = "", limit: int = 20) -> list[dict]:
     """Find git repositories under base_dir matching the query."""
-    results = []
+    results: list[dict] = []
     query_lower = query.lower()
 
     def should_skip(name: str) -> bool:
@@ -197,6 +197,7 @@ def get_live_sessions() -> dict[str, dict]:
                 "alive": True,
             }
             for s in server.sessions
+            if s.name is not None
         }
     except Exception:
         return {}
@@ -303,17 +304,18 @@ async def touch_session(name: str):
     from datetime import UTC, datetime
 
     session_q = Query()
-    existing = sessions_table.get(session_q.name == name)
+    doc = sessions_table.get(session_q.name == name)
+    record: dict = dict(doc) if isinstance(doc, dict) else {}
 
-    if not existing:
+    if not record:
         # Check if it's an orphan tmux session
         live = get_live_sessions()
         if name not in live:
             raise HTTPException(status_code=404, detail=f"Session '{name}' not found")
-        existing = {"name": name}
+        record = {"name": name}
 
-    existing["lastUsedAt"] = datetime.now(UTC).isoformat()
-    sessions_table.upsert(existing, session_q.name == name)
+    record["lastUsedAt"] = datetime.now(UTC).isoformat()
+    sessions_table.upsert(record, session_q.name == name)
 
     return {"ok": True}
 
@@ -322,25 +324,26 @@ async def touch_session(name: str):
 async def update_session(name: str, body: SessionUpdate):
     """Update session metadata (e.g., displayName)."""
     session_q = Query()
-    existing = sessions_table.get(session_q.name == name)
+    doc = sessions_table.get(session_q.name == name)
+    record: dict = dict(doc) if isinstance(doc, dict) else {}
 
-    if not existing:
+    if not record:
         # Check if it's an orphan tmux session
         live = get_live_sessions()
         if name not in live:
             raise HTTPException(status_code=404, detail=f"Session '{name}' not found")
         # Create a new record for the orphan session
-        existing = {"name": name}
+        record = {"name": name}
 
     # Update fields
     if body.displayName is not None:
-        existing["displayName"] = body.displayName
+        record["displayName"] = body.displayName
     if body.description is not None:
-        existing["description"] = body.description
+        record["description"] = body.description
 
-    sessions_table.upsert(existing, session_q.name == name)
+    sessions_table.upsert(record, session_q.name == name)
 
-    return existing
+    return record
 
 
 def _resolve_worktree_workdir(body: CreateSessionRequest) -> tuple[Path, str, str]:
@@ -555,8 +558,8 @@ async def delete_session(name: str, cleanup_worktree: bool = False):
     # Clean up worktree if requested
     worktree_removed = False
     if cleanup_worktree and session_type == "worktree" and worktree_parent_repo and workdir:
-        result = remove_worktree(Path(worktree_parent_repo), Path(workdir), force=True)
-        worktree_removed = result.get("status") == "removed"
+        wt_result = remove_worktree(Path(worktree_parent_repo), Path(workdir), force=True)
+        worktree_removed = wt_result.get("status") == "removed"
 
     session_q = Query()
     sessions_table.remove(session_q.name == name)

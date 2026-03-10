@@ -97,7 +97,7 @@ class IdleMonitor:
         """Get names of all live tmux sessions."""
         try:
             server = libtmux.Server()
-            return [s.name for s in server.sessions]
+            return [s.name for s in server.sessions if s.name is not None]
         except Exception:
             return []
 

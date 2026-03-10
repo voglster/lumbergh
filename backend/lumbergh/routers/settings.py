@@ -96,7 +96,7 @@ async def read_settings():
 @router.patch("")
 async def update_settings(updates: SettingsUpdate):
     """Update settings. Only provided fields are updated."""
-    update_data = {}
+    update_data: dict[str, object] = {}
 
     if updates.repoSearchDir is not None:
         path = Path(updates.repoSearchDir).expanduser().resolve()

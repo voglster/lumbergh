@@ -42,6 +42,8 @@ def get_session_pane_id(session_name: str) -> str:
         raise ValueError(f"Session '{session_name}' not found")
     window = session.active_window
     pane = window.active_pane
+    if pane is None or pane.id is None:
+        raise ValueError(f"No active pane in session '{session_name}'")
     return pane.id
 
 
@@ -60,6 +62,8 @@ def capture_pane_content(session_name: str) -> str:
 
     window = session.active_window
     pane = window.active_pane
+    if pane is None:
+        return ""
 
     # capture_pane returns the pane content
     # escape_sequences=True includes ANSI escape codes (colors)
