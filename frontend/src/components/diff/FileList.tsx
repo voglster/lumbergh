@@ -1,5 +1,14 @@
 import { useState, useEffect, useRef, memo } from 'react'
-import { Play, RefreshCw, Undo2, ChevronRight, MoreHorizontal, Maximize2, ArrowDown, CloudDownload } from 'lucide-react'
+import {
+  Play,
+  RefreshCw,
+  Undo2,
+  ChevronRight,
+  MoreHorizontal,
+  Maximize2,
+  ArrowDown,
+  CloudDownload,
+} from 'lucide-react'
 import { getApiBase } from '../../config'
 import { relativeDate } from '../../utils/relativeDate'
 import type { DiffData } from './types'

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   GripVertical,
   Play,
@@ -70,19 +70,22 @@ export default function TodoList({
       })
   }, [sessionName])
 
-  const saveTodos = async (updatedTodos: Todo[]) => {
-    setSaving(true)
-    try {
-      await fetch(`${getApiBase()}/sessions/${sessionName}/todos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ todos: updatedTodos }),
-      })
-    } catch (err) {
-      console.error('Failed to save todos:', err)
-    }
-    setSaving(false)
-  }
+  const saveTodos = useCallback(
+    async (updatedTodos: Todo[]) => {
+      setSaving(true)
+      try {
+        await fetch(`${getApiBase()}/sessions/${sessionName}/todos`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ todos: updatedTodos }),
+        })
+      } catch (err) {
+        console.error('Failed to save todos:', err)
+      }
+      setSaving(false)
+    },
+    [sessionName]
+  )
 
   const handleToggle = (index: number) => {
     const toggled = { ...todos[index], done: !todos[index].done }
@@ -172,17 +175,20 @@ export default function TodoList({
     }
   }
 
-  const handleSaveDescription = (index: number) => {
-    const trimmed = editingDescription.trim()
-    const currentDesc = todos[index].description || ''
-    if (trimmed !== currentDesc) {
-      const updated = todos.map((t, i) =>
-        i === index ? { ...t, description: trimmed || undefined } : t
-      )
-      setTodos(updated)
-      saveTodos(updated)
-    }
-  }
+  const handleSaveDescription = useCallback(
+    (index: number) => {
+      const trimmed = editingDescription.trim()
+      const currentDesc = todos[index].description || ''
+      if (trimmed !== currentDesc) {
+        const updated = todos.map((t, i) =>
+          i === index ? { ...t, description: trimmed || undefined } : t
+        )
+        setTodos(updated)
+        saveTodos(updated)
+      }
+    },
+    [editingDescription, todos, saveTodos]
+  )
 
   // Auto-save description on debounced change
   useEffect(() => {
@@ -194,7 +200,7 @@ export default function TodoList({
     return () => {
       if (descriptionSaveTimerRef.current) clearTimeout(descriptionSaveTimerRef.current)
     }
-  }, [editingDescription])
+  }, [editingDescription, expandedIndex, handleSaveDescription])
 
   const handleDescriptionKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {

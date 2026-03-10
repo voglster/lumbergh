@@ -434,6 +434,29 @@ export default function GitGraph({
     }
   }, [sessionName, menuCommit, afterAction])
 
+  const handleResetTo = useCallback(
+    async (hash: string) => {
+      if (!sessionName) return
+      try {
+        const res = await fetch(`${getApiBase()}/sessions/${sessionName}/git/reset-to`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hash, mode: 'soft' }),
+        })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          alert(data.detail || `Reset failed (HTTP ${res.status})`)
+          return
+        }
+        setMenuBranch(null)
+        afterAction()
+      } catch {
+        alert('Reset failed')
+      }
+    },
+    [sessionName, afterAction]
+  )
+
   const handleReword = useCallback(async () => {
     if (!menuCommit || !sessionName) return
     const newMessage = prompt('Edit commit message:', menuCommit.message)
@@ -1393,12 +1416,28 @@ export default function GitGraph({
                         Checkout
                       </button>
                     )}
-                    {hasUnpushed && (
+                    {hasUnpushed && menuBranch.local && (
                       <button
                         onClick={handleBranchPush}
                         className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
                       >
                         Push
+                      </button>
+                    )}
+                    {!menuBranch.local && menuBranch.remote && (
+                      <button
+                        onClick={() => {
+                          if (
+                            !confirm(
+                              `Reset current branch to ${menuBranch.name} (${menuBranch.commitShortHash})?`
+                            )
+                          )
+                            return
+                          handleResetTo(menuBranch.commitHash)
+                        }}
+                        className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
+                      >
+                        Reset local to here
                       </button>
                     )}
                   </div>

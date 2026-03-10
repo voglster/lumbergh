@@ -68,6 +68,10 @@ Or run separately:
 ./frontend/start.sh  # Frontend on :5173
 ```
 
+## Linting
+
+Run `./lint.sh` before finishing any task. It auto-fixes what it can (ruff format, prettier, eslint --fix) and exits non-zero if unfixable errors remain. Fix all errors before considering work done.
+
 ## Conventions
 
 - Keep the backend simple - it's a thin layer over tmux/git subprocesses
