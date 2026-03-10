@@ -3,7 +3,15 @@ import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
-import { ArrowLeft, ChevronUp, ChevronDown, Minus, Plus, MoreHorizontal, Eraser } from 'lucide-react'
+import {
+  ArrowLeft,
+  ChevronUp,
+  ChevronDown,
+  Minus,
+  Plus,
+  MoreHorizontal,
+  Eraser,
+} from 'lucide-react'
 import { useTerminalSocket } from '../hooks/useTerminalSocket'
 import { getApiBase } from '../config'
 import { useTheme } from '../hooks/useTheme'
@@ -263,7 +271,7 @@ export default function Terminal({
       termRef.current = null
       fitAddonRef.current = null
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only recreate terminal when session changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only recreate terminal when session changes
   }, [sessionName])
 
   // Auto-fit on container resize (debounced with stability check)
@@ -418,7 +426,9 @@ export default function Terminal({
                 onClick={toggleScrollMode}
                 disabled={!isConnected}
                 className={`px-2 py-1 text-xs rounded ${
-                  scrollMode ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-control-bg hover:bg-control-bg-hover'
+                  scrollMode
+                    ? 'bg-yellow-600 hover:bg-yellow-500'
+                    : 'bg-control-bg hover:bg-control-bg-hover'
                 } disabled:bg-control-bg-hover disabled:opacity-50`}
                 title={scrollMode ? 'Exit scroll mode (q)' : 'Enter scroll mode (copy-mode)'}
               >
@@ -492,7 +502,11 @@ export default function Terminal({
               {onReset && (
                 <button
                   onClick={() => {
-                    if (confirm('⚠️ Reset this session?\n\nThis will:\n• Close ALL tmux windows and terminals\n• Kill any running processes\n• Start a fresh Claude session\n\nAny unsaved work will be lost!')) {
+                    if (
+                      confirm(
+                        '⚠️ Reset this session?\n\nThis will:\n• Close ALL tmux windows and terminals\n• Kill any running processes\n• Start a fresh Claude session\n\nAny unsaved work will be lost!'
+                      )
+                    ) {
                       onReset()
                       setHeaderExpanded(false)
                     }
@@ -628,7 +642,9 @@ export default function Terminal({
       )}
 
       {/* Terminal container with focus click shield */}
-      <div className={`flex-1 overflow-hidden relative ${hasFocus ? 'border-2 border-blue-500/70' : 'border-2 border-transparent'}`}>
+      <div
+        className={`flex-1 overflow-hidden relative ${hasFocus ? 'border-2 border-blue-500/70' : 'border-2 border-transparent'}`}
+      >
         {/* Floating connection indicator */}
         <div
           className={`absolute top-1 right-1 w-2 h-2 rounded-full z-10 ${

@@ -64,19 +64,11 @@ export default function BranchPicker({
   const unavailableBranches = branches.filter((b) => !b.available)
 
   if (loading) {
-    return (
-      <div className="text-sm text-text-tertiary py-2">
-        Loading branches...
-      </div>
-    )
+    return <div className="text-sm text-text-tertiary py-2">Loading branches...</div>
   }
 
   if (error) {
-    return (
-      <div className="text-sm text-red-400 py-2">
-        {error}
-      </div>
-    )
+    return <div className="text-sm text-red-400 py-2">{error}</div>
   }
 
   return (
@@ -119,9 +111,7 @@ export default function BranchPicker({
             placeholder="e.g., feat/new-feature"
             className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-sm"
           />
-          <p className="text-xs text-text-muted mt-1">
-            Branch will be created from current HEAD
-          </p>
+          <p className="text-xs text-text-muted mt-1">Branch will be created from current HEAD</p>
         </div>
       ) : (
         <div>

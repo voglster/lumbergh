@@ -4,7 +4,15 @@ import hljsDarkUrl from 'highlight.js/styles/github-dark.css?url'
 import hljsLightUrl from 'highlight.js/styles/github.css?url'
 import MarkdownPreview from '@uiw/react-markdown-preview'
 import mermaid from 'mermaid'
-import { ChevronDown, ChevronRight, Folder, FileText, RefreshCw, PanelLeftClose, Play } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronRight,
+  Folder,
+  FileText,
+  RefreshCw,
+  PanelLeftClose,
+  Play,
+} from 'lucide-react'
 import { getApiBase } from '../config'
 import { useTheme } from '../hooks/useTheme'
 
@@ -80,13 +88,11 @@ const HighlightedCode = React.memo(function HighlightedCode({
   language: string
   getHighlightedCode: (content: string, language: string) => string
 }) {
-  const html = useMemo(() => getHighlightedCode(content, language), [content, language, getHighlightedCode])
-  return (
-    <code
-      className="hljs"
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+  const html = useMemo(
+    () => getHighlightedCode(content, language),
+    [content, language, getHighlightedCode]
   )
+  return <code className="hljs" dangerouslySetInnerHTML={{ __html: html }} />
 })
 
 interface FileEntry {
@@ -101,7 +107,17 @@ interface FileContent {
   path: string
 }
 
-const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico', '.bmp', '.avif'])
+const IMAGE_EXTENSIONS = new Set([
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.svg',
+  '.webp',
+  '.ico',
+  '.bmp',
+  '.avif',
+])
 
 function isImagePath(path: string): boolean {
   const ext = path.slice(path.lastIndexOf('.')).toLowerCase()
@@ -362,7 +378,11 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
               className="w-full flex items-center gap-2 px-2 py-1 hover:bg-bg-surface text-left"
               style={{ paddingLeft: `${depth * 16 + 8}px` }}
             >
-              {isExpanded ? <ChevronDown size={14} className="text-text-muted" /> : <ChevronRight size={14} className="text-text-muted" />}
+              {isExpanded ? (
+                <ChevronDown size={14} className="text-text-muted" />
+              ) : (
+                <ChevronRight size={14} className="text-text-muted" />
+              )}
               <Folder size={16} className="text-yellow-400" />
               <span className="text-text-secondary truncate">{name}</span>
             </button>
@@ -463,7 +483,9 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full text-text-muted">Loading files...</div>
+      <div className="flex items-center justify-center h-full text-text-muted">
+        Loading files...
+      </div>
     )
   }
 
@@ -583,7 +605,11 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
               </div>
             ) : (
               <pre className="flex-1 p-4 overflow-auto text-sm font-mono" ref={contentRef}>
-                <HighlightedCode content={selectedFile.content} language={selectedFile.language} getHighlightedCode={getHighlightedCode} />
+                <HighlightedCode
+                  content={selectedFile.content}
+                  language={selectedFile.language}
+                  getHighlightedCode={getHighlightedCode}
+                />
               </pre>
             )}
           </div>

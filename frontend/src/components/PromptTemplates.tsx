@@ -23,10 +23,7 @@ interface PromptTemplatesProps {
   onFocusTerminal?: () => void
 }
 
-export default function PromptTemplates({
-  sessionName,
-  onFocusTerminal,
-}: PromptTemplatesProps) {
+export default function PromptTemplates({ sessionName, onFocusTerminal }: PromptTemplatesProps) {
   const [projectTemplates, setProjectTemplates] = useState<PromptTemplate[]>([])
   const [globalTemplates, setGlobalTemplates] = useState<PromptTemplate[]>([])
   const [loading, setLoading] = useState(!!sessionName)
@@ -34,8 +31,12 @@ export default function PromptTemplates({
   const [editMode, setEditMode] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<PromptTemplate | null>(null)
   const [showForm, setShowForm] = useState<'project' | 'global' | null>(null)
-  const [formName, setFormName, clearFormName] = useLocalStorageDraft(`prompt-form:${sessionName}:name`)
-  const [formPrompt, setFormPrompt, clearFormPrompt] = useLocalStorageDraft(`prompt-form:${sessionName}:prompt`)
+  const [formName, setFormName, clearFormName] = useLocalStorageDraft(
+    `prompt-form:${sessionName}:name`
+  )
+  const [formPrompt, setFormPrompt, clearFormPrompt] = useLocalStorageDraft(
+    `prompt-form:${sessionName}:prompt`
+  )
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [dragScope, setDragScope] = useState<'project' | 'global' | null>(null)
@@ -194,11 +195,16 @@ export default function PromptTemplates({
   const handleCopyToProject = async (template: PromptTemplate) => {
     if (!sessionName) return
     try {
-      await fetch(`${getApiBase()}/sessions/${sessionName}/global/prompts/${template.id}/copy-to-project`, {
-        method: 'POST',
-      })
+      await fetch(
+        `${getApiBase()}/sessions/${sessionName}/global/prompts/${template.id}/copy-to-project`,
+        {
+          method: 'POST',
+        }
+      )
       // Refresh project list
-      const projectData = await fetch(`${getApiBase()}/sessions/${sessionName}/prompts`).then((res) => res.json())
+      const projectData = await fetch(`${getApiBase()}/sessions/${sessionName}/prompts`).then(
+        (res) => res.json()
+      )
       setProjectTemplates(projectData.templates || [])
     } catch (err) {
       console.error('Failed to copy to project:', err)
@@ -258,7 +264,11 @@ export default function PromptTemplates({
   }
 
   const renderInlineEditForm = (template: PromptTemplate, _scope: 'project' | 'global') => (
-    <div key={template.id} ref={editFormRef} className="p-3 bg-bg-surface rounded border border-blue-500">
+    <div
+      key={template.id}
+      ref={editFormRef}
+      className="p-3 bg-bg-surface rounded border border-blue-500"
+    >
       <div className="mb-2">
         <input
           type="text"
@@ -339,7 +349,10 @@ export default function PromptTemplates({
           <>
             {scope === 'project' ? (
               <button
-                onClick={(e) => { e.stopPropagation(); handleCopyToGlobal(template) }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleCopyToGlobal(template)
+                }}
                 className="text-sm text-text-muted hover:text-green-400 transition-colors px-1"
                 title="Move to Global"
               >
@@ -347,7 +360,10 @@ export default function PromptTemplates({
               </button>
             ) : (
               <button
-                onClick={(e) => { e.stopPropagation(); handleCopyToProject(template) }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleCopyToProject(template)
+                }}
                 className="text-sm text-text-muted hover:text-green-400 transition-colors px-1"
                 title="Copy to Project"
               >
@@ -355,7 +371,10 @@ export default function PromptTemplates({
               </button>
             )}
             <button
-              onClick={(e) => { e.stopPropagation(); handleDelete(template.id, scope) }}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleDelete(template.id, scope)
+              }}
               className="text-sm text-text-muted hover:text-red-400 transition-colors px-1"
               title="Delete"
             >

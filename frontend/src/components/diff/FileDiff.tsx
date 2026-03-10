@@ -7,7 +7,17 @@ import { extractDiffContent, getFileStats, getLangFromPath } from './utils'
 import MarkdownViewer from '../MarkdownViewer'
 import { useTheme } from '../../hooks/useTheme'
 
-const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico', '.bmp', '.avif'])
+const IMAGE_EXTENSIONS = new Set([
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.svg',
+  '.webp',
+  '.ico',
+  '.bmp',
+  '.avif',
+])
 
 function isImagePath(path: string): boolean {
   const ext = path.slice(path.lastIndexOf('.')).toLowerCase()
@@ -78,7 +88,11 @@ const FileDiff = memo(function FileDiff({
   // Track text selection in the diff area
   const handleSelectionChange = useCallback(() => {
     const selection = window.getSelection()
-    if (selection && selection.rangeCount > 0 && contentRef.current?.contains(selection.anchorNode)) {
+    if (
+      selection &&
+      selection.rangeCount > 0 &&
+      contentRef.current?.contains(selection.anchorNode)
+    ) {
       const text = selection.toString()
       selectedTextRef.current = text
       if (text.length > 0) {
@@ -198,7 +212,11 @@ const FileDiff = memo(function FileDiff({
           )}
         </div>
       ) : (
-        <div className="flex-1 overflow-auto relative diff-font-size-override" ref={contentRef} style={{ color: 'unset', '--diff-font-size': `${fontSize}px` } as React.CSSProperties}>
+        <div
+          className="flex-1 overflow-auto relative diff-font-size-override"
+          ref={contentRef}
+          style={{ color: 'unset', '--diff-font-size': `${fontSize}px` } as React.CSSProperties}
+        >
           {hasSelection && sessionName && (
             <button
               onMouseDown={(e) => {

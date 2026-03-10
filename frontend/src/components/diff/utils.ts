@@ -58,4 +58,3 @@ export function getLangFromPath(path: string): string {
   }
   return extMap[ext] || 'plaintext'
 }
-

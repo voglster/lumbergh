@@ -1,5 +1,15 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Play, SendHorizonal, FileText, Bookmark, Check, Trash2, Copy, X, Trash } from 'lucide-react'
+import {
+  Play,
+  SendHorizonal,
+  FileText,
+  Bookmark,
+  Check,
+  Trash2,
+  Copy,
+  X,
+  Trash,
+} from 'lucide-react'
 import { getApiBase } from '../config'
 import MarkdownViewer from './MarkdownViewer'
 
@@ -45,14 +55,10 @@ function groupFilesByTime(files: SharedFile[]): { group: TimeGroup; files: Share
     if (!groups.has(group)) groups.set(group, [])
     groups.get(group)!.push(file)
   }
-  return GROUP_ORDER.filter(g => groups.has(g)).map(g => ({ group: g, files: groups.get(g)! }))
+  return GROUP_ORDER.filter((g) => groups.has(g)).map((g) => ({ group: g, files: groups.get(g)! }))
 }
 
-export default function SharedFiles({
-  sessionName,
-  onFocusTerminal,
-  refreshTrigger,
-}: Props) {
+export default function SharedFiles({ sessionName, onFocusTerminal, refreshTrigger }: Props) {
   const [files, setFiles] = useState<SharedFile[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -199,7 +205,26 @@ export default function SharedFiles({
 
   const isTextFile = (filename: string): boolean => {
     const ext = filename.toLowerCase().split('.').pop()
-    return ['txt', 'json', 'yml', 'yaml', 'py', 'js', 'ts', 'tsx', 'jsx', 'css', 'html', 'sh', 'toml', 'cfg', 'ini', 'log', 'csv', 'xml'].includes(ext || '')
+    return [
+      'txt',
+      'json',
+      'yml',
+      'yaml',
+      'py',
+      'js',
+      'ts',
+      'tsx',
+      'jsx',
+      'css',
+      'html',
+      'sh',
+      'toml',
+      'cfg',
+      'ini',
+      'log',
+      'csv',
+      'xml',
+    ].includes(ext || '')
   }
 
   const openPreview = async (file: SharedFile) => {
@@ -247,10 +272,20 @@ export default function SharedFiles({
         setPromptName(nameData.name)
       } else {
         // Fallback: use filename without extension
-        setPromptName(filename.replace(/\.[^.]+$/, '').replace(/[\s-]+/g, '_').toLowerCase())
+        setPromptName(
+          filename
+            .replace(/\.[^.]+$/, '')
+            .replace(/[\s-]+/g, '_')
+            .toLowerCase()
+        )
       }
     } catch {
-      setPromptName(filename.replace(/\.[^.]+$/, '').replace(/[\s-]+/g, '_').toLowerCase())
+      setPromptName(
+        filename
+          .replace(/\.[^.]+$/, '')
+          .replace(/[\s-]+/g, '_')
+          .toLowerCase()
+      )
     }
   }
 
@@ -288,11 +323,7 @@ export default function SharedFiles({
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full text-text-muted">
-        Loading...
-      </div>
-    )
+    return <div className="flex items-center justify-center h-full text-text-muted">Loading...</div>
   }
 
   return (
@@ -314,18 +345,12 @@ export default function SharedFiles({
       </div>
 
       {/* Error message */}
-      {error && (
-        <div className="mx-2 p-2 bg-red-900/50 text-red-300 text-sm rounded">
-          {error}
-        </div>
-      )}
+      {error && <div className="mx-2 p-2 bg-red-900/50 text-red-300 text-sm rounded">{error}</div>}
 
       {/* File list */}
       <div className="flex-1 overflow-auto px-2 pb-2">
         {files.length === 0 ? (
-          <div className="text-center text-text-muted mt-4">
-            No shared files yet
-          </div>
+          <div className="text-center text-text-muted mt-4">No shared files yet</div>
         ) : (
           <div className="space-y-1">
             {/* Clear All button */}
@@ -354,148 +379,151 @@ export default function SharedFiles({
                   </div>
                 )}
                 {groupFiles.map((file) => (
-              <div
-                key={file.name}
-                className="relative flex items-center gap-2 p-2 bg-bg-surface rounded hover:bg-bg-surface-hover cursor-pointer"
-                onClick={() => openPreview(file)}
-              >
-                {/* Send buttons (left side) */}
-                {sessionName && (
-                  <div className="flex gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => sendToTerminal(file.name, false)}
-                      className="p-1.5 text-text-tertiary hover:text-blue-400 hover:bg-control-bg rounded"
-                      title="Send path to terminal (no Enter)"
-                    >
-                      <Play size={16} />
-                    </button>
-                    <button
-                      onClick={() => sendToTerminal(file.name, true)}
-                      className="p-1.5 text-text-tertiary hover:text-green-400 hover:bg-control-bg rounded"
-                      title="Send path to terminal + Enter"
-                    >
-                      <SendHorizonal size={16} />
-                    </button>
-                  </div>
-                )}
-
-                {/* Thumbnail or icon */}
-                <div className="w-10 h-10 flex-shrink-0 rounded overflow-hidden bg-control-bg flex items-center justify-center">
-                  {isImage(file.name) ? (
-                    <img
-                      src={`${getApiBase()}/shared/files/${encodeURIComponent(file.name)}/content`}
-                      alt={file.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <FileText size={20} className="text-text-tertiary" />
-                  )}
-                </div>
-
-                {/* Filename and size */}
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm text-text-secondary truncate" title={file.name}>
-                    {file.name}
-                  </div>
-                  <div className="text-xs text-text-muted">{formatSize(file.size)}</div>
-                </div>
-
-                {/* Action buttons (right side) */}
-                <div className="flex gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                  {isMarkdown(file.name) && (
-                    <button
-                      onClick={() => startSaveAsPrompt(file.name)}
-                      className={`p-1.5 hover:bg-control-bg rounded ${
-                        promptSuccess === file.name
-                          ? 'text-green-400'
-                          : savingPrompt === file.name
-                            ? 'text-yellow-400 animate-pulse'
-                            : 'text-text-tertiary hover:text-purple-400'
-                      }`}
-                      title={promptSuccess === file.name ? 'Saved!' : 'Save as prompt template'}
-                      disabled={savingPrompt === file.name}
-                    >
-                      {promptSuccess === file.name ? (
-                        <Check size={16} />
-                      ) : (
-                        <Bookmark size={16} />
-                      )}
-                    </button>
-                  )}
-                  {(isMarkdown(file.name) || isTextFile(file.name)) && (
-                    <CopyTextButton filename={file.name} />
-                  )}
-                  <a
-                    href={`${getApiBase()}/shared/files/${encodeURIComponent(file.name)}/content`}
-                    download={file.name}
-                    className="p-1.5 text-text-tertiary hover:text-blue-400 hover:bg-control-bg rounded"
-                    title="Download file"
-                  >
-                    ↓
-                  </a>
-                  <button
-                    onClick={() => deleteFile(file.name)}
-                    className="p-1.5 text-text-tertiary hover:text-red-400 hover:bg-control-bg rounded"
-                    title="Delete file"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-
-                {/* Inline save-as-prompt confirmation */}
-                {savingPrompt === file.name && promptName && (
                   <div
-                    className="absolute right-0 top-full mt-1 z-10 bg-bg-sunken border border-border-default rounded p-2 shadow-lg min-w-[240px]"
-                    onClick={(e) => e.stopPropagation()}
+                    key={file.name}
+                    className="relative flex items-center gap-2 p-2 bg-bg-surface rounded hover:bg-bg-surface-hover cursor-pointer"
+                    onClick={() => openPreview(file)}
                   >
-                    <input
-                      type="text"
-                      value={promptName}
-                      onChange={(e) => setPromptName(e.target.value)}
-                      className="w-full bg-control-bg text-text-primary text-sm px-2 py-1 rounded border border-border-subtle focus:border-blue-500 focus:outline-none mb-2 font-mono"
-                      placeholder="prompt_name"
-                    />
-                    <div className="flex items-center gap-2 mb-2">
-                      <label className="flex items-center gap-1 text-xs text-text-secondary cursor-pointer">
-                        <input
-                          type="radio"
-                          name={`scope-${file.name}`}
-                          checked={promptScope === 'project'}
-                          onChange={() => setPromptScope('project')}
-                          disabled={!sessionName}
-                          className="accent-blue-500"
-                        />
-                        Project
-                      </label>
-                      <label className="flex items-center gap-1 text-xs text-text-secondary cursor-pointer">
-                        <input
-                          type="radio"
-                          name={`scope-${file.name}`}
-                          checked={promptScope === 'global'}
-                          onChange={() => setPromptScope('global')}
-                          className="accent-blue-500"
-                        />
-                        Global
-                      </label>
-                    </div>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={confirmSaveAsPrompt}
-                        disabled={promptSaving || !promptName.trim()}
-                        className="flex-1 text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded disabled:opacity-50"
+                    {/* Send buttons (left side) */}
+                    {sessionName && (
+                      <div
+                        className="flex gap-0.5 flex-shrink-0"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        {promptSaving ? 'Saving...' : 'Save'}
-                      </button>
-                      <button
-                        onClick={cancelSaveAsPrompt}
-                        className="flex-1 text-xs px-2 py-1 bg-control-bg hover:bg-control-bg-hover text-text-secondary rounded"
+                        <button
+                          onClick={() => sendToTerminal(file.name, false)}
+                          className="p-1.5 text-text-tertiary hover:text-blue-400 hover:bg-control-bg rounded"
+                          title="Send path to terminal (no Enter)"
+                        >
+                          <Play size={16} />
+                        </button>
+                        <button
+                          onClick={() => sendToTerminal(file.name, true)}
+                          className="p-1.5 text-text-tertiary hover:text-green-400 hover:bg-control-bg rounded"
+                          title="Send path to terminal + Enter"
+                        >
+                          <SendHorizonal size={16} />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Thumbnail or icon */}
+                    <div className="w-10 h-10 flex-shrink-0 rounded overflow-hidden bg-control-bg flex items-center justify-center">
+                      {isImage(file.name) ? (
+                        <img
+                          src={`${getApiBase()}/shared/files/${encodeURIComponent(file.name)}/content`}
+                          alt={file.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <FileText size={20} className="text-text-tertiary" />
+                      )}
+                    </div>
+
+                    {/* Filename and size */}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-text-secondary truncate" title={file.name}>
+                        {file.name}
+                      </div>
+                      <div className="text-xs text-text-muted">{formatSize(file.size)}</div>
+                    </div>
+
+                    {/* Action buttons (right side) */}
+                    <div className="flex gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {isMarkdown(file.name) && (
+                        <button
+                          onClick={() => startSaveAsPrompt(file.name)}
+                          className={`p-1.5 hover:bg-control-bg rounded ${
+                            promptSuccess === file.name
+                              ? 'text-green-400'
+                              : savingPrompt === file.name
+                                ? 'text-yellow-400 animate-pulse'
+                                : 'text-text-tertiary hover:text-purple-400'
+                          }`}
+                          title={promptSuccess === file.name ? 'Saved!' : 'Save as prompt template'}
+                          disabled={savingPrompt === file.name}
+                        >
+                          {promptSuccess === file.name ? (
+                            <Check size={16} />
+                          ) : (
+                            <Bookmark size={16} />
+                          )}
+                        </button>
+                      )}
+                      {(isMarkdown(file.name) || isTextFile(file.name)) && (
+                        <CopyTextButton filename={file.name} />
+                      )}
+                      <a
+                        href={`${getApiBase()}/shared/files/${encodeURIComponent(file.name)}/content`}
+                        download={file.name}
+                        className="p-1.5 text-text-tertiary hover:text-blue-400 hover:bg-control-bg rounded"
+                        title="Download file"
                       >
-                        Cancel
+                        ↓
+                      </a>
+                      <button
+                        onClick={() => deleteFile(file.name)}
+                        className="p-1.5 text-text-tertiary hover:text-red-400 hover:bg-control-bg rounded"
+                        title="Delete file"
+                      >
+                        <Trash2 size={16} />
                       </button>
                     </div>
+
+                    {/* Inline save-as-prompt confirmation */}
+                    {savingPrompt === file.name && promptName && (
+                      <div
+                        className="absolute right-0 top-full mt-1 z-10 bg-bg-sunken border border-border-default rounded p-2 shadow-lg min-w-[240px]"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="text"
+                          value={promptName}
+                          onChange={(e) => setPromptName(e.target.value)}
+                          className="w-full bg-control-bg text-text-primary text-sm px-2 py-1 rounded border border-border-subtle focus:border-blue-500 focus:outline-none mb-2 font-mono"
+                          placeholder="prompt_name"
+                        />
+                        <div className="flex items-center gap-2 mb-2">
+                          <label className="flex items-center gap-1 text-xs text-text-secondary cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`scope-${file.name}`}
+                              checked={promptScope === 'project'}
+                              onChange={() => setPromptScope('project')}
+                              disabled={!sessionName}
+                              className="accent-blue-500"
+                            />
+                            Project
+                          </label>
+                          <label className="flex items-center gap-1 text-xs text-text-secondary cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`scope-${file.name}`}
+                              checked={promptScope === 'global'}
+                              onChange={() => setPromptScope('global')}
+                              className="accent-blue-500"
+                            />
+                            Global
+                          </label>
+                        </div>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={confirmSaveAsPrompt}
+                            disabled={promptSaving || !promptName.trim()}
+                            className="flex-1 text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded disabled:opacity-50"
+                          >
+                            {promptSaving ? 'Saving...' : 'Save'}
+                          </button>
+                          <button
+                            onClick={cancelSaveAsPrompt}
+                            className="flex-1 text-xs px-2 py-1 bg-control-bg hover:bg-control-bg-hover text-text-secondary rounded"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
                 ))}
               </div>
             ))}
@@ -521,11 +549,7 @@ export default function SharedFiles({
       )}
 
       {previewFile && isTextFile(previewFile.name) && previewContent !== null && (
-        <TextPreview
-          content={previewContent}
-          filename={previewFile.name}
-          onClose={closePreview}
-        />
+        <TextPreview content={previewContent} filename={previewFile.name} onClose={closePreview} />
       )}
     </div>
   )
@@ -533,7 +557,9 @@ export default function SharedFiles({
 
 function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
     document.addEventListener('keydown', handler)
     document.body.style.overflow = 'hidden'
     return () => {
@@ -545,7 +571,9 @@ function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClos
   return (
     <div
       className="fixed inset-0 bg-black/90 flex items-center justify-center z-50"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
     >
       <button
         onClick={onClose}
@@ -559,11 +587,21 @@ function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClos
   )
 }
 
-function TextPreview({ content, filename, onClose }: { content: string; filename: string; onClose: () => void }) {
+function TextPreview({
+  content,
+  filename,
+  onClose,
+}: {
+  content: string
+  filename: string
+  onClose: () => void
+}) {
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
     document.addEventListener('keydown', handler)
     document.body.style.overflow = 'hidden'
     return () => {
@@ -581,7 +619,9 @@ function TextPreview({ content, filename, onClose }: { content: string; filename
   return (
     <div
       className="fixed inset-0 bg-black/95 flex flex-col z-50"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
     >
       <div className="flex items-center justify-between p-3 bg-bg-sunken border-b border-border-default">
         <span className="font-mono text-sm text-text-secondary truncate">{filename}</span>
@@ -633,11 +673,7 @@ function CopyTextButton({ filename }: { filename: string }) {
       className={`p-1.5 hover:bg-control-bg rounded ${copied ? 'text-green-400' : 'text-text-tertiary hover:text-blue-400'}`}
       title={copied ? 'Copied!' : 'Copy text'}
     >
-      {copied ? (
-        <Check size={16} />
-      ) : (
-        <Copy size={16} />
-      )}
+      {copied ? <Check size={16} /> : <Copy size={16} />}
     </button>
   )
 }

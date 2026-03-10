@@ -25,30 +25,27 @@ export default function DirectoryPicker({ value, onChange, onManualEntry }: Prop
   const debounceRef = useRef<number | null>(null)
 
   // Fetch directories based on query
-  const fetchDirectories = useCallback(
-    async (searchQuery: string) => {
-      setIsLoading(true)
-      setError(null)
+  const fetchDirectories = useCallback(async (searchQuery: string) => {
+    setIsLoading(true)
+    setError(null)
 
-      try {
-        const res = await fetch(
-          `${getApiBase()}/directories/search?query=${encodeURIComponent(searchQuery)}`
-        )
-        if (!res.ok) {
-          throw new Error('Failed to fetch directories')
-        }
-        const data = await res.json()
-        setDirectories(data.directories || [])
-        setHighlightedIndex(0)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Search failed')
-        setDirectories([])
-      } finally {
-        setIsLoading(false)
+    try {
+      const res = await fetch(
+        `${getApiBase()}/directories/search?query=${encodeURIComponent(searchQuery)}`
+      )
+      if (!res.ok) {
+        throw new Error('Failed to fetch directories')
       }
-    },
-    []
-  )
+      const data = await res.json()
+      setDirectories(data.directories || [])
+      setHighlightedIndex(0)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Search failed')
+      setDirectories([])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
   // Debounced search
   useEffect(() => {
@@ -177,7 +174,11 @@ export default function DirectoryPicker({ value, onChange, onManualEntry }: Prop
           />
           {isLoading && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <svg className="w-4 h-4 animate-spin text-text-tertiary" fill="none" viewBox="0 0 24 24">
+              <svg
+                className="w-4 h-4 animate-spin text-text-tertiary"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
                 <circle
                   className="opacity-25"
                   cx="12"

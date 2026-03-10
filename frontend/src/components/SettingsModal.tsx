@@ -321,7 +321,10 @@ export default function SettingsModal({ onClose }: Props) {
       <div className="bg-bg-surface rounded-lg w-full max-w-lg border border-border-default">
         <div className="flex items-center justify-between p-4 border-b border-border-default">
           <h2 className="text-lg font-semibold text-text-primary">Settings</h2>
-          <button onClick={onClose} className="text-text-tertiary hover:text-text-primary transition-colors">
+          <button
+            onClick={onClose}
+            className="text-text-tertiary hover:text-text-primary transition-colors"
+          >
             <X size={20} />
           </button>
         </div>
@@ -366,9 +369,7 @@ export default function SettingsModal({ onClose }: Props) {
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm text-text-tertiary mb-1">
-                    Git Graph Commits
-                  </label>
+                  <label className="block text-sm text-text-tertiary mb-1">Git Graph Commits</label>
                   <input
                     type="number"
                     min={10}
@@ -409,7 +410,9 @@ export default function SettingsModal({ onClose }: Props) {
                   <div className="space-y-3 p-3 bg-bg-elevated/50 rounded">
                     {currentProvider.fields.map((field) => (
                       <div key={field.key}>
-                        <label className="block text-sm text-text-tertiary mb-1">{field.label}</label>
+                        <label className="block text-sm text-text-tertiary mb-1">
+                          {field.label}
+                        </label>
                         {renderField(currentProvider.id, field)}
                       </div>
                     ))}

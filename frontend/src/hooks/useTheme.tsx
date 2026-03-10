@@ -41,11 +41,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     meta.setAttribute('content', theme === 'dark' ? '#1a1a1a' : '#fdf6e3')
   }, [theme])
 
-  return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  )
+  return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>
 }
 
 // eslint-disable-next-line react-refresh/only-export-components -- co-locating provider and hook is standard React pattern

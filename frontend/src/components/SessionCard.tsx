@@ -1,6 +1,17 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Minus, Pause, Play, AlertCircle, AlertTriangle, Circle, Pencil, RefreshCw, X, GitBranch } from 'lucide-react'
+import {
+  Minus,
+  Pause,
+  Play,
+  AlertCircle,
+  AlertTriangle,
+  Circle,
+  Pencil,
+  RefreshCw,
+  X,
+  GitBranch,
+} from 'lucide-react'
 
 interface Session {
   name: string
@@ -80,7 +91,7 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
         // Ask about worktree cleanup
         const cleanup = confirm(
           'Also delete the worktree directory? This will remove the checkout at:\n' +
-          session.workdir
+            session.workdir
         )
         onDelete(session.name, cleanup)
       }
@@ -93,7 +104,11 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
 
   const handleReset = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (confirm(`⚠️ Reset "${session.name}"?\n\nThis will:\n• Close ALL tmux windows and terminals\n• Kill any running processes\n• Start a fresh Claude session\n\nAny unsaved work will be lost!`)) {
+    if (
+      confirm(
+        `⚠️ Reset "${session.name}"?\n\nThis will:\n• Close ALL tmux windows and terminals\n• Kill any running processes\n• Start a fresh Claude session\n\nAny unsaved work will be lost!`
+      )
+    ) {
       onReset(session.name)
     }
   }
@@ -208,9 +223,7 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
           />
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-text-primary truncate">{displayTitle}</h3>
-            {showOriginalName && (
-              <p className="text-xs text-text-muted truncate">{session.name}</p>
-            )}
+            {showOriginalName && <p className="text-xs text-text-muted truncate">{session.name}</p>}
           </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">

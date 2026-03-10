@@ -1,6 +1,15 @@
 import { useState, useEffect, useCallback, useRef, memo } from 'react'
 import '@git-diff-view/react/styles/diff-view.css'
-import { RefreshCw, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, ArrowDownUp, X, CloudDownload } from 'lucide-react'
+import {
+  RefreshCw,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  ArrowDown,
+  ArrowDownUp,
+  X,
+  CloudDownload,
+} from 'lucide-react'
 import { getApiBase } from '../config'
 import { FileList, FileDiff, BranchSelector } from './diff'
 import type { DiffData, CommitDiff } from './diff'
@@ -292,7 +301,8 @@ const DiffViewer = memo(function DiffViewer({
         // Find the deepest scrollable element (child components have their own overflow-auto)
         const el = expandedScrollRef.current
         const scrollable = el.querySelector('.overflow-auto') as HTMLElement | null
-        const target = scrollable && scrollable.scrollHeight > scrollable.clientHeight ? scrollable : el
+        const target =
+          scrollable && scrollable.scrollHeight > scrollable.clientHeight ? scrollable : el
         target.scrollBy({ top: e.key === 'ArrowDown' ? 160 : -160, behavior: 'smooth' })
       }
     }
@@ -391,7 +401,9 @@ const DiffViewer = memo(function DiffViewer({
     // Loading state
     if (loading) {
       return (
-        <div className="flex items-center justify-center h-full text-text-muted">Loading diff...</div>
+        <div className="flex items-center justify-center h-full text-text-muted">
+          Loading diff...
+        </div>
       )
     }
 
@@ -491,7 +503,8 @@ const DiffViewer = memo(function DiffViewer({
                   <div className="text-center">
                     <div className="text-lg text-text-secondary mb-1">No local changes</div>
                     <div className="text-text-muted">
-                      You have {remoteStatus.ahead} unpushed commit{remoteStatus.ahead > 1 ? 's' : ''} on{' '}
+                      You have {remoteStatus.ahead} unpushed commit
+                      {remoteStatus.ahead > 1 ? 's' : ''} on{' '}
                       <span className="text-blue-400 font-mono">{remoteStatus.branch}</span>
                     </div>
                   </div>
@@ -660,7 +673,8 @@ const DiffViewer = memo(function DiffViewer({
             className="px-2 py-1 bg-control-bg hover:bg-control-bg-hover rounded text-sm"
             title="Close (Escape)"
           >
-            <X size={16} className="inline mr-1" />Close
+            <X size={16} className="inline mr-1" />
+            Close
           </button>
         </div>
         {/* Content */}

@@ -44,7 +44,13 @@ export default function SessionDetail() {
 
   const [rightPanel, setRightPanel] = useState<RightPanel>(() => {
     const saved = localStorage.getItem('lumbergh:rightPanel')
-    if (saved === 'git' || saved === 'files' || saved === 'todos' || saved === 'prompts' || saved === 'shared') {
+    if (
+      saved === 'git' ||
+      saved === 'files' ||
+      saved === 'todos' ||
+      saved === 'prompts' ||
+      saved === 'shared'
+    ) {
       return saved
     }
     // Migrate old 'diff' or 'graph' to 'git'
@@ -87,18 +93,21 @@ export default function SessionDetail() {
     setMobileTab('todos')
   }, [])
 
-  const handleTodoSent = useCallback(async (text: string) => {
-    if (!name) return
-    try {
-      await fetch(`${getApiBase()}/sessions/${name}/status-summary`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      })
-    } catch (err) {
-      console.error('Failed to update status summary:', err)
-    }
-  }, [name])
+  const handleTodoSent = useCallback(
+    async (text: string) => {
+      if (!name) return
+      try {
+        await fetch(`${getApiBase()}/sessions/${name}/status-summary`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        })
+      } catch (err) {
+        console.error('Failed to update status summary:', err)
+      }
+    },
+    [name]
+  )
 
   const handleReset = useCallback(async () => {
     if (!name) return
@@ -243,7 +252,10 @@ export default function SessionDetail() {
       {/* Panel switcher */}
       <div className="flex gap-1 p-2 bg-bg-surface border-b border-border-default">
         <button
-          onClick={() => { setRightPanel('git'); setGitTabResetTrigger((n) => n + 1) }}
+          onClick={() => {
+            setRightPanel('git')
+            setGitTabResetTrigger((n) => n + 1)
+          }}
           className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
             rightPanel === 'git'
               ? 'bg-control-bg-hover text-text-primary'
@@ -303,7 +315,7 @@ export default function SessionDetail() {
       <div className="flex-1 min-h-0 overflow-hidden">
         {rightPanel === 'git' && (
           <GitTab
-              sessionName={name}
+            sessionName={name}
             diffData={diffData}
             onRefreshDiff={fetchDiffData}
             onJumpToTodos={handleJumpToTodos}
@@ -318,18 +330,13 @@ export default function SessionDetail() {
           <VerticalResizablePanes
             top={
               <TodoList
-                      sessionName={name}
+                sessionName={name}
                 onFocusTerminal={handleFocusTerminal}
                 onTodoSent={handleTodoSent}
                 onSwitchToTerminal={handleSwitchToTerminal}
               />
             }
-            bottom={
-              <Scratchpad
-                      sessionName={name}
-                onFocusTerminal={handleFocusTerminal}
-              />
-            }
+            bottom={<Scratchpad sessionName={name} onFocusTerminal={handleFocusTerminal} />}
             defaultTopHeight={50}
             minTopHeight={20}
             maxTopHeight={80}
@@ -337,14 +344,11 @@ export default function SessionDetail() {
           />
         )}
         {rightPanel === 'prompts' && (
-          <PromptTemplates
-              sessionName={name}
-            onFocusTerminal={handleFocusTerminal}
-          />
+          <PromptTemplates sessionName={name} onFocusTerminal={handleFocusTerminal} />
         )}
         {rightPanel === 'shared' && (
           <SharedFiles
-              sessionName={name}
+            sessionName={name}
             onFocusTerminal={handleFocusTerminal}
             refreshTrigger={sharedRefreshTrigger}
           />
@@ -384,7 +388,10 @@ export default function SessionDetail() {
             {mobileTabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => { setMobileTab(tab.id); if (tab.id === 'git') setGitTabResetTrigger((n) => n + 1) }}
+                onClick={() => {
+                  setMobileTab(tab.id)
+                  if (tab.id === 'git') setGitTabResetTrigger((n) => n + 1)
+                }}
                 className={`shrink-0 px-4 py-1.5 rounded text-sm font-medium transition-colors ${
                   mobileTab === tab.id
                     ? 'bg-control-bg-hover text-text-primary'
@@ -410,7 +417,7 @@ export default function SessionDetail() {
             </div>
             {mobileTab === 'git' && (
               <GitTab
-                      sessionName={name}
+                sessionName={name}
                 diffData={diffData}
                 onRefreshDiff={fetchDiffData}
                 onJumpToTodos={handleJumpToTodos}
@@ -419,27 +426,19 @@ export default function SessionDetail() {
               />
             )}
             {mobileTab === 'files' && (
-              <FileBrowser
-                      sessionName={name}
-                onFocusTerminal={handleFocusTerminal}
-              />
+              <FileBrowser sessionName={name} onFocusTerminal={handleFocusTerminal} />
             )}
             {mobileTab === 'todos' && name && (
               <VerticalResizablePanes
                 top={
                   <TodoList
-                              sessionName={name}
+                    sessionName={name}
                     onFocusTerminal={handleFocusTerminal}
                     onTodoSent={handleTodoSent}
                     onSwitchToTerminal={handleSwitchToTerminal}
                   />
                 }
-                bottom={
-                  <Scratchpad
-                              sessionName={name}
-                    onFocusTerminal={handleFocusTerminal}
-                  />
-                }
+                bottom={<Scratchpad sessionName={name} onFocusTerminal={handleFocusTerminal} />}
                 defaultTopHeight={50}
                 minTopHeight={20}
                 maxTopHeight={80}
@@ -447,14 +446,11 @@ export default function SessionDetail() {
               />
             )}
             {mobileTab === 'prompts' && (
-              <PromptTemplates
-                      sessionName={name}
-                onFocusTerminal={handleFocusTerminal}
-              />
+              <PromptTemplates sessionName={name} onFocusTerminal={handleFocusTerminal} />
             )}
             {mobileTab === 'shared' && (
               <SharedFiles
-                      sessionName={name}
+                sessionName={name}
                 onFocusTerminal={handleFocusTerminal}
                 refreshTrigger={sharedRefreshTrigger}
               />

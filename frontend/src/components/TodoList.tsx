@@ -1,5 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
-import { GripVertical, Play, SendHorizonal, ChevronDown, ChevronRight, StickyNote, ExternalLink, Trash2 } from 'lucide-react'
+import {
+  GripVertical,
+  Play,
+  SendHorizonal,
+  ChevronDown,
+  ChevronRight,
+  StickyNote,
+  ExternalLink,
+  Trash2,
+} from 'lucide-react'
 import { getApiBase } from '../config'
 import { usePrompts } from '../hooks/usePrompts'
 import { useLocalStorageDraft } from '../hooks/useLocalStorageDraft'
@@ -20,7 +29,12 @@ interface TodoListProps {
   onSwitchToTerminal?: () => void
 }
 
-export default function TodoList({ sessionName, onFocusTerminal, onTodoSent, onSwitchToTerminal }: TodoListProps) {
+export default function TodoList({
+  sessionName,
+  onFocusTerminal,
+  onTodoSent,
+  onSwitchToTerminal,
+}: TodoListProps) {
   const [todos, setTodos] = useState<Todo[]>([])
   const [newTodo, setNewTodo, clearNewTodoDraft] = useLocalStorageDraft(`todo:${sessionName}:new`)
   const [loading, setLoading] = useState(true)
@@ -32,7 +46,9 @@ export default function TodoList({ sessionName, onFocusTerminal, onTodoSent, onS
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
   const [editingDescription, setEditingDescription] = useState('')
   const [movePickerIndex, setMovePickerIndex] = useState<number | null>(null)
-  const [availableSessions, setAvailableSessions] = useState<{ name: string; displayName?: string }[]>([])
+  const [availableSessions, setAvailableSessions] = useState<
+    { name: string; displayName?: string }[]
+  >([])
   const [highlightIndex, setHighlightIndex] = useState<number | null>(null)
   const movePickerRef = useRef<HTMLDivElement>(null)
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout>>(null)
@@ -223,9 +239,7 @@ export default function TodoList({ sessionName, onFocusTerminal, onTodoSent, onS
     if (!sessionName) return
     const todo = todos[index]
     // Combine title and description if description exists
-    const rawText = todo.description
-      ? `${todo.text}\n\n${todo.description}`
-      : todo.text
+    const rawText = todo.description ? `${todo.text}\n\n${todo.description}` : todo.text
     // Expand @prompt references to their content
     const textToSend = expandPromptReferences(rawText, allPrompts)
     try {
@@ -353,7 +367,11 @@ export default function TodoList({ sessionName, onFocusTerminal, onTodoSent, onS
                         className="w-8 h-8 flex items-center justify-center text-text-muted hover:text-text-secondary hover:bg-control-bg rounded transition-colors text-xl"
                         title={expandedIndex === index ? 'Collapse' : 'Expand'}
                       >
-                        {expandedIndex === index ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                        {expandedIndex === index ? (
+                          <ChevronDown size={18} />
+                        ) : (
+                          <ChevronRight size={18} />
+                        )}
                       </button>
                       {editingIndex === index ? (
                         <PromptMentionInput
@@ -373,9 +391,15 @@ export default function TodoList({ sessionName, onFocusTerminal, onTodoSent, onS
                             todo.done ? 'text-text-muted line-through' : 'text-text-primary'
                           }`}
                         >
-                          {todo.done ? todo.text : <MentionText text={todo.text} prompts={allPrompts} />}
+                          {todo.done ? (
+                            todo.text
+                          ) : (
+                            <MentionText text={todo.text} prompts={allPrompts} />
+                          )}
                           {todo.description && expandedIndex !== index && (
-                            <span className="ml-2 inline-flex" title="Has description"><StickyNote size={14} className="text-text-muted" /></span>
+                            <span className="ml-2 inline-flex" title="Has description">
+                              <StickyNote size={14} className="text-text-muted" />
+                            </span>
                           )}
                         </span>
                       )}

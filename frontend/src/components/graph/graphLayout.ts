@@ -17,15 +17,12 @@ export function laneColor(lane: number): string {
   return LANE_COLORS[lane % LANE_COLORS.length]
 }
 
-export function computeGraphLayout(
-  commits: GraphCommit[],
-  headHash: string | null
-): GraphNode[] {
+export function computeGraphLayout(commits: GraphCommit[], headHash: string | null): GraphNode[] {
   // Pre-compute the current branch hashes (first-parent chain from HEAD)
   // so we can reserve lane 0 for them
   const currentBranchSet = new Set<string>()
   if (headHash) {
-    const hashToCommit = new Map(commits.map(c => [c.hash, c]))
+    const hashToCommit = new Map(commits.map((c) => [c.hash, c]))
     let h: string | null = headHash
     while (h) {
       currentBranchSet.add(h)
@@ -64,7 +61,10 @@ export function computeGraphLayout(
           // Find a free lane for the displaced hash
           let newLane = -1
           for (let i = 1; i < activeLanes.length; i++) {
-            if (activeLanes[i] === null) { newLane = i; break }
+            if (activeLanes[i] === null) {
+              newLane = i
+              break
+            }
           }
           if (newLane === -1) {
             newLane = activeLanes.length
@@ -83,7 +83,10 @@ export function computeGraphLayout(
         const start = activeLanes.length > 0 && currentBranchSet.size > 0 ? 1 : 0
         lane = -1
         for (let i = start; i < activeLanes.length; i++) {
-          if (activeLanes[i] === null) { lane = i; break }
+          if (activeLanes[i] === null) {
+            lane = i
+            break
+          }
         }
         if (lane === -1) {
           lane = activeLanes.length

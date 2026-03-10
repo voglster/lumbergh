@@ -61,8 +61,8 @@ export default function PromptDropdown({
               index === highlightedIndex
                 ? 'bg-blue-700 text-blue-200'
                 : prompt.scope === 'project'
-                ? 'bg-green-900 text-green-300'
-                : 'bg-purple-900 text-purple-300'
+                  ? 'bg-green-900 text-green-300'
+                  : 'bg-purple-900 text-purple-300'
             }`}
           >
             {prompt.scope === 'project' ? 'P' : 'G'}

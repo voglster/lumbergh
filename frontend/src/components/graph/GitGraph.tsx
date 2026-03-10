@@ -46,16 +46,46 @@ interface Props {
   onGitAction?: () => void
 }
 
-export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, refreshTrigger, resetTrigger, onGitAction }: Props) {
-  const branchPanelStorageKey = sessionName ? `${branchPanelStorageKey_PREFIX}:${sessionName}` : branchPanelStorageKey_PREFIX
-  const graphPanelStorageKey = sessionName ? `${graphPanelStorageKey_PREFIX}:${sessionName}` : graphPanelStorageKey_PREFIX
+export default function GitGraph({
+  sessionName,
+  onSelectCommit,
+  selectedCommit,
+  refreshTrigger,
+  resetTrigger,
+  onGitAction,
+}: Props) {
+  const branchPanelStorageKey = sessionName
+    ? `${branchPanelStorageKey_PREFIX}:${sessionName}`
+    : branchPanelStorageKey_PREFIX
+  const graphPanelStorageKey = sessionName
+    ? `${graphPanelStorageKey_PREFIX}:${sessionName}`
+    : graphPanelStorageKey_PREFIX
   const [graphData, setGraphData] = useState<GraphData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [commitLimit, setCommitLimit] = useState(100)
-  const [menuCommit, setMenuCommit] = useState<{ hash: string; shortHash: string; message: string; pushed: boolean; refs: { name: string; local: boolean; remote: boolean }[] } | null>(null)
-  const [menuBranch, setMenuBranch] = useState<{ name: string; local: boolean; remote: boolean; commitHash: string; commitShortHash: string; x: number; y: number } | null>(null)
-  const [menuStash, setMenuStash] = useState<{ ref: string; hash: string; x: number; y: number } | null>(null)
+  const [menuCommit, setMenuCommit] = useState<{
+    hash: string
+    shortHash: string
+    message: string
+    pushed: boolean
+    refs: { name: string; local: boolean; remote: boolean }[]
+  } | null>(null)
+  const [menuBranch, setMenuBranch] = useState<{
+    name: string
+    local: boolean
+    remote: boolean
+    commitHash: string
+    commitShortHash: string
+    x: number
+    y: number
+  } | null>(null)
+  const [menuStash, setMenuStash] = useState<{
+    ref: string
+    hash: string
+    x: number
+    y: number
+  } | null>(null)
   const [expandedRow, setExpandedRow] = useState<number | null>(null)
   const expandedRowTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -70,100 +100,140 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
   // Draggable branch panel width
   const [branchPanelWidth, setBranchPanelWidth] = useState(() => {
     const saved = localStorage.getItem(branchPanelStorageKey)
-    return saved ? Math.max(MIN_BRANCH_PANEL_WIDTH, Math.min(MAX_BRANCH_PANEL_WIDTH, Number(saved))) : DEFAULT_BRANCH_PANEL_WIDTH
+    return saved
+      ? Math.max(MIN_BRANCH_PANEL_WIDTH, Math.min(MAX_BRANCH_PANEL_WIDTH, Number(saved)))
+      : DEFAULT_BRANCH_PANEL_WIDTH
   })
   const isDraggingPanel = useRef(false)
 
-  const startPanelDrag = useCallback((startX: number) => {
-    isDraggingPanel.current = true
-    const startWidth = branchPanelWidth
+  const startPanelDrag = useCallback(
+    (startX: number) => {
+      isDraggingPanel.current = true
+      const startWidth = branchPanelWidth
 
-    const onMouseMove = (ev: MouseEvent) => {
-      if (!isDraggingPanel.current) return
-      const newWidth = Math.max(MIN_BRANCH_PANEL_WIDTH, Math.min(MAX_BRANCH_PANEL_WIDTH, startWidth + (ev.clientX - startX)))
-      setBranchPanelWidth(newWidth)
-    }
-    const onTouchMove = (ev: TouchEvent) => {
-      if (!isDraggingPanel.current) return
-      const newWidth = Math.max(MIN_BRANCH_PANEL_WIDTH, Math.min(MAX_BRANCH_PANEL_WIDTH, startWidth + (ev.touches[0].clientX - startX)))
-      setBranchPanelWidth(newWidth)
-    }
-    const onEnd = () => {
-      isDraggingPanel.current = false
-      document.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('mouseup', onEnd)
-      document.removeEventListener('touchmove', onTouchMove)
-      document.removeEventListener('touchend', onEnd)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-      setBranchPanelWidth((w) => { localStorage.setItem(branchPanelStorageKey, String(w)); return w })
-    }
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
-    document.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseup', onEnd)
-    document.addEventListener('touchmove', onTouchMove)
-    document.addEventListener('touchend', onEnd)
-  }, [branchPanelWidth, branchPanelStorageKey])
+      const onMouseMove = (ev: MouseEvent) => {
+        if (!isDraggingPanel.current) return
+        const newWidth = Math.max(
+          MIN_BRANCH_PANEL_WIDTH,
+          Math.min(MAX_BRANCH_PANEL_WIDTH, startWidth + (ev.clientX - startX))
+        )
+        setBranchPanelWidth(newWidth)
+      }
+      const onTouchMove = (ev: TouchEvent) => {
+        if (!isDraggingPanel.current) return
+        const newWidth = Math.max(
+          MIN_BRANCH_PANEL_WIDTH,
+          Math.min(MAX_BRANCH_PANEL_WIDTH, startWidth + (ev.touches[0].clientX - startX))
+        )
+        setBranchPanelWidth(newWidth)
+      }
+      const onEnd = () => {
+        isDraggingPanel.current = false
+        document.removeEventListener('mousemove', onMouseMove)
+        document.removeEventListener('mouseup', onEnd)
+        document.removeEventListener('touchmove', onTouchMove)
+        document.removeEventListener('touchend', onEnd)
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+        setBranchPanelWidth((w) => {
+          localStorage.setItem(branchPanelStorageKey, String(w))
+          return w
+        })
+      }
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+      document.addEventListener('mousemove', onMouseMove)
+      document.addEventListener('mouseup', onEnd)
+      document.addEventListener('touchmove', onTouchMove)
+      document.addEventListener('touchend', onEnd)
+    },
+    [branchPanelWidth, branchPanelStorageKey]
+  )
 
-  const handlePanelDragStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    startPanelDrag(e.clientX)
-  }, [startPanelDrag])
+  const handlePanelDragStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      startPanelDrag(e.clientX)
+    },
+    [startPanelDrag]
+  )
 
-  const handlePanelTouchStart = useCallback((e: React.TouchEvent) => {
-    e.preventDefault()
-    startPanelDrag(e.touches[0].clientX)
-  }, [startPanelDrag])
+  const handlePanelTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      e.preventDefault()
+      startPanelDrag(e.touches[0].clientX)
+    },
+    [startPanelDrag]
+  )
 
   // Draggable graph panel width
   const [graphPanelWidth, setGraphPanelWidth] = useState(() => {
     const saved = localStorage.getItem(graphPanelStorageKey)
-    return saved ? Math.max(MIN_GRAPH_PANEL_WIDTH, Math.min(MAX_GRAPH_PANEL_WIDTH, Number(saved))) : DEFAULT_GRAPH_PANEL_WIDTH
+    return saved
+      ? Math.max(MIN_GRAPH_PANEL_WIDTH, Math.min(MAX_GRAPH_PANEL_WIDTH, Number(saved)))
+      : DEFAULT_GRAPH_PANEL_WIDTH
   })
   const isDraggingGraph = useRef(false)
 
-  const startGraphDrag = useCallback((startX: number) => {
-    isDraggingGraph.current = true
-    const startWidth = graphPanelWidth
+  const startGraphDrag = useCallback(
+    (startX: number) => {
+      isDraggingGraph.current = true
+      const startWidth = graphPanelWidth
 
-    const onMouseMove = (ev: MouseEvent) => {
-      if (!isDraggingGraph.current) return
-      const newWidth = Math.max(MIN_GRAPH_PANEL_WIDTH, Math.min(MAX_GRAPH_PANEL_WIDTH, startWidth + (ev.clientX - startX)))
-      setGraphPanelWidth(newWidth)
-    }
-    const onTouchMove = (ev: TouchEvent) => {
-      if (!isDraggingGraph.current) return
-      const newWidth = Math.max(MIN_GRAPH_PANEL_WIDTH, Math.min(MAX_GRAPH_PANEL_WIDTH, startWidth + (ev.touches[0].clientX - startX)))
-      setGraphPanelWidth(newWidth)
-    }
-    const onEnd = () => {
-      isDraggingGraph.current = false
-      document.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('mouseup', onEnd)
-      document.removeEventListener('touchmove', onTouchMove)
-      document.removeEventListener('touchend', onEnd)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-      setGraphPanelWidth((w) => { localStorage.setItem(graphPanelStorageKey, String(w)); return w })
-    }
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
-    document.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseup', onEnd)
-    document.addEventListener('touchmove', onTouchMove)
-    document.addEventListener('touchend', onEnd)
-  }, [graphPanelWidth, graphPanelStorageKey])
+      const onMouseMove = (ev: MouseEvent) => {
+        if (!isDraggingGraph.current) return
+        const newWidth = Math.max(
+          MIN_GRAPH_PANEL_WIDTH,
+          Math.min(MAX_GRAPH_PANEL_WIDTH, startWidth + (ev.clientX - startX))
+        )
+        setGraphPanelWidth(newWidth)
+      }
+      const onTouchMove = (ev: TouchEvent) => {
+        if (!isDraggingGraph.current) return
+        const newWidth = Math.max(
+          MIN_GRAPH_PANEL_WIDTH,
+          Math.min(MAX_GRAPH_PANEL_WIDTH, startWidth + (ev.touches[0].clientX - startX))
+        )
+        setGraphPanelWidth(newWidth)
+      }
+      const onEnd = () => {
+        isDraggingGraph.current = false
+        document.removeEventListener('mousemove', onMouseMove)
+        document.removeEventListener('mouseup', onEnd)
+        document.removeEventListener('touchmove', onTouchMove)
+        document.removeEventListener('touchend', onEnd)
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+        setGraphPanelWidth((w) => {
+          localStorage.setItem(graphPanelStorageKey, String(w))
+          return w
+        })
+      }
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+      document.addEventListener('mousemove', onMouseMove)
+      document.addEventListener('mouseup', onEnd)
+      document.addEventListener('touchmove', onTouchMove)
+      document.addEventListener('touchend', onEnd)
+    },
+    [graphPanelWidth, graphPanelStorageKey]
+  )
 
-  const handleGraphDragStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    startGraphDrag(e.clientX)
-  }, [startGraphDrag])
+  const handleGraphDragStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      startGraphDrag(e.clientX)
+    },
+    [startGraphDrag]
+  )
 
-  const handleGraphTouchStart = useCallback((e: React.TouchEvent) => {
-    e.preventDefault()
-    startGraphDrag(e.touches[0].clientX)
-  }, [startGraphDrag])
+  const handleGraphTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      e.preventDefault()
+      startGraphDrag(e.touches[0].clientX)
+    },
+    [startGraphDrag]
+  )
 
   // Fetch configured commit limit from settings
   useEffect(() => {
@@ -180,7 +250,9 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`${getApiBase()}/sessions/${sessionName}/git/graph?limit=${commitLimit}`)
+      const res = await fetch(
+        `${getApiBase()}/sessions/${sessionName}/git/graph?limit=${commitLimit}`
+      )
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data: GraphData = await res.json()
       setGraphData(data)
@@ -384,38 +456,41 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
     }
   }, [sessionName, menuCommit, afterAction])
 
-  const handleCheckout = useCallback(async (branchName: string, ref: { local: boolean; remote: boolean }) => {
-    if (!sessionName || !menuCommit) return
+  const handleCheckout = useCallback(
+    async (branchName: string, ref: { local: boolean; remote: boolean }) => {
+      if (!sessionName || !menuCommit) return
 
-    // If remote-only at this commit, the local branch is elsewhere — confirm reset
-    if (!ref.local && ref.remote) {
-      const confirmed = confirm(
-        `"${branchName}" exists locally at a different commit.\n\nCheckout and reset it to ${menuCommit.shortHash}?`
-      )
-      if (!confirmed) return
-    }
-
-    const body: { branch: string; reset_to?: string } = { branch: branchName }
-    if (!ref.local && ref.remote) {
-      body.reset_to = menuCommit.hash
-    }
-
-    try {
-      const res = await fetch(`${getApiBase()}/sessions/${sessionName}/git/checkout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        alert(data.detail || `Checkout failed (HTTP ${res.status})`)
-        return
+      // If remote-only at this commit, the local branch is elsewhere — confirm reset
+      if (!ref.local && ref.remote) {
+        const confirmed = confirm(
+          `"${branchName}" exists locally at a different commit.\n\nCheckout and reset it to ${menuCommit.shortHash}?`
+        )
+        if (!confirmed) return
       }
-      afterAction()
-    } catch {
-      alert('Checkout failed')
-    }
-  }, [sessionName, menuCommit, afterAction])
+
+      const body: { branch: string; reset_to?: string } = { branch: branchName }
+      if (!ref.local && ref.remote) {
+        body.reset_to = menuCommit.hash
+      }
+
+      try {
+        const res = await fetch(`${getApiBase()}/sessions/${sessionName}/git/checkout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          alert(data.detail || `Checkout failed (HTTP ${res.status})`)
+          return
+        }
+        afterAction()
+      } catch {
+        alert('Checkout failed')
+      }
+    },
+    [sessionName, menuCommit, afterAction]
+  )
 
   const handleBranchCheckout = useCallback(async () => {
     if (!sessionName || !menuBranch) return
@@ -454,7 +529,9 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
     if (!sessionName || !menuBranch) return
 
     try {
-      const res = await fetch(`${getApiBase()}/sessions/${sessionName}/git/push`, { method: 'POST' })
+      const res = await fetch(`${getApiBase()}/sessions/${sessionName}/git/push`, {
+        method: 'POST',
+      })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         alert(data.detail || `Push failed (HTTP ${res.status})`)
@@ -470,7 +547,10 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
   const handleStashPop = useCallback(async () => {
     if (!sessionName || !menuStash) return
     try {
-      const res = await fetch(`${getApiBase()}/sessions/${sessionName}/git/stash-pop?ref=${encodeURIComponent(menuStash.ref)}`, { method: 'POST' })
+      const res = await fetch(
+        `${getApiBase()}/sessions/${sessionName}/git/stash-pop?ref=${encodeURIComponent(menuStash.ref)}`,
+        { method: 'POST' }
+      )
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         alert(data.detail || `Stash pop failed (HTTP ${res.status})`)
@@ -486,7 +566,10 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
   const handleStashDrop = useCallback(async () => {
     if (!sessionName || !menuStash) return
     try {
-      const res = await fetch(`${getApiBase()}/sessions/${sessionName}/git/stash-drop?ref=${encodeURIComponent(menuStash.ref)}`, { method: 'POST' })
+      const res = await fetch(
+        `${getApiBase()}/sessions/${sessionName}/git/stash-drop?ref=${encodeURIComponent(menuStash.ref)}`,
+        { method: 'POST' }
+      )
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         alert(data.detail || `Stash drop failed (HTTP ${res.status})`)
@@ -511,11 +594,14 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
     return idx >= 0 ? idx : 0
   }, [nodes])
   // Helper: map a commit row index to its pixel position, accounting for WIP insertion
-  const rowToY = useCallback((row: number) => {
-    if (!hasWip) return row * ROW_HEIGHT
-    // Rows before HEAD are unshifted; HEAD and after shift down by 1 to make room for WIP
-    return row < headRow ? row * ROW_HEIGHT : (row + 1) * ROW_HEIGHT
-  }, [hasWip, headRow])
+  const rowToY = useCallback(
+    (row: number) => {
+      if (!hasWip) return row * ROW_HEIGHT
+      // Rows before HEAD are unshifted; HEAD and after shift down by 1 to make room for WIP
+      return row < headRow ? row * ROW_HEIGHT : (row + 1) * ROW_HEIGHT
+    },
+    [hasWip, headRow]
+  )
 
   const maxLane = useMemo(() => {
     let max = 0
@@ -564,7 +650,7 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
 
   // Compute branch label positions for left panel
   const branchEntries = useMemo(() => {
-    const labels: { row: number; refs: { name: string; local: boolean; remote: boolean }[]; }[] = []
+    const labels: { row: number; refs: { name: string; local: boolean; remote: boolean }[] }[] = []
     const currentBranch = graphData?.head?.branch
     for (let row = 0; row < nodes.length; row++) {
       if (nodes[row].commit.refs.length > 0) {
@@ -578,7 +664,7 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
     }
     // Gap counts between labeled rows
     const gaps: { y: number; count: number }[] = []
-    const labelRows = labels.map(l => l.row)
+    const labelRows = labels.map((l) => l.row)
     // Gap before first label
     if (labelRows.length > 0 && labelRows[0] > 0) {
       const topY = rowToY(0)
@@ -664,12 +750,7 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
           strokeWidth={2}
           strokeDasharray="3 2"
         />
-        <circle
-          cx={cx}
-          cy={wipY}
-          r={3}
-          fill={WIP_COLOR}
-        />
+        <circle cx={cx} cy={wipY} r={3} fill={WIP_COLOR} />
       </g>
     )
   }
@@ -685,7 +766,8 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
         const y2 = rowToY(e.toRow) + ROW_HEIGHT / 2
         const color = laneColor(e.fromLane)
         const key = `${node.commit.shortHash}-${ei}`
-        const isCurrentBranchEdge = node.onCurrentBranch && e.fromLane === headLane && e.toLane === headLane
+        const isCurrentBranchEdge =
+          node.onCurrentBranch && e.fromLane === headLane && e.toLane === headLane
         const opacity = isCurrentBranchEdge ? 1 : 0.4
         const width = isCurrentBranchEdge ? 2.5 : 1.5
 
@@ -791,9 +873,34 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
               strokeWidth={1.5}
             />
             {/* Archive/box icon lines */}
-            <line x1={cx - 5} y1={cy - 3} x2={cx + 5} y2={cy - 3} stroke="white" strokeWidth={1.5} strokeLinecap="round" />
-            <line x1={cx - 3} y1={cy + 1} x2={cx + 3} y2={cy + 1} stroke="white" strokeWidth={1.5} strokeLinecap="round" />
-            <rect x={cx - 5} y={cy - 5} width={10} height={10} rx={1.5} fill="none" stroke="white" strokeWidth={1.2} />
+            <line
+              x1={cx - 5}
+              y1={cy - 3}
+              x2={cx + 5}
+              y2={cy - 3}
+              stroke="white"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+            />
+            <line
+              x1={cx - 3}
+              y1={cy + 1}
+              x2={cx + 3}
+              y2={cy + 1}
+              stroke="white"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+            />
+            <rect
+              x={cx - 5}
+              y={cy - 5}
+              width={10}
+              height={10}
+              rx={1.5}
+              fill="none"
+              stroke="white"
+              strokeWidth={1.2}
+            />
           </g>
         )
       }
@@ -804,10 +911,23 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
             {/* Pulsing glow */}
             <circle cx={cx} cy={cy} r={16} fill={color} opacity={0.15}>
               <animate attributeName="r" values="14;18;14" dur="2s" repeatCount="indefinite" />
-              <animate attributeName="opacity" values="0.18;0.08;0.18" dur="2s" repeatCount="indefinite" />
+              <animate
+                attributeName="opacity"
+                values="0.18;0.08;0.18"
+                dur="2s"
+                repeatCount="indefinite"
+              />
             </circle>
             {/* Outer ring */}
-            <circle cx={cx} cy={cy} r={r + 3} fill="none" stroke={color} strokeWidth={2} opacity={0.6} />
+            <circle
+              cx={cx}
+              cy={cy}
+              r={r + 3}
+              fill="none"
+              stroke={color}
+              strokeWidth={2}
+              opacity={0.6}
+            />
             {/* Avatar */}
             {avatarGroup}
           </g>
@@ -832,11 +952,7 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
   return (
     <div className="h-full flex flex-col relative">
       {/* Error */}
-      {error && (
-        <div className="px-3 py-2 text-sm text-red-400 bg-red-500/10">
-          {error}
-        </div>
-      )}
+      {error && <div className="px-3 py-2 text-sm text-red-400 bg-red-500/10">{error}</div>}
 
       {/* Graph */}
       <div ref={containerRef} className="flex-1 min-h-0 overflow-auto">
@@ -856,10 +972,15 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
                 const extraCount = refs.length - 1
                 const isExpanded = expandedRow === row
 
-                const renderBranchBadge = (ref: { name: string; local: boolean; remote: boolean; stash?: boolean }, commitRow: number) => {
+                const renderBranchBadge = (
+                  ref: { name: string; local: boolean; remote: boolean; stash?: boolean },
+                  commitRow: number
+                ) => {
                   // Stash badges: clickable with pop/drop context menu
                   if (ref.stash) {
-                    const stashIsMenuOpen = menuStash?.ref === ref.name && menuStash?.hash === nodes[commitRow].commit.hash
+                    const stashIsMenuOpen =
+                      menuStash?.ref === ref.name &&
+                      menuStash?.hash === nodes[commitRow].commit.hash
                     return (
                       <button
                         key={ref.name}
@@ -874,7 +995,10 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
                               ref: ref.name,
                               hash: nodes[commitRow].commit.hash,
                               x: rect.left - (containerRect?.left ?? 0),
-                              y: rect.bottom - (containerRect?.top ?? 0) + (containerRef.current?.scrollTop ?? 0),
+                              y:
+                                rect.bottom -
+                                (containerRect?.top ?? 0) +
+                                (containerRef.current?.scrollTop ?? 0),
                             })
                             setMenuCommit(null)
                             setMenuBranch(null)
@@ -893,7 +1017,9 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
                   }
 
                   const refIsCurrent = ref.name === graphData?.head?.branch
-                  const refIsMenuOpen = menuBranch?.name === ref.name && menuBranch?.commitHash === nodes[commitRow].commit.hash
+                  const refIsMenuOpen =
+                    menuBranch?.name === ref.name &&
+                    menuBranch?.commitHash === nodes[commitRow].commit.hash
                   return (
                     <button
                       key={ref.name}
@@ -911,7 +1037,10 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
                             commitHash: nodes[commitRow].commit.hash,
                             commitShortHash: nodes[commitRow].commit.shortHash,
                             x: rect.left - (containerRect?.left ?? 0),
-                            y: rect.bottom - (containerRect?.top ?? 0) + (containerRef.current?.scrollTop ?? 0),
+                            y:
+                              rect.bottom -
+                              (containerRect?.top ?? 0) +
+                              (containerRef.current?.scrollTop ?? 0),
                           })
                           setMenuCommit(null)
                         }
@@ -945,7 +1074,10 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
                         <span
                           className="inline-flex items-center px-1.5 py-1 text-xs rounded font-medium leading-none bg-bg-surface text-text-muted ring-1 ring-border-default cursor-default shrink-0"
                           onMouseEnter={() => {
-                            if (expandedRowTimeout.current) { clearTimeout(expandedRowTimeout.current); expandedRowTimeout.current = null }
+                            if (expandedRowTimeout.current) {
+                              clearTimeout(expandedRowTimeout.current)
+                              expandedRowTimeout.current = null
+                            }
                             setExpandedRow(row)
                           }}
                           onMouseLeave={() => {
@@ -961,7 +1093,10 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
                         className="absolute left-2 z-50 flex flex-col gap-1 p-1.5 bg-bg-surface border border-border-default rounded-lg shadow-xl min-w-[160px]"
                         style={{ top: ROW_HEIGHT }}
                         onMouseEnter={() => {
-                          if (expandedRowTimeout.current) { clearTimeout(expandedRowTimeout.current); expandedRowTimeout.current = null }
+                          if (expandedRowTimeout.current) {
+                            clearTimeout(expandedRowTimeout.current)
+                            expandedRowTimeout.current = null
+                          }
                           setExpandedRow(row)
                         }}
                         onMouseLeave={() => {
@@ -975,20 +1110,21 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
                 )
               })}
               {/* Detached HEAD indicator */}
-              {nodes.some(n => n.isHead && n.commit.refs.length === 0) && (() => {
-                const headIdx = nodes.findIndex(n => n.isHead)
-                if (headIdx === -1) return null
-                return (
-                  <div
-                    className="absolute left-0 right-0 flex items-center px-2"
-                    style={{ top: rowToY(headIdx), height: ROW_HEIGHT }}
-                  >
-                    <span className="px-1.5 py-0.5 text-xs rounded font-medium leading-none bg-yellow-500/20 text-yellow-300 ring-1 ring-yellow-500/40">
-                      HEAD
-                    </span>
-                  </div>
-                )
-              })()}
+              {nodes.some((n) => n.isHead && n.commit.refs.length === 0) &&
+                (() => {
+                  const headIdx = nodes.findIndex((n) => n.isHead)
+                  if (headIdx === -1) return null
+                  return (
+                    <div
+                      className="absolute left-0 right-0 flex items-center px-2"
+                      style={{ top: rowToY(headIdx), height: ROW_HEIGHT }}
+                    >
+                      <span className="px-1.5 py-0.5 text-xs rounded font-medium leading-none bg-yellow-500/20 text-yellow-300 ring-1 ring-yellow-500/40">
+                        HEAD
+                      </span>
+                    </div>
+                  )
+                })()}
             </div>
 
             {/* Drag handle for branch panel resize */}
@@ -1043,7 +1179,8 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
                   WIP
                 </span>
                 <span className="text-base text-orange-200/90 truncate min-w-0">
-                  {graphData.workingChanges.files} uncommitted {graphData.workingChanges.files === 1 ? 'change' : 'changes'}
+                  {graphData.workingChanges.files} uncommitted{' '}
+                  {graphData.workingChanges.files === 1 ? 'change' : 'changes'}
                 </span>
                 <button
                   onClick={(e) => {
@@ -1089,110 +1226,123 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
             {nodes.map((node, row) => {
               const isSelected = selectedCommit === node.commit.hash
               return (
-              <div
-                key={node.commit.hash}
-                onClick={() => onSelectCommit?.(node.commit.hash)}
-                className={`absolute right-0 flex items-center gap-2 px-1 cursor-pointer group ${
-                  isSelected
-                    ? 'bg-blue-500/[0.25] border-l-2 border-l-blue-400'
-                    : node.isHead
-                      ? 'bg-blue-500/[0.14] hover:bg-blue-500/[0.2]'
-                      : node.onCurrentBranch
-                        ? 'bg-blue-500/[0.06] hover:bg-blue-500/[0.12]'
-                        : 'hover:bg-bg-surface/50 opacity-60'
-                }`}
-                style={{
-                  top: rowToY(row),
-                  height: ROW_HEIGHT,
-                  left: branchPanelWidth + graphPanelWidth + 8,
-                  paddingLeft: 4,
-                }}
-              >
-                {/* Commit message */}
-                <span className={`text-base truncate min-w-0 ${
-                  node.commit.stash
-                    ? 'text-slate-400 italic'
-                    : node.onCurrentBranch ? 'text-text-primary' : 'text-text-tertiary'
-                }`}>
-                  {node.commit.message}
-                </span>
-                {/* Context menu button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setMenuBranch(null)
-                    setMenuCommit(
-                      menuCommit?.hash === node.commit.hash
-                        ? null
-                        : { hash: node.commit.hash, shortHash: node.commit.shortHash, message: node.commit.message, pushed: node.commit.pushed ?? true, refs: node.commit.refs }
-                    )
-                  }}
-                  className={`ml-auto shrink-0 p-0.5 rounded hover:bg-control-bg-hover text-text-muted hover:text-text-secondary transition-opacity ${
-                    menuCommit?.hash === node.commit.hash ? 'opacity-100 bg-control-bg-hover' : 'opacity-0 group-hover:opacity-100'
+                <div
+                  key={node.commit.hash}
+                  onClick={() => onSelectCommit?.(node.commit.hash)}
+                  className={`absolute right-0 flex items-center gap-2 px-1 cursor-pointer group ${
+                    isSelected
+                      ? 'bg-blue-500/[0.25] border-l-2 border-l-blue-400'
+                      : node.isHead
+                        ? 'bg-blue-500/[0.14] hover:bg-blue-500/[0.2]'
+                        : node.onCurrentBranch
+                          ? 'bg-blue-500/[0.06] hover:bg-blue-500/[0.12]'
+                          : 'hover:bg-bg-surface/50 opacity-60'
                   }`}
-                  title={`${node.commit.shortHash} · ${node.commit.author} · ${relativeDate(node.commit.relativeDate)}`}
+                  style={{
+                    top: rowToY(row),
+                    height: ROW_HEIGHT,
+                    left: branchPanelWidth + graphPanelWidth + 8,
+                    paddingLeft: 4,
+                  }}
                 >
-                  <MoreVertical size={20} />
-                </button>
-              </div>
+                  {/* Commit message */}
+                  <span
+                    className={`text-base truncate min-w-0 ${
+                      node.commit.stash
+                        ? 'text-slate-400 italic'
+                        : node.onCurrentBranch
+                          ? 'text-text-primary'
+                          : 'text-text-tertiary'
+                    }`}
+                  >
+                    {node.commit.message}
+                  </span>
+                  {/* Context menu button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setMenuBranch(null)
+                      setMenuCommit(
+                        menuCommit?.hash === node.commit.hash
+                          ? null
+                          : {
+                              hash: node.commit.hash,
+                              shortHash: node.commit.shortHash,
+                              message: node.commit.message,
+                              pushed: node.commit.pushed ?? true,
+                              refs: node.commit.refs,
+                            }
+                      )
+                    }}
+                    className={`ml-auto shrink-0 p-0.5 rounded hover:bg-control-bg-hover text-text-muted hover:text-text-secondary transition-opacity ${
+                      menuCommit?.hash === node.commit.hash
+                        ? 'opacity-100 bg-control-bg-hover'
+                        : 'opacity-0 group-hover:opacity-100'
+                    }`}
+                    title={`${node.commit.shortHash} · ${node.commit.author} · ${relativeDate(node.commit.relativeDate)}`}
+                  >
+                    <MoreVertical size={20} />
+                  </button>
+                </div>
               )
             })}
 
             {/* Context menu dropdown */}
-            {menuCommit && (() => {
-              const menuRow = nodes.findIndex((n) => n.commit.hash === menuCommit.hash)
-              if (menuRow === -1) return null
-              const topPx = rowToY(menuRow) + ROW_HEIGHT
-              return (
-                <div
-                  ref={menuRef}
-                  className="absolute right-2 z-50 w-52 py-1 bg-bg-surface border border-border-default rounded-lg shadow-xl"
-                  style={{ top: topPx }}
-                >
-                  {!menuCommit.pushed && (
-                    <>
-                      <button
-                        onClick={handleReword}
-                        className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
-                      >
-                        Edit commit message...
-                      </button>
-                      <div className="mx-2 my-1 border-t border-border-default" />
-                    </>
-                  )}
-                  <button
-                    onClick={handleCreateBranch}
-                    className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
+            {menuCommit &&
+              (() => {
+                const menuRow = nodes.findIndex((n) => n.commit.hash === menuCommit.hash)
+                if (menuRow === -1) return null
+                const topPx = rowToY(menuRow) + ROW_HEIGHT
+                return (
+                  <div
+                    ref={menuRef}
+                    className="absolute right-2 z-50 w-52 py-1 bg-bg-surface border border-border-default rounded-lg shadow-xl"
+                    style={{ top: topPx }}
                   >
-                    Create branch here...
-                  </button>
-                  {menuCommit.refs
-                    .filter((r) => r.name !== graphData?.head?.branch)
-                    .map((r) => (
-                      <button
-                        key={r.name}
-                        onClick={() => handleCheckout(r.name, r)}
-                        className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
-                      >
-                        Checkout <span className="font-mono text-text-primary">{r.name}</span>
-                      </button>
-                    ))}
-                  <div className="mx-2 my-1 border-t border-border-default" />
-                  <button
-                    onClick={handleResetSoft}
-                    className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
-                  >
-                    Reset soft to here
-                  </button>
-                  <button
-                    onClick={handleResetHard}
-                    className="w-full text-left px-3 py-1.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300"
-                  >
-                    Reset hard to here
-                  </button>
-                </div>
-              )
-            })()}
+                    {!menuCommit.pushed && (
+                      <>
+                        <button
+                          onClick={handleReword}
+                          className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
+                        >
+                          Edit commit message...
+                        </button>
+                        <div className="mx-2 my-1 border-t border-border-default" />
+                      </>
+                    )}
+                    <button
+                      onClick={handleCreateBranch}
+                      className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
+                    >
+                      Create branch here...
+                    </button>
+                    {menuCommit.refs
+                      .filter((r) => r.name !== graphData?.head?.branch)
+                      .map((r) => (
+                        <button
+                          key={r.name}
+                          onClick={() => handleCheckout(r.name, r)}
+                          className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
+                        >
+                          Checkout <span className="font-mono text-text-primary">{r.name}</span>
+                        </button>
+                      ))}
+                    <div className="mx-2 my-1 border-t border-border-default" />
+                    <button
+                      onClick={handleResetSoft}
+                      className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
+                    >
+                      Reset soft to here
+                    </button>
+                    <button
+                      onClick={handleResetHard}
+                      className="w-full text-left px-3 py-1.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                    >
+                      Reset hard to here
+                    </button>
+                  </div>
+                )
+              })()}
 
             {/* Stash context menu */}
             {menuStash && (
@@ -1220,37 +1370,40 @@ export default function GitGraph({ sessionName, onSelectCommit, selectedCommit, 
             )}
 
             {/* Branch context menu */}
-            {menuBranch && (() => {
-              const isCurrent = graphData?.head?.branch === menuBranch.name
-              const hasUnpushed = isCurrent && graphData?.commits.some((c) => c.pushed === false)
-              return (
-                <div
-                  ref={branchMenuRef}
-                  className="absolute z-50 w-52 py-1 bg-bg-surface border border-border-default rounded-lg shadow-xl"
-                  style={{ left: menuBranch.x, top: menuBranch.y + 4 }}
-                >
-                  <div className="px-3 py-1.5 text-xs text-text-muted border-b border-border-default truncate">
-                    <span className="font-mono font-medium text-text-secondary">{menuBranch.name}</span>
+            {menuBranch &&
+              (() => {
+                const isCurrent = graphData?.head?.branch === menuBranch.name
+                const hasUnpushed = isCurrent && graphData?.commits.some((c) => c.pushed === false)
+                return (
+                  <div
+                    ref={branchMenuRef}
+                    className="absolute z-50 w-52 py-1 bg-bg-surface border border-border-default rounded-lg shadow-xl"
+                    style={{ left: menuBranch.x, top: menuBranch.y + 4 }}
+                  >
+                    <div className="px-3 py-1.5 text-xs text-text-muted border-b border-border-default truncate">
+                      <span className="font-mono font-medium text-text-secondary">
+                        {menuBranch.name}
+                      </span>
+                    </div>
+                    {!isCurrent && (
+                      <button
+                        onClick={handleBranchCheckout}
+                        className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
+                      >
+                        Checkout
+                      </button>
+                    )}
+                    {hasUnpushed && (
+                      <button
+                        onClick={handleBranchPush}
+                        className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
+                      >
+                        Push
+                      </button>
+                    )}
                   </div>
-                  {!isCurrent && (
-                    <button
-                      onClick={handleBranchCheckout}
-                      className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
-                    >
-                      Checkout
-                    </button>
-                  )}
-                  {hasUnpushed && (
-                    <button
-                      onClick={handleBranchPush}
-                      className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
-                    >
-                      Push
-                    </button>
-                  )}
-                </div>
-              )
-            })()}
+                )
+              })()}
           </div>
         )}
       </div>

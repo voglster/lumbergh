@@ -36,10 +36,7 @@ export function usePrompts(sessionName: string | null): UsePromptsResult {
         throw new Error('Failed to fetch prompts')
       }
 
-      const [projectData, globalData] = await Promise.all([
-        projectRes.json(),
-        globalRes.json(),
-      ])
+      const [projectData, globalData] = await Promise.all([projectRes.json(), globalRes.json()])
 
       // Add scope to each prompt for display
       const projectWithScope = (projectData.templates || []).map((p: PromptTemplate) => ({

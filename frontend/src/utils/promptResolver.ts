@@ -23,9 +23,7 @@ export function findPromptReferences(text: string): string[] {
  */
 export function expandPromptReferences(text: string, prompts: PromptTemplate[]): string {
   return text.replace(MENTION_REGEX, (match, name) => {
-    const prompt = prompts.find(
-      (p) => p.name.toLowerCase() === name.toLowerCase()
-    )
+    const prompt = prompts.find((p) => p.name.toLowerCase() === name.toLowerCase())
     return prompt ? prompt.prompt : match
   })
 }
@@ -35,9 +33,7 @@ export function expandPromptReferences(text: string, prompts: PromptTemplate[]):
  */
 export function findMissingReferences(text: string, prompts: PromptTemplate[]): string[] {
   const refs = findPromptReferences(text)
-  return refs.filter(
-    (name) => !prompts.some((p) => p.name.toLowerCase() === name.toLowerCase())
-  )
+  return refs.filter((name) => !prompts.some((p) => p.name.toLowerCase() === name.toLowerCase()))
 }
 
 /**

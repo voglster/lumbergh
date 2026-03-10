@@ -137,7 +137,10 @@ export default function Dashboard() {
     }
   }
 
-  const handleUpdate = async (name: string, updates: { displayName?: string; description?: string }) => {
+  const handleUpdate = async (
+    name: string,
+    updates: { displayName?: string; description?: string }
+  ) => {
     try {
       const res = await fetch(`${getApiBase()}/sessions/${name}`, {
         method: 'PATCH',
@@ -263,74 +266,81 @@ export default function Dashboard() {
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-4">
         <div className="max-w-6xl mx-auto">
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <span className="text-text-muted">Loading sessions...</span>
-          </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-4">
-            <span className="text-red-400">{error}</span>
-            <button
-              onClick={fetchSessions}
-              className="px-4 py-2 bg-control-bg hover:bg-control-bg-hover rounded transition-colors"
-            >
-              Retry
-            </button>
-          </div>
-        ) : sessions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-4 text-text-muted">
-            <Monitor size={64} strokeWidth={1} />
-            <p>No sessions yet</p>
-            <p className="text-sm">
-              Create a new session to get started, or existing tmux sessions will appear here
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* Active sessions */}
-            {aliveSessions.length > 0 && (
-              <section className="mb-8">
-                <h2 className="text-sm font-medium text-text-tertiary mb-3 uppercase tracking-wide">
-                  Active Sessions
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {aliveSessions.map((session) => (
-                    <SessionCard key={session.name} session={session} onDelete={handleDelete} onUpdate={handleUpdate} onReset={handleReset} />
-                  ))}
-                </div>
-              </section>
-            )}
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <span className="text-text-muted">Loading sessions...</span>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-4">
+              <span className="text-red-400">{error}</span>
+              <button
+                onClick={fetchSessions}
+                className="px-4 py-2 bg-control-bg hover:bg-control-bg-hover rounded transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          ) : sessions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-4 text-text-muted">
+              <Monitor size={64} strokeWidth={1} />
+              <p>No sessions yet</p>
+              <p className="text-sm">
+                Create a new session to get started, or existing tmux sessions will appear here
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Active sessions */}
+              {aliveSessions.length > 0 && (
+                <section className="mb-8">
+                  <h2 className="text-sm font-medium text-text-tertiary mb-3 uppercase tracking-wide">
+                    Active Sessions
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {aliveSessions.map((session) => (
+                      <SessionCard
+                        key={session.name}
+                        session={session}
+                        onDelete={handleDelete}
+                        onUpdate={handleUpdate}
+                        onReset={handleReset}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
 
-            {/* Dead sessions (stored but not running) */}
-            {deadSessions.length > 0 && (
-              <section>
-                <h2 className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wide">
-                  Inactive Sessions
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {deadSessions.map((session) => (
-                    <SessionCard key={session.name} session={session} onDelete={handleDelete} onUpdate={handleUpdate} onReset={handleReset} />
-                  ))}
-                </div>
-              </section>
-            )}
-          </>
-        )}
+              {/* Dead sessions (stored but not running) */}
+              {deadSessions.length > 0 && (
+                <section>
+                  <h2 className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wide">
+                    Inactive Sessions
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {deadSessions.map((session) => (
+                      <SessionCard
+                        key={session.name}
+                        session={session}
+                        onDelete={handleDelete}
+                        onUpdate={handleUpdate}
+                        onReset={handleReset}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+            </>
+          )}
         </div>
       </main>
 
       {/* Create session modal */}
       {showCreateModal && (
-        <CreateSessionModal
-          onClose={() => setShowCreateModal(false)}
-          onCreated={fetchSessions}
-        />
+        <CreateSessionModal onClose={() => setShowCreateModal(false)} onCreated={fetchSessions} />
       )}
 
       {/* Settings modal */}
-      {showSettingsModal && (
-        <SettingsModal onClose={() => setShowSettingsModal(false)} />
-      )}
+      {showSettingsModal && <SettingsModal onClose={() => setShowSettingsModal(false)} />}
     </div>
   )
 }

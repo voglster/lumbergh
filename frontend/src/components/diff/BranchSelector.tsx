@@ -81,14 +81,18 @@ export default function BranchSelector({ gitBaseUrl, onBranchChange }: Props) {
         title={isDisabled ? 'Commit or stash changes first' : 'Switch branch'}
       >
         <span className="font-mono">{branchData.current}</span>
-        <span className={isDisabled ? 'text-text-muted' : 'text-text-tertiary'}>{isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>
+        <span className={isDisabled ? 'text-text-muted' : 'text-text-tertiary'}>
+          {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </span>
       </button>
 
       {isOpen && (
         <div className="absolute top-full left-0 mt-1 min-w-[200px] max-h-[300px] overflow-auto bg-bg-surface border border-border-subtle rounded shadow-lg z-50">
           {isLoading && <div className="px-3 py-2 text-sm text-text-tertiary">Switching...</div>}
           {error && (
-            <div className="px-3 py-2 text-sm text-red-400 border-b border-border-default">{error}</div>
+            <div className="px-3 py-2 text-sm text-red-400 border-b border-border-default">
+              {error}
+            </div>
           )}
 
           {/* Local branches */}

@@ -46,7 +46,9 @@ export default function CreateSessionModal({ onClose, onCreated }: Props) {
     if (mode === 'direct') {
       return workdir.trim() !== ''
     } else {
-      return parentRepo.trim() !== '' && (createNewBranch ? newBranchName.trim() !== '' : branch !== '')
+      return (
+        parentRepo.trim() !== '' && (createNewBranch ? newBranchName.trim() !== '' : branch !== '')
+      )
     }
   }
 
@@ -107,7 +109,10 @@ export default function CreateSessionModal({ onClose, onCreated }: Props) {
       <div className="bg-bg-surface rounded-lg w-full max-w-md border border-border-default">
         <div className="flex items-center justify-between p-4 border-b border-border-default">
           <h2 className="text-lg font-semibold text-text-primary">New Session</h2>
-          <button onClick={onClose} className="text-text-tertiary hover:text-text-primary transition-colors">
+          <button
+            onClick={onClose}
+            className="text-text-tertiary hover:text-text-primary transition-colors"
+          >
             <X size={20} />
           </button>
         </div>
@@ -214,7 +219,7 @@ export default function CreateSessionModal({ onClose, onCreated }: Props) {
                 <div>
                   <label className="block text-sm text-text-tertiary mb-1">Branch</label>
                   <BranchPicker
-                      repoPath={parentRepo}
+                    repoPath={parentRepo}
                     value={branch}
                     onChange={setBranch}
                     onCreateNew={setNewBranchName}

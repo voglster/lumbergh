@@ -21,7 +21,13 @@ interface Props {
   sessionName?: string
   onSelectFile: (path: string) => void
   onRefresh: () => void
-  commit?: { hash: string; shortHash: string; message: string; author?: string; relativeDate?: string } | null
+  commit?: {
+    hash: string
+    shortHash: string
+    message: string
+    author?: string
+    relativeDate?: string
+  } | null
   onSendToTerminal?: (text: string, sendEnter: boolean) => void
   onGitAction?: () => void
   onExpand?: () => void
@@ -65,8 +71,10 @@ const FileList = memo(function FileList({
     if (!showMenu) return
     const handleClick = (e: MouseEvent) => {
       if (
-        menuRef.current && !menuRef.current.contains(e.target as Node) &&
-        menuBtnRef.current && !menuBtnRef.current.contains(e.target as Node)
+        menuRef.current &&
+        !menuRef.current.contains(e.target as Node) &&
+        menuBtnRef.current &&
+        !menuBtnRef.current.contains(e.target as Node)
       ) {
         setShowMenu(false)
       }
@@ -155,7 +163,10 @@ const FileList = memo(function FileList({
             onGitAction?.()
           } else {
             const pushData = await pushRes.json()
-            setCommitResult({ type: 'error', message: `Committed but push failed: ${pushData.detail || 'Unknown error'}` })
+            setCommitResult({
+              type: 'error',
+              message: `Committed but push failed: ${pushData.detail || 'Unknown error'}`,
+            })
           }
         } catch {
           setCommitResult({ type: 'error', message: `Committed but push failed: network error` })
@@ -179,7 +190,7 @@ const FileList = memo(function FileList({
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
       e.preventDefault()
       handleCommit(true)
-    // Cmd/Ctrl+Enter = commit only
+      // Cmd/Ctrl+Enter = commit only
     } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
       handleCommit(false)
@@ -240,7 +251,8 @@ const FileList = memo(function FileList({
     setShowMenu(false)
 
     if (action === 'force-push') {
-      if (!confirm('Force push with --force-with-lease? This will overwrite remote history.')) return
+      if (!confirm('Force push with --force-with-lease? This will overwrite remote history.'))
+        return
     }
 
     setCommitResult(null)
@@ -300,39 +312,37 @@ const FileList = memo(function FileList({
                       setCopiedSha(true)
                       setTimeout(() => setCopiedSha(false), 1500)
                     }}
-                  >{commit.shortHash}</span>
-                  {copiedSha && (
-                    <span className="ml-1 text-xs text-green-400">Copied!</span>
-                  )}
+                  >
+                    {commit.shortHash}
+                  </span>
+                  {copiedSha && <span className="ml-1 text-xs text-green-400">Copied!</span>}
                   <span className="text-text-muted">: </span>
                   <span className="text-text-tertiary">{commit.message}</span>
                 </>
               )}
             </span>
-          {!isWorkingChanges && commit && onSendToTerminal && (
-            <button
-              onClick={() =>
-                onSendToTerminal(
-                  `Review commit ${commit.shortHash}: "${commit.message}"\nRun \`git show ${commit.hash}\` to see the full diff.`,
-                  false
-                )
-              }
-              className="text-sm text-text-muted hover:text-yellow-400 transition-colors shrink-0"
-              title="Send commit info to terminal"
-            >
-              <Play size={16} />
-            </button>
-          )}
-          {isWorkingChanges && sessionName && (
-            <BranchSelector
-              gitBaseUrl={gitBaseUrl}
-              onBranchChange={onRefresh}
-            />
-          )}
+            {!isWorkingChanges && commit && onSendToTerminal && (
+              <button
+                onClick={() =>
+                  onSendToTerminal(
+                    `Review commit ${commit.shortHash}: "${commit.message}"\nRun \`git show ${commit.hash}\` to see the full diff.`,
+                    false
+                  )
+                }
+                className="text-sm text-text-muted hover:text-yellow-400 transition-colors shrink-0"
+                title="Send commit info to terminal"
+              >
+                <Play size={16} />
+              </button>
+            )}
+            {isWorkingChanges && sessionName && (
+              <BranchSelector gitBaseUrl={gitBaseUrl} onBranchChange={onRefresh} />
+            )}
           </div>
           {!isWorkingChanges && commit?.author && (
             <div className="text-xs text-text-muted mt-0.5">
-              {commit.author}{commit.relativeDate ? ` · ${relativeDate(commit.relativeDate)}` : ''}
+              {commit.author}
+              {commit.relativeDate ? ` · ${relativeDate(commit.relativeDate)}` : ''}
             </div>
           )}
         </div>
@@ -403,7 +413,9 @@ const FileList = memo(function FileList({
             <div className="flex flex-col gap-1.5 shrink-0">
               <button
                 onClick={() => handleCommit(true)}
-                disabled={!commitMessage.trim() || isCommitting || isPushing || isGenerating || isResetting}
+                disabled={
+                  !commitMessage.trim() || isCommitting || isPushing || isGenerating || isResetting
+                }
                 className="px-3 py-2 bg-green-600 hover:bg-green-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-text-primary text-sm rounded transition-colors"
                 title="Commit & push (Ctrl/Cmd+Shift+Enter)"
               >
@@ -412,7 +424,13 @@ const FileList = memo(function FileList({
               <div className="relative flex gap-1">
                 <button
                   onClick={() => handleCommit(false)}
-                  disabled={!commitMessage.trim() || isCommitting || isPushing || isGenerating || isResetting}
+                  disabled={
+                    !commitMessage.trim() ||
+                    isCommitting ||
+                    isPushing ||
+                    isGenerating ||
+                    isResetting
+                  }
                   className="flex-1 px-2 py-1 text-text-tertiary hover:text-text-secondary disabled:text-text-muted disabled:cursor-not-allowed text-xs transition-colors"
                   title="Commit only (Ctrl/Cmd+Enter)"
                 >

@@ -23,9 +23,7 @@ export default function MentionText({ text, prompts, className = '' }: MentionTe
     }
 
     const mentionName = match[1]
-    const prompt = prompts.find(
-      (p) => p.name.toLowerCase() === mentionName.toLowerCase()
-    )
+    const prompt = prompts.find((p) => p.name.toLowerCase() === mentionName.toLowerCase())
 
     // Style based on whether prompt exists and its scope
     const bgColor = prompt

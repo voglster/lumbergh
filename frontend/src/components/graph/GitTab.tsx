@@ -66,7 +66,9 @@ export default function GitTab({
       defaultTopHeight={40}
       minTopHeight={15}
       maxTopHeight={75}
-      storageKey={sessionName ? `lumbergh:gitTabSplitHeight:${sessionName}` : 'lumbergh:gitTabSplitHeight'}
+      storageKey={
+        sessionName ? `lumbergh:gitTabSplitHeight:${sessionName}` : 'lumbergh:gitTabSplitHeight'
+      }
     />
   )
 }
