@@ -997,82 +997,80 @@ def _check_http_auth_warning(repo: "Repo", remote_name: str) -> str | None:
     )
 
 
+def _resolve_tracking_info(repo: Repo, branch) -> dict | tuple[str, str]:
+    """Resolve tracking ref and remote name for a branch.
+
+    Returns a dict (early-return error/result) or a (tracking_ref, remote_name) tuple.
+    """
+    tracking = branch.tracking_branch()
+    if tracking:
+        return (tracking.name, tracking.remote_name)
+
+    # No tracking branch — check if origin has a matching branch
+    try:
+        repo.remote("origin")
+    except ValueError:
+        return {"error": "No remote configured", "ahead": 0, "behind": 0}
+
+    remote_ref = f"origin/{branch.name}"
+    try:
+        repo.git.rev_parse("--verify", remote_ref)
+    except GitCommandError:
+        result = {
+            "branch": branch.name,
+            "remote": "origin",
+            "ahead": 0,
+            "behind": 0,
+            "noTracking": True,
+            "noRemoteBranch": True,
+        }
+        warning = _check_http_auth_warning(repo, "origin")
+        if warning:
+            result["httpAuthWarning"] = warning
+        return result
+
+    return (remote_ref, "origin")
+
+
+def _fetch_remote(repo: Repo, remote_name: str) -> tuple[bool, str | None]:
+    """Fetch from remote, returning (fetch_failed, http_warning_override)."""
+    try:
+        repo.remote(remote_name).fetch()
+        return (False, None)
+    except GitCommandError as e:
+        error_msg = str(e)
+        if "Authentication failed" in error_msg or "could not read Username" in error_msg:
+            return (True, "Authentication failed for HTTP remote. "
+                    "Switch to SSH or configure a credential helper.")
+        return (True, None)
+
+
 def get_remote_status(cwd: Path, fetch: bool = True) -> dict:
-    """
-    Get ahead/behind status relative to remote tracking branch.
-
-    Args:
-        cwd: Repository working directory
-        fetch: Whether to fetch from remote first (default True)
-
-    Returns:
-        Dict with ahead, behind counts, branch info, and any errors
-    """
+    """Get ahead/behind status relative to remote tracking branch."""
     try:
         repo = get_repo(cwd)
     except InvalidGitRepositoryError:
         return {"error": "Not a git repository"}
 
-    # Check for detached HEAD
     if repo.head.is_detached:
         return {"error": "HEAD is detached", "ahead": 0, "behind": 0}
 
     branch = repo.active_branch
-    tracking = branch.tracking_branch()
+    tracking_info = _resolve_tracking_info(repo, branch)
+    if isinstance(tracking_info, dict):
+        return tracking_info
+    tracking_ref, remote_name = tracking_info
 
-    if not tracking:
-        # No tracking branch - check if origin exists
-        try:
-            remote = repo.remote("origin")
-            remote_ref = f"origin/{branch.name}"
-            # Check if remote branch exists
-            try:
-                repo.git.rev_parse("--verify", remote_ref)
-            except GitCommandError:
-                result = {
-                    "branch": branch.name,
-                    "remote": "origin",
-                    "ahead": 0,
-                    "behind": 0,
-                    "noTracking": True,
-                    "noRemoteBranch": True,
-                }
-                warning = _check_http_auth_warning(repo, "origin")
-                if warning:
-                    result["httpAuthWarning"] = warning
-                return result
-        except ValueError:
-            return {"error": "No remote configured", "ahead": 0, "behind": 0}
-
-        tracking_ref = remote_ref
-        remote_name = "origin"
-    else:
-        tracking_ref = tracking.name
-        remote_name = tracking.remote_name
-
-    # Check for HTTP auth issues before attempting fetch
     http_warning = _check_http_auth_warning(repo, remote_name)
 
-    # Fetch from remote if requested
     fetch_failed = False
     if fetch:
-        try:
-            remote = repo.remote(remote_name)
-            remote.fetch()
-        except GitCommandError as e:
-            fetch_failed = True
-            error_msg = str(e)
-            if "Authentication failed" in error_msg or "could not read Username" in error_msg:
-                http_warning = (
-                    "Authentication failed for HTTP remote. "
-                    "Switch to SSH or configure a credential helper."
-                )
+        fetch_failed, warning_override = _fetch_remote(repo, remote_name)
+        if warning_override:
+            http_warning = warning_override
 
-    # Count commits ahead/behind
     try:
-        # Commits in local but not in remote (ahead)
         ahead = int(repo.git.rev_list("--count", f"{tracking_ref}..{branch.name}"))
-        # Commits in remote but not in local (behind)
         behind = int(repo.git.rev_list("--count", f"{branch.name}..{tracking_ref}"))
     except GitCommandError:
         ahead = 0
@@ -1092,30 +1090,45 @@ def get_remote_status(cwd: Path, fetch: bool = True) -> dict:
     return result
 
 
-def git_push(cwd: Path) -> dict:
-    """
-    Push commits to the remote repository.
+def _classify_push_error(e: GitCommandError) -> str:
+    """Turn a push GitCommandError into a user-friendly message."""
+    error_msg = str(e)
+    if "Could not read from remote repository" in error_msg:
+        return "Push failed: Could not connect to remote repository"
+    if "Authentication failed" in error_msg or "Permission denied" in error_msg:
+        return "Push failed: Authentication error. Switch to SSH or configure a credential helper."
+    if "could not read Username" in error_msg:
+        return "Push failed: HTTP remote requires credentials. Switch to SSH or configure a credential helper."
+    return f"Push failed: {e}"
 
-    Returns:
-        Dict with status, remote, branch, and message on success, or error on failure
-    """
+
+def _check_push_info(push_info) -> str | None:
+    """Check push info flags for errors. Returns error message or None."""
+    for info in push_info:
+        if info.flags & info.ERROR:
+            return f"Push failed: {info.summary}"
+        if info.flags & info.REJECTED:
+            return "Push rejected: non-fast-forward update. Pull first."
+        if info.flags & info.REMOTE_REJECTED:
+            return f"Push rejected by remote: {info.summary}"
+    return None
+
+
+def git_push(cwd: Path) -> dict:
+    """Push commits to the remote repository."""
     try:
         repo = get_repo(cwd)
     except InvalidGitRepositoryError:
         return {"error": "Not a git repository"}
 
-    # Check for detached HEAD
     if repo.head.is_detached:
         return {"error": "Cannot push: HEAD is detached"}
 
     branch = repo.active_branch
-
-    # Check for tracking branch
     tracking = branch.tracking_branch()
     if tracking:
         remote_name = tracking.remote_name
     else:
-        # Default to origin if no tracking branch
         try:
             remote_name = "origin"
             repo.remote(remote_name)
@@ -1123,18 +1136,10 @@ def git_push(cwd: Path) -> dict:
             return {"error": "No remote configured"}
 
     try:
-        remote = repo.remote(remote_name)
-        push_info = remote.push(branch.name)
-
-        # Check push result
-        for info in push_info:
-            if info.flags & info.ERROR:
-                return {"error": f"Push failed: {info.summary}"}
-            if info.flags & info.REJECTED:
-                return {"error": "Push rejected: non-fast-forward update. Pull first."}
-            if info.flags & info.REMOTE_REJECTED:
-                return {"error": f"Push rejected by remote: {info.summary}"}
-
+        push_info = repo.remote(remote_name).push(branch.name)
+        error = _check_push_info(push_info)
+        if error:
+            return {"error": error}
         return {
             "status": "pushed",
             "remote": remote_name,
@@ -1142,18 +1147,7 @@ def git_push(cwd: Path) -> dict:
             "message": f"Pushed {branch.name} to {remote_name}",
         }
     except GitCommandError as e:
-        error_msg = str(e)
-        if "Could not read from remote repository" in error_msg:
-            return {"error": "Push failed: Could not connect to remote repository"}
-        if "Authentication failed" in error_msg or "Permission denied" in error_msg:
-            return {
-                "error": "Push failed: Authentication error. This HTTP remote has no stored credentials — switch to SSH or configure a credential helper."
-            }
-        if "could not read Username" in error_msg:
-            return {
-                "error": "Push failed: HTTP remote requires credentials. Switch to SSH or configure a credential helper."
-            }
-        return {"error": f"Push failed: {e}"}
+        return {"error": _classify_push_error(e)}
 
 
 def git_pull_rebase(cwd: Path) -> dict:
