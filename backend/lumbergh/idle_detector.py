@@ -50,7 +50,7 @@ class IdleDetector:
 
     # Patterns indicating idle state (waiting for user input)
     IDLE_PATTERNS = [
-        re.compile(r"\u276f"),  # Claude Code prompt character (❯)
+        re.compile(r"\u276f"),  # Claude Code prompt character
         re.compile(r"Do you want to proceed\?"),
         re.compile(r"Esc to cancel"),
         re.compile(r"\? for shortcuts"),
@@ -161,9 +161,7 @@ class IdleDetector:
 
         return IdleDetectionResult(self._current_state, confidence, reason)
 
-    def _match_patterns(
-        self, lines: list[str], patterns: list[re.Pattern]
-    ) -> re.Pattern | None:
+    def _match_patterns(self, lines: list[str], patterns: list[re.Pattern]) -> re.Pattern | None:
         """Return the first matching pattern across lines, or None."""
         for line in lines:
             for pattern in patterns:

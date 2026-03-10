@@ -407,6 +407,7 @@ async def create_session(body: CreateSessionRequest):
     if body.name in live:
         raise HTTPException(status_code=409, detail=f"Session '{body.name}' already exists")
 
+    session_type = body.mode
     worktree_parent_repo = None
     worktree_branch = None
 
