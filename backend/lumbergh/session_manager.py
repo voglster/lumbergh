@@ -242,7 +242,7 @@ class SessionManager:
         if message.get("type") == "input":
             data = message.get("data", "")
             if data:
-                managed.pty.write(data.encode("utf-8"))
+                await managed.pty.write_async(data.encode("utf-8"))
 
         elif message.get("type") == "resize":
             cols = message.get("cols", 80)

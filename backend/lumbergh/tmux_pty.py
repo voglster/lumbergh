@@ -139,6 +139,30 @@ class TmuxPtySession:
         if self.master_fd is not None:
             os.write(self.master_fd, data)
 
+    async def write_async(self, data: bytes) -> None:
+        """Write data to the PTY with proper backpressure handling.
+
+        Handles short writes and BlockingIOError on non-blocking fds,
+        which is critical for large pastes that exceed the kernel's
+        PTY input buffer (~4KB).
+        """
+        if self.master_fd is None:
+            return
+        loop = asyncio.get_event_loop()
+        offset = 0
+        while offset < len(data):
+            try:
+                written = os.write(self.master_fd, data[offset:])
+                offset += written
+            except BlockingIOError:
+                # PTY buffer full - wait for it to drain using epoll/kqueue
+                writable = asyncio.Event()
+                loop.add_writer(self.master_fd, writable.set)
+                try:
+                    await writable.wait()
+                finally:
+                    loop.remove_writer(self.master_fd)
+
     def read(self) -> bytes | None:
         """Read available data from the PTY (non-blocking).
 

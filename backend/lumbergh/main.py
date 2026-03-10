@@ -228,19 +228,38 @@ async def get_file(file_path: str, raw: bool = False):
 
 @app.post("/api/session/{session_name}/send")
 async def send_to_session(session_name: str, body: SendInput):
-    """Send text to a tmux session using tmux send-keys."""
+    """Send text to a tmux session using tmux send-keys or paste-buffer."""
     import subprocess
 
     text = body.text.rstrip("\n")
 
-    # Use -l for literal text (no special key interpretation)
-    result = subprocess.run(
-        ["tmux", "send-keys", "-t", session_name, "-l", text],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        raise HTTPException(status_code=500, detail=result.stderr)
+    if len(text) > 128:
+        # For large text, use load-buffer + paste-buffer (much faster than send-keys
+        # which processes each character individually through tmux's key pipeline)
+        result = subprocess.run(
+            ["tmux", "load-buffer", "-"],
+            input=text,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=result.stderr)
+        result = subprocess.run(
+            ["tmux", "paste-buffer", "-t", session_name, "-d", "-p"],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=result.stderr)
+    else:
+        # For short text, send-keys -l is fine
+        result = subprocess.run(
+            ["tmux", "send-keys", "-t", session_name, "-l", text],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=result.stderr)
 
     # Send Enter key separately (without -l so it's interpreted as a key)
     if body.send_enter:
