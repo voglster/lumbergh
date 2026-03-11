@@ -120,6 +120,23 @@ runcmd:
       # Install pylumbergh from PyPI
       sudo -u test python3 -m pip install --break-system-packages pylumbergh ${INSTALL_PRE}
 
+      # Fake claude binary (blocks on stdin like real claude)
+      printf '#!/bin/bash\nexec cat\n' > /usr/local/bin/claude
+      chmod +x /usr/local/bin/claude
+
+      # Create test git repos for E2E tests
+      for repo in test-repo test-repo-2 git-test-repo; do
+        sudo -u test mkdir -p /home/test/\$repo
+        cd /home/test/\$repo
+        sudo -u test git init
+        sudo -u test git config user.name "E2E Test"
+        sudo -u test git config user.email "test@localhost"
+        sudo -u test bash -c "echo '# \$repo' > README.md"
+        sudo -u test git add README.md
+        sudo -u test git commit -m "Initial commit"
+        sudo -u test bash -c "echo 'uncommitted change' >> README.md"
+      done
+
       # Start lumbergh (log output for debugging)
       sudo -u test bash -c '/home/test/.local/bin/lumbergh > /tmp/lumbergh.log 2>&1 &'
 
@@ -176,9 +193,9 @@ while [[ $elapsed -lt $POLL_TIMEOUT ]]; do
         echo "  [${elapsed}s] Lumbergh: UP"
         echo ""
         echo "========================================="
-        echo "  PASS - Service responding"
+        echo "  Service responding - running E2E tests"
         echo "========================================="
-        exit 0
+        break
     fi
 
     sleep "$POLL_INTERVAL"
@@ -190,12 +207,42 @@ while [[ $elapsed -lt $POLL_TIMEOUT ]]; do
     fi
 done
 
-# Timeout
+# Check if we timed out (loop completed without break)
+if [[ $elapsed -ge $POLL_TIMEOUT ]]; then
+    echo ""
+    echo "========================================="
+    echo "  FAIL - Timeout after ${POLL_TIMEOUT}s"
+    echo "========================================="
+    echo ""
+    echo "--- Last 50 lines of QEMU log ---"
+    tail -50 "$QEMU_LOG"
+    exit 1
+fi
+
+# ── Phase 5: Run E2E Tests ────────────────────────────────────────────
+
 echo ""
-echo "========================================="
-echo "  FAIL - Timeout after ${POLL_TIMEOUT}s"
-echo "========================================="
-echo ""
-echo "--- Last 50 lines of QEMU log ---"
-tail -50 "$QEMU_LOG"
-exit 1
+echo "=== Phase 5: E2E Tests ==="
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Install test dependencies
+pip install -q -r "$SCRIPT_DIR/e2e/requirements.txt"
+
+# Run pytest against the VM (|| true to capture exit code under set -e)
+E2E_EXIT=0
+python3 -m pytest "$SCRIPT_DIR/e2e/" -v --tb=short --base-url="http://localhost:${HOST_PORT}" -x || E2E_EXIT=$?
+
+if [[ $E2E_EXIT -eq 0 ]]; then
+    echo ""
+    echo "========================================="
+    echo "  PASS - All E2E tests passed"
+    echo "========================================="
+else
+    echo ""
+    echo "========================================="
+    echo "  FAIL - E2E tests failed (exit $E2E_EXIT)"
+    echo "========================================="
+fi
+
+exit $E2E_EXIT
