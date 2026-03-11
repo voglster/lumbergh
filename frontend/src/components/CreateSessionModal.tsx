@@ -182,14 +182,17 @@ export default function CreateSessionModal({ onClose, onCreated }: Props) {
 
           {/* Session Name */}
           <div>
-            <label className="block text-sm text-text-tertiary mb-1">Session Name</label>
+            <label className="block text-sm text-text-tertiary mb-1">
+              Session Name <span className="text-text-muted font-normal">(optional)</span>
+            </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Auth Feature, fix-login-bug"
+              placeholder={
+                workdir ? workdir.split('/').filter(Boolean).pop() || 'auto' : 'auto from directory'
+              }
               className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500"
-              required
             />
             {slug && (
               <p className="text-xs text-text-muted mt-1">

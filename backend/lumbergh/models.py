@@ -107,7 +107,7 @@ class WorktreeConfig(BaseModel):
 class CreateSessionRequest(BaseModel):
     """Request to create a new tmux session."""
 
-    name: str
+    name: str = ""  # Auto-derived from workdir if empty
     workdir: str | None = None  # Required for direct, ignored for worktree
     description: str = ""
     mode: Literal["direct", "worktree"] = "direct"

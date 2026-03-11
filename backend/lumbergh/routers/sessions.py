@@ -391,12 +391,28 @@ def _init_repo(workdir: Path) -> None:
     (workdir / "README.md").write_text("")
     subprocess.run(["git", "init"], cwd=workdir, capture_output=True, check=True)
     subprocess.run(["git", "add", "README.md"], cwd=workdir, capture_output=True, check=True)
-    subprocess.run(
+    # Try with user's git config first, fall back to defaults if not configured
+    result = subprocess.run(
         ["git", "commit", "-m", "Initial commit"],
         cwd=workdir,
         capture_output=True,
-        check=True,
     )
+    if result.returncode != 0:
+        subprocess.run(
+            [
+                "git",
+                "-c",
+                "user.name=Lumbergh",
+                "-c",
+                "user.email=lumbergh@localhost",
+                "commit",
+                "-m",
+                "Initial commit",
+            ],
+            cwd=workdir,
+            capture_output=True,
+            check=True,
+        )
 
 
 def _resolve_direct_workdir(body: CreateSessionRequest) -> Path:
@@ -422,7 +438,12 @@ def _resolve_direct_workdir(body: CreateSessionRequest) -> Path:
 async def create_session(body: CreateSessionRequest):
     """Create a new tmux session."""
 
-    if not SESSION_NAME_PATTERN.match(body.name):
+    # Auto-derive name from directory if not provided
+    if not body.name and body.workdir:
+        leaf = Path(body.workdir).expanduser().resolve().name
+        body.name = re.sub(r"[^a-zA-Z0-9_-]", "-", leaf).strip("-") or "session"
+
+    if not body.name or not SESSION_NAME_PATTERN.match(body.name):
         raise HTTPException(
             status_code=400,
             detail="Invalid session name. Use only letters, numbers, underscores, and hyphens.",
