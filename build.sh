@@ -3,6 +3,12 @@ set -e
 
 echo "Building Lumbergh..."
 
+# Write version if provided
+if [ -n "$VERSION" ]; then
+  echo "Setting version to $VERSION"
+  echo "__version__ = \"$VERSION\"" > backend/lumbergh/_version.py
+fi
+
 # Build frontend
 echo "Building frontend..."
 cd frontend && npm ci && npm run build && cd ..

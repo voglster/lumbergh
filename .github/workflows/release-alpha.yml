@@ -1,0 +1,33 @@
+name: Release Alpha
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  release-alpha:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - name: Build
+        run: VERSION="0.1.0a${{ github.event.workflow_run.run_number }}" ./build.sh
+      - name: Update alpha release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete alpha --yes --cleanup-tag || true
+          gh release create alpha backend/dist/*.whl \
+            --prerelease \
+            --title "Alpha (latest main)" \
+            --notes "Auto-built from main @ ${{ github.event.workflow_run.head_sha }}"

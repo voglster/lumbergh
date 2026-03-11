@@ -1,0 +1,61 @@
+name: Release Stable
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  release-stable:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - name: Build
+        run: VERSION="${GITHUB_REF_NAME#v}" ./build.sh
+      - name: Generate AI release notes
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+        run: |
+          PREV=$(git tag -l 'v*' --sort=-v:refname | sed -n '2p')
+          PREV="${PREV:-$(git rev-list --max-parents=0 HEAD)}"
+          COMMITS="$(git log --oneline ${PREV}..HEAD)"
+          STATS="$(git diff --stat ${PREV}..HEAD)"
+          python3 -c "
+          import json, urllib.request, os
+          base = os.environ['LLM_BASE_URL'].rstrip('/')
+          body = json.dumps({
+            'model': os.environ['LLM_MODEL'],
+            'max_tokens': 1024,
+            'messages': [{'role': 'user', 'content': '''Generate concise release notes for Lumbergh ${{ github.ref_name }}.
+          Lumbergh is a web dashboard for supervising Claude Code AI sessions in tmux.
+          Commits since last release:
+          ${COMMITS}
+          Diff stats:
+          ${STATS}
+          Format: brief intro, then bulleted list grouped by category (Features, Fixes, Other). Keep it short.'''}]
+          }).encode()
+          req = urllib.request.Request(f'{base}/chat/completions',
+            data=body,
+            headers={'Authorization': f\"Bearer {os.environ['LLM_API_KEY']}\",
+                     'Content-Type': 'application/json'})
+          resp = json.loads(urllib.request.urlopen(req).read())
+          print(resp['choices'][0]['message']['content'])
+          " > RELEASE_NOTES.md
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" backend/dist/*.whl \
+            --title "${{ github.ref_name }}" \
+            --notes-file RELEASE_NOTES.md
