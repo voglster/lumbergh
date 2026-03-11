@@ -112,6 +112,7 @@ class CreateSessionRequest(BaseModel):
     description: str = ""
     mode: Literal["direct", "worktree"] = "direct"
     worktree: WorktreeConfig | None = None
+    init_repo: bool = False  # Create dir + git init if it doesn't exist
 
 
 class SessionUpdate(BaseModel):

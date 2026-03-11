@@ -56,8 +56,7 @@ for i in $(seq 1 60); do
         echo "  ssh -o StrictHostKeyChecking=no test@localhost -p 2222"
         echo ""
         echo "Then run:"
-        echo "  pip install --break-system-packages pylumbergh"
-        echo "  ~/.local/bin/lumbergh --host 0.0.0.0 --port 8420"
+        echo "  lumbergh"
         echo ""
         echo "Kill VM: kill \$(cat $PIDFILE)"
         exit 0

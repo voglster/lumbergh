@@ -165,6 +165,13 @@ def create_tmux_session(name: str, workdir: Path) -> None:
     )
 
 
+@directories_router.get("/validate")
+async def validate_directory(path: str):
+    """Check if a directory path exists."""
+    p = Path(path).expanduser().resolve()
+    return {"exists": p.is_dir(), "path": str(p)}
+
+
 @directories_router.get("/search")
 async def search_directories(query: str = ""):
     """Search for git repositories in the configured search directory."""
@@ -378,6 +385,20 @@ def _resolve_worktree_workdir(body: CreateSessionRequest) -> tuple[Path, str, st
     return Path(result["path"]), str(parent_repo), body.worktree.branch
 
 
+def _init_repo(workdir: Path) -> None:
+    """Create directory, git init, and make an initial commit."""
+    workdir.mkdir(parents=True, exist_ok=True)
+    (workdir / "README.md").write_text("")
+    subprocess.run(["git", "init"], cwd=workdir, capture_output=True, check=True)
+    subprocess.run(["git", "add", "README.md"], cwd=workdir, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "Initial commit"],
+        cwd=workdir,
+        capture_output=True,
+        check=True,
+    )
+
+
 def _resolve_direct_workdir(body: CreateSessionRequest) -> Path:
     """Validate and resolve the working directory for direct mode.
 
@@ -388,7 +409,10 @@ def _resolve_direct_workdir(body: CreateSessionRequest) -> Path:
 
     workdir = Path(body.workdir).expanduser().resolve()
     if not workdir.exists():
-        raise HTTPException(status_code=400, detail=f"Directory does not exist: {body.workdir}")
+        if body.init_repo:
+            _init_repo(workdir)
+        else:
+            raise HTTPException(status_code=400, detail=f"Directory does not exist: {body.workdir}")
     if not workdir.is_dir():
         raise HTTPException(status_code=400, detail=f"Path is not a directory: {body.workdir}")
     return workdir

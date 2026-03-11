@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { getApiBase } from '../config'
@@ -11,6 +11,7 @@ interface Props {
 }
 
 type SessionMode = 'direct' | 'worktree'
+type DirStatus = 'unchecked' | 'checking' | 'exists' | 'not_found' | 'error'
 
 // Generate a URL-safe slug from free-form text
 function toSlug(text: string): string {
@@ -33,6 +34,9 @@ export default function CreateSessionModal({ onClose, onCreated }: Props) {
   const [isCreating, setIsCreating] = useState(false)
   const [manualEntry, setManualEntry] = useState(false)
 
+  const [dirStatus, setDirStatus] = useState<DirStatus>('unchecked')
+  const [initRepo, setInitRepo] = useState(false)
+
   // Worktree mode state
   const [parentRepo, setParentRepo] = useState('')
   const [branch, setBranch] = useState('')
@@ -41,10 +45,36 @@ export default function CreateSessionModal({ onClose, onCreated }: Props) {
 
   const slug = toSlug(name)
 
+  // Debounced directory validation for manual entry
+  useEffect(() => {
+    if (!manualEntry || !workdir.trim() || mode !== 'direct') {
+      setDirStatus('unchecked')
+      setInitRepo(false)
+      return
+    }
+    setDirStatus('checking')
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `${getApiBase()}/directories/validate?path=${encodeURIComponent(workdir.trim())}`
+        )
+        const data = await res.json()
+        setDirStatus(data.exists ? 'exists' : 'not_found')
+        if (!data.exists) setInitRepo(true)
+      } catch {
+        setDirStatus('error')
+      }
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [workdir, manualEntry, mode])
+
   const isValid = () => {
     if (!slug) return false
     if (mode === 'direct') {
-      return workdir.trim() !== ''
+      if (!workdir.trim()) return false
+      if (manualEntry && dirStatus === 'not_found' && !initRepo) return false
+      if (manualEntry && dirStatus === 'checking') return false
+      return true
     } else {
       return (
         parentRepo.trim() !== '' && (createNewBranch ? newBranchName.trim() !== '' : branch !== '')
@@ -68,6 +98,7 @@ export default function CreateSessionModal({ onClose, onCreated }: Props) {
 
       if (mode === 'direct') {
         body.workdir = workdir.trim()
+        if (initRepo) body.init_repo = true
       } else {
         body.worktree = {
           parent_repo: parentRepo.trim(),
@@ -181,6 +212,23 @@ export default function CreateSessionModal({ onClose, onCreated }: Props) {
                     className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-sm"
                     required
                   />
+                  {dirStatus === 'checking' && (
+                    <p className="text-xs text-text-muted mt-1">Checking...</p>
+                  )}
+                  {dirStatus === 'exists' && (
+                    <p className="text-xs text-green-400 mt-1">Directory exists</p>
+                  )}
+                  {dirStatus === 'not_found' && (
+                    <label className="flex items-center gap-2 text-xs text-yellow-400 mt-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={initRepo}
+                        onChange={(e) => setInitRepo(e.target.checked)}
+                        className="rounded"
+                      />
+                      Directory not found — create it and initialize a git repo
+                    </label>
+                  )}
                   <button
                     type="button"
                     onClick={() => {
