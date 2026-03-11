@@ -18,9 +18,6 @@ echo "Copying frontend dist to package..."
 rm -rf backend/lumbergh/frontend_dist
 cp -r frontend/dist backend/lumbergh/frontend_dist
 
-# Copy README for PyPI long description
-cp README.md backend/README.md
-
 # Build Python package
 echo "Building Python package..."
 cd backend && uv build

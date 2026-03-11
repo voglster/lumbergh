@@ -153,6 +153,46 @@
     display: block;
   }
 
+  /* Quick install banner */
+  .quick-install {
+    text-align: center;
+    padding: 2.5rem 1.5rem;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .quick-install .install-label {
+    font-size: 1rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+    font-weight: 500;
+  }
+
+  .quick-install .install-commands {
+    display: inline-block;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.5rem;
+    font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 1.05rem;
+    color: var(--green);
+    text-align: left;
+    line-height: 1.8;
+    position: relative;
+  }
+
+  .quick-install .install-commands .comment {
+    color: var(--text-muted);
+  }
+
+  .quick-install .install-note {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 0.75rem;
+  }
+
   /* Sections */
   section {
     padding: 4rem 0;
@@ -353,14 +393,73 @@
     max-width: 600px;
   }
 
+  /* Final CTA section */
+  .final-cta {
+    text-align: center;
+    padding: 4rem 1.5rem;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+
+  .final-cta h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.02em;
+  }
+
+  .final-cta .subtitle {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .final-cta .install-commands {
+    display: inline-block;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 2rem;
+    font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 1.1rem;
+    color: var(--green);
+    text-align: left;
+    line-height: 1.8;
+    margin-bottom: 1.25rem;
+  }
+
+  .final-cta .install-commands .comment {
+    color: var(--text-muted);
+  }
+
+  .final-cta .install-note {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+  }
+
+  .final-cta .cta-links {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .final-cta .cta-links a {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+  }
+
   /* Footer */
   footer {
     text-align: center;
-    padding: 3rem 1.5rem;
+    padding: 2rem 1.5rem;
     color: var(--text-muted);
     font-size: 0.9rem;
     border-top: 1px solid var(--border);
-    margin-top: 2rem;
   }
 
   /* Nav */
@@ -434,6 +533,9 @@
     .showcase { grid-template-columns: 1fr; }
     .showcase-mobile { flex-direction: column; align-items: center; }
     nav { gap: 1rem; font-size: 0.8rem; }
+    .quick-install .install-commands { font-size: 0.9rem; }
+    .final-cta .install-commands { font-size: 0.95rem; }
+    .final-cta h2 { font-size: 1.6rem; }
   }
 </style>
 </head>
@@ -460,7 +562,16 @@
   </div>
 </header>
 
-<div class="divider"></div>
+<!-- Quick install right after the hero -->
+<div class="quick-install">
+  <div class="install-label">Install and run -- it takes 30 seconds:</div>
+  <div class="install-commands">
+    uv tool install pylumbergh<br>
+    lumbergh<br>
+    <span class="comment"># open http://localhost:8420</span>
+  </div>
+  <div class="install-note">Requires <strong>tmux</strong> and <strong>git</strong> (checked on startup). No <code>uv</code>? Use <code>pip install pylumbergh</code>.</div>
+</div>
 
 <main>
 
@@ -774,9 +885,25 @@ brew install tmux git         # macOS</code></pre>
 
 </main>
 
+<!-- Final CTA: the "what's next?" moment -->
+<div class="final-cta">
+  <h2>Ready to put your AI interns to work?</h2>
+  <p class="subtitle">Two commands. Open your browser. Start supervising.</p>
+  <div class="install-commands">
+    uv tool install pylumbergh<br>
+    lumbergh<br>
+    <span class="comment"># open http://localhost:8420</span>
+  </div>
+  <div class="install-note">Or <code>pip install pylumbergh</code> if you prefer pip.</div>
+  <div class="cta-links">
+    <a href="https://github.com/voglster/lumbergh">Source on GitHub</a>
+    <a href="https://pypi.org/project/pylumbergh/">PyPI</a>
+    <a href="https://github.com/voglster/lumbergh/issues">Report an issue</a>
+  </div>
+</div>
+
 <footer>
   <p>Lumbergh is MIT licensed and built with FastAPI, React, xterm.js, and too much coffee.</p>
-  <p style="margin-top: 0.5rem;"><a href="https://github.com/voglster/lumbergh">Source on GitHub</a></p>
 </footer>
 
 <dialog class="lightbox" id="lightbox">

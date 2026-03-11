@@ -48,4 +48,3 @@ uv.lock
 # Lumbergh package build artifacts
 backend/lumbergh/frontend_dist/
 !backend/lumbergh/frontend_dist/.gitkeep
-backend/README.md
