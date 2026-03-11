@@ -1,8 +1,34 @@
 [project]
 name = "pylumbergh"
 dynamic = ["version"]
-description = "Tmux session supervisor backend"
+description = "A self-hosted web dashboard for supervising multiple Claude Code AI sessions running in tmux"
+readme = {file = "../README.md", content-type = "text/markdown"}
+license = {text = "MIT"}
 requires-python = ">=3.11"
+authors = [
+    {name = "James Vogel"},
+]
+keywords = [
+    "claude-code", "tmux", "dashboard", "ai", "agent",
+    "supervisor", "terminal", "session-manager", "devtools",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Web Environment",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: System :: Monitoring",
+    "Topic :: Terminals :: Terminal Emulators/X Terminals",
+    "Typing :: Typed",
+]
 dependencies = [
     "fastapi",
     "uvicorn[standard]",
@@ -13,6 +39,16 @@ dependencies = [
     "python-multipart",
 ]
 
+[project.urls]
+Homepage = "https://github.com/voglster/lumbergh"
+Documentation = "https://voglster.github.io/lumbergh/"
+Repository = "https://github.com/voglster/lumbergh"
+Issues = "https://github.com/voglster/lumbergh/issues"
+Changelog = "https://github.com/voglster/lumbergh/releases"
+
+[project.scripts]
+lumbergh = "lumbergh.cli:run"
+
 [dependency-groups]
 dev = [
     "pytest>=8.0",
@@ -22,9 +58,6 @@ dev = [
     "ruff>=0.3",
     "mypy>=1.8",
 ]
-
-[project.scripts]
-lumbergh = "lumbergh.cli:run"
 
 [build-system]
 requires = ["hatchling"]
