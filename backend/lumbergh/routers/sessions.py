@@ -275,6 +275,7 @@ async def list_sessions():
                 "worktreeParentRepo": meta.get("worktree_parent_repo"),
                 "worktreeBranch": meta.get("worktree_branch"),
                 "lastUsedAt": meta.get("lastUsedAt"),
+                "paused": meta.get("paused", False),
             }
         )
 
@@ -299,6 +300,7 @@ async def list_sessions():
                     "worktreeParentRepo": None,
                     "worktreeBranch": None,
                     "lastUsedAt": None,
+                    "paused": False,
                 }
             )
 
@@ -347,6 +349,8 @@ async def update_session(name: str, body: SessionUpdate):
         record["displayName"] = body.displayName
     if body.description is not None:
         record["description"] = body.description
+    if body.paused is not None:
+        record["paused"] = body.paused
 
     sessions_table.upsert(record, session_q.name == name)
 

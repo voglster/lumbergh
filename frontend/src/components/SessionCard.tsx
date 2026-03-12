@@ -28,6 +28,7 @@ interface Session {
   type?: 'direct' | 'worktree'
   worktreeParentRepo?: string | null
   worktreeBranch?: string | null
+  paused?: boolean
 }
 
 function getSessionStatus(session: Session) {
@@ -58,6 +59,7 @@ const statusColorClasses: Record<string, { dot: string; text: string }> = {
 interface SessionUpdate {
   displayName?: string
   description?: string
+  paused?: boolean
 }
 
 interface Props {
@@ -111,6 +113,11 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
     ) {
       onReset(session.name)
     }
+  }
+
+  const handleTogglePaused = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onUpdate(session.name, { paused: !session.paused })
   }
 
   const handleEditClick = (e: React.MouseEvent) => {
@@ -214,7 +221,7 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
     <div
       onClick={handleClick}
       data-testid="session-card-link"
-      className="bg-bg-surface rounded-lg p-4 cursor-pointer hover:bg-bg-elevated transition-colors border border-border-default hover:border-border-subtle"
+      className={`bg-bg-surface rounded-lg p-4 cursor-pointer hover:bg-bg-elevated transition-colors border border-border-default hover:border-border-subtle ${session.paused ? 'opacity-50' : ''}`}
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -228,6 +235,15 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
           </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
+          {session.alive && (
+            <button
+              onClick={handleTogglePaused}
+              className={`transition-colors p-1 ${session.paused ? 'text-yellow-400 hover:text-green-400' : 'text-text-muted hover:text-yellow-400'}`}
+              title={session.paused ? 'Resume session' : 'Pause session'}
+            >
+              {session.paused ? <Play size={16} /> : <Pause size={16} />}
+            </button>
+          )}
           <button
             onClick={handleEditClick}
             data-testid="session-edit-btn"

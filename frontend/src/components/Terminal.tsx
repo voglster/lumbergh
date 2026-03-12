@@ -22,6 +22,7 @@ interface TerminalProps {
   onFocusReady?: (focus: () => void) => void
   onBack?: () => void
   onReset?: () => void
+  onCycleSession?: (direction: 'next' | 'prev') => void
   isVisible?: boolean
 }
 
@@ -31,6 +32,7 @@ export default function Terminal({
   onFocusReady,
   onBack,
   onReset,
+  onCycleSession,
   isVisible = true,
 }: TerminalProps) {
   const { theme } = useTheme()
@@ -421,8 +423,24 @@ export default function Terminal({
             </button>
           </div>
           {onBack && (
-            <span className="absolute left-1/2 -translate-x-1/2 text-base font-semibold text-text-secondary truncate max-w-[40%] pointer-events-none">
-              {sessionName}
+            <span
+              onClick={
+                onCycleSession ? (e) => onCycleSession(e.shiftKey ? 'prev' : 'next') : undefined
+              }
+              className={`absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-base font-semibold text-text-secondary max-w-[40%] ${onCycleSession ? 'cursor-pointer group hover:text-text-primary transition-colors' : 'pointer-events-none'}`}
+              title={onCycleSession ? 'Click: next session · Shift+click: previous' : undefined}
+            >
+              {onCycleSession && (
+                <span className="opacity-0 group-hover:opacity-40 transition-opacity text-xs">
+                  ‹
+                </span>
+              )}
+              <span className="truncate">{sessionName}</span>
+              {onCycleSession && (
+                <span className="opacity-0 group-hover:opacity-40 transition-opacity text-xs">
+                  ›
+                </span>
+              )}
             </span>
           )}
           <div className="flex items-center gap-2">

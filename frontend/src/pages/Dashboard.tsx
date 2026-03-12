@@ -22,6 +22,7 @@ interface Session {
   worktreeParentRepo?: string | null
   worktreeBranch?: string | null
   lastUsedAt?: string | null
+  paused?: boolean
 }
 
 export default function Dashboard() {
@@ -184,7 +185,7 @@ export default function Dashboard() {
 
   const handleUpdate = async (
     name: string,
-    updates: { displayName?: string; description?: string }
+    updates: { displayName?: string; description?: string; paused?: boolean }
   ) => {
     try {
       const res = await fetch(`${getApiBase()}/sessions/${name}`, {

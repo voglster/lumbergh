@@ -109,6 +109,28 @@ export default function SessionDetail() {
     [name]
   )
 
+  const handleCycleSession = useCallback(
+    async (direction: 'next' | 'prev') => {
+      try {
+        const res = await fetch(`${getApiBase()}/sessions`)
+        if (!res.ok) return
+        const data = await res.json()
+        const active = (data.sessions || [])
+          .filter((s: { alive: boolean; paused?: boolean }) => s.alive && !s.paused)
+          .map((s: { name: string }) => s.name)
+          .sort()
+        if (active.length <= 1) return
+        const currentIdx = active.indexOf(name)
+        const step = direction === 'next' ? 1 : active.length - 1
+        const nextIdx = (currentIdx + step) % active.length
+        navigate(`/session/${active[nextIdx]}`)
+      } catch {
+        // Ignore errors
+      }
+    },
+    [name, navigate]
+  )
+
   const handleReset = useCallback(async () => {
     if (!name) return
     try {
@@ -237,6 +259,7 @@ export default function SessionDetail() {
           onFocusReady={handleFocusReady}
           onBack={isDesktop ? () => navigate('/') : undefined}
           onReset={handleReset}
+          onCycleSession={isDesktop ? handleCycleSession : undefined}
           isVisible={isDesktop || mobileTab === 'terminal'}
         />
       ) : (
