@@ -4,6 +4,7 @@ Lumbergh Backend - FastAPI server for tmux terminal streaming.
 Run with: uv run python main.py
 """
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -226,50 +227,59 @@ async def get_file(file_path: str, raw: bool = False):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+async def _exit_copy_mode(session_name: str) -> None:
+    """If the pane is in copy-mode, send 'q' to exit it."""
+    mode = (await _run_tmux("display-message", "-p", "-t", session_name, "#{pane_mode}")).strip()
+    if mode == "copy-mode":
+        await _run_tmux("send-keys", "-t", session_name, "q")
+
+
+async def _run_tmux(*args: str, input_data: str | None = None, timeout: float = 5.0) -> str:
+    """Run a tmux command asynchronously with a timeout.
+
+    Raises HTTPException on failure or timeout (e.g. tmux stuck in copy-mode).
+    """
+    proc = await asyncio.create_subprocess_exec(
+        "tmux",
+        *args,
+        stdin=asyncio.subprocess.PIPE if input_data else None,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    try:
+        stdout, stderr = await asyncio.wait_for(
+            proc.communicate(input=input_data.encode() if input_data else None),
+            timeout=timeout,
+        )
+    except TimeoutError:
+        proc.kill()
+        raise HTTPException(
+            status_code=504,
+            detail="tmux command timed out (is the pane in copy-mode?)",
+        )
+    if proc.returncode != 0:
+        raise HTTPException(status_code=500, detail=stderr.decode())
+    return stdout.decode()
+
+
 @app.post("/api/session/{session_name}/send")
 async def send_to_session(session_name: str, body: SendInput):
     """Send text to a tmux session using tmux send-keys or paste-buffer."""
-    import subprocess
-
+    await _exit_copy_mode(session_name)
     text = body.text.rstrip("\n")
 
     if len(text) > 128:
         # For large text, use load-buffer + paste-buffer (much faster than send-keys
         # which processes each character individually through tmux's key pipeline)
-        result = subprocess.run(
-            ["tmux", "load-buffer", "-"],
-            input=text,
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            raise HTTPException(status_code=500, detail=result.stderr)
-        result = subprocess.run(
-            ["tmux", "paste-buffer", "-t", session_name, "-d", "-p"],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            raise HTTPException(status_code=500, detail=result.stderr)
+        await _run_tmux("load-buffer", "-", input_data=text)
+        await _run_tmux("paste-buffer", "-t", session_name, "-d", "-p")
     else:
         # For short text, send-keys -l is fine
-        result = subprocess.run(
-            ["tmux", "send-keys", "-t", session_name, "-l", text],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            raise HTTPException(status_code=500, detail=result.stderr)
+        await _run_tmux("send-keys", "-t", session_name, "-l", text)
 
     # Send Enter key separately (without -l so it's interpreted as a key)
     if body.send_enter:
-        result = subprocess.run(
-            ["tmux", "send-keys", "-t", session_name, "Enter"],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            raise HTTPException(status_code=500, detail=result.stderr)
+        await _run_tmux("send-keys", "-t", session_name, "Enter")
 
     # Buffer the message for AI commit context
     if body.send_enter:
@@ -283,25 +293,17 @@ async def send_to_session(session_name: str, body: SendInput):
 @app.post("/api/session/{session_name}/tmux-command")
 async def send_tmux_command(session_name: str, cmd: TmuxCommand):
     """Send a tmux window navigation command to a session."""
-    import subprocess
-
     from lumbergh.routers.sessions import get_session_workdir
 
-    tmux_commands = {
-        "next-window": ["tmux", "next-window", "-t", session_name],
-        "prev-window": ["tmux", "previous-window", "-t", session_name],
-    }
-
     if cmd.command == "new-window":
-        # Get the session's working directory so new windows start there
         workdir = get_session_workdir(session_name)
-        tmux_cmd = ["tmux", "new-window", "-t", session_name, "-c", str(workdir)]
+        await _run_tmux("new-window", "-t", session_name, "-c", str(workdir))
+    elif cmd.command == "next-window":
+        await _run_tmux("next-window", "-t", session_name)
+    elif cmd.command == "prev-window":
+        await _run_tmux("previous-window", "-t", session_name)
     else:
-        tmux_cmd = tmux_commands[cmd.command]
-
-    result = subprocess.run(tmux_cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise HTTPException(status_code=500, detail=result.stderr)
+        raise HTTPException(status_code=400, detail=f"Unknown command: {cmd.command}")
     return {"status": "ok"}
 
 
