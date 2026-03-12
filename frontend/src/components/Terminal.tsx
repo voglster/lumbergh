@@ -392,8 +392,8 @@ export default function Terminal({
       {/* Header bar */}
       <div className="bg-bg-surface border-b border-border-default">
         {/* Main row */}
-        <div className="flex items-center justify-between p-2 relative">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 p-2">
+          <div className="flex items-center gap-2 shrink-0">
             {onBack && (
               <>
                 <button
@@ -422,28 +422,26 @@ export default function Terminal({
               &gt;
             </button>
           </div>
-          {onBack && (
-            <span
-              onClick={
-                onCycleSession ? (e) => onCycleSession(e.shiftKey ? 'prev' : 'next') : undefined
-              }
-              className={`absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-base font-semibold text-text-secondary max-w-[40%] ${onCycleSession ? 'cursor-pointer group hover:text-text-primary transition-colors' : 'pointer-events-none'}`}
-              title={onCycleSession ? 'Click: next session · Shift+click: previous' : undefined}
-            >
-              {onCycleSession && (
-                <span className="opacity-0 group-hover:opacity-40 transition-opacity text-xs">
-                  ‹
-                </span>
-              )}
-              <span className="truncate">{sessionName}</span>
-              {onCycleSession && (
-                <span className="opacity-0 group-hover:opacity-40 transition-opacity text-xs">
-                  ›
-                </span>
-              )}
-            </span>
-          )}
-          <div className="flex items-center gap-2">
+          <span
+            onClick={
+              onCycleSession ? (e) => onCycleSession(e.shiftKey ? 'prev' : 'next') : undefined
+            }
+            className={`flex-1 min-w-0 flex items-center gap-1 text-sm font-semibold text-text-secondary ${onCycleSession ? 'cursor-pointer group hover:text-text-primary transition-colors' : 'pointer-events-none'}`}
+            title={onCycleSession ? 'Click: next session · Shift+click: previous' : undefined}
+          >
+            {onCycleSession && (
+              <span className="opacity-0 group-hover:opacity-40 transition-opacity text-xs shrink-0">
+                ‹
+              </span>
+            )}
+            <span className="truncate">{sessionName}</span>
+            {onCycleSession && (
+              <span className="opacity-0 group-hover:opacity-40 transition-opacity text-xs shrink-0">
+                ›
+              </span>
+            )}
+          </span>
+          <div className="flex items-center gap-2 shrink-0">
             {isTouchDevice && (
               <button
                 onClick={toggleScrollMode}

@@ -259,7 +259,7 @@ export default function SessionDetail() {
           onFocusReady={handleFocusReady}
           onBack={isDesktop ? () => navigate('/') : undefined}
           onReset={handleReset}
-          onCycleSession={isDesktop ? handleCycleSession : undefined}
+          onCycleSession={handleCycleSession}
           isVisible={isDesktop || mobileTab === 'terminal'}
         />
       ) : (
