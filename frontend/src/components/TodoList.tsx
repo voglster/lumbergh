@@ -100,6 +100,10 @@ export default function TodoList({
     // Highlight the moved item's new position
     const newIndex = toggled.done ? unchecked.length : 0
     if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+    // Collapse expanded description so it doesn't shift to another todo
+    if (expandedIndex === index) {
+      setExpandedIndex(null)
+    }
     setHighlightIndex(newIndex)
     highlightTimerRef.current = setTimeout(() => setHighlightIndex(null), 850)
     setTodos(reordered)
@@ -274,6 +278,10 @@ export default function TodoList({
       const unchecked = updated.filter((t) => !t.done)
       const checked = updated.filter((t) => t.done)
       const reordered = [...unchecked, ...checked]
+      // Collapse expanded description so it doesn't "move" to another todo
+      if (expandedIndex === index) {
+        setExpandedIndex(null)
+      }
       setTodos(reordered)
       saveTodos(reordered)
       onFocusTerminal?.()
