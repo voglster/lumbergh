@@ -3,11 +3,37 @@ TinyDB utilities for the Lumbergh backend.
 """
 
 import hashlib
+import subprocess
 from pathlib import Path
 
 from tinydb import TinyDB
 
 from lumbergh.constants import CONFIG_DIR, PROJECTS_DIR, SESSIONS_DATA_DIR
+
+
+def _resolve_main_repo(project_path: Path) -> Path:
+    """Resolve a worktree path to its main repository root.
+
+    For worktrees, git's common dir points to the main repo's .git,
+    so we use that to find the canonical repo path. For non-worktree
+    repos, this returns the resolved project_path unchanged.
+    """
+    resolved = project_path.resolve()
+    try:
+        common_dir = Path(
+            subprocess.check_output(
+                ["git", "-C", str(resolved), "rev-parse", "--git-common-dir"],
+                text=True,
+                stderr=subprocess.DEVNULL,
+            ).strip()
+        )
+        if not common_dir.is_absolute():
+            common_dir = (resolved / common_dir).resolve()
+        # common_dir is the .git dir (or .git/worktrees/../.. -> .git)
+        # The repo root is its parent
+        return common_dir.parent
+    except (subprocess.CalledProcessError, OSError):
+        return resolved
 
 
 def get_sessions_db() -> TinyDB:
@@ -35,7 +61,7 @@ def get_project_db(project_path: Path) -> TinyDB:
     Returns:
         TinyDB instance for the project
     """
-    project_hash = hashlib.md5(str(project_path.resolve()).encode()).hexdigest()[:12]
+    project_hash = hashlib.md5(str(_resolve_main_repo(project_path)).encode()).hexdigest()[:12]
     return TinyDB(PROJECTS_DIR / f"{project_hash}.json")
 
 
