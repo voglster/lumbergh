@@ -8,7 +8,8 @@ import {
   Maximize2,
   ArrowDown,
   CloudDownload,
-  GitMerge,
+  GitBranch,
+  FastForward,
 } from 'lucide-react'
 import { getApiBase } from '../../config'
 import { relativeDate } from '../../utils/relativeDate'
@@ -113,9 +114,10 @@ const FileList = memo(function FileList({
     type: 'success' | 'error'
     message: string
   } | null>(null)
-  const [showMergeMenu, setShowMergeMenu] = useState(false)
-  const [mergeBranches, setMergeBranches] = useState<BranchData | null>(null)
-  const [isMerging, setIsMerging] = useState(false)
+  const [branchMenuType, setBranchMenuType] = useState<'rebase' | 'ff' | null>(null)
+  const [branchMenuData, setBranchMenuData] = useState<BranchData | null>(null)
+  const [isBranchOp, setIsBranchOp] = useState(false)
+  const branchMenuRef = useRef<HTMLDivElement>(null)
 
   // Close menu on click outside
   useEffect(() => {
@@ -298,33 +300,57 @@ const FileList = memo(function FileList({
     }
   }
 
-  const fetchMergeBranches = useCallback(async () => {
+  const fetchBranchesForMenu = useCallback(async () => {
     try {
       const res = await fetch(`${gitBaseUrl}/branches`)
       if (!res.ok) return
       const data = await res.json()
-      setMergeBranches(data)
+      setBranchMenuData(data)
     } catch {
       /* ignore */
     }
   }, [gitBaseUrl])
 
-  const handleMerge = async (sourceBranch: string) => {
-    if (!confirm(`Merge "${sourceBranch}" into the current branch? This cannot be undone easily.`))
+  // Close branch menu on click outside
+  useEffect(() => {
+    if (!branchMenuType) return
+    const handleClick = (e: MouseEvent) => {
+      if (branchMenuRef.current && !branchMenuRef.current.contains(e.target as Node)) {
+        setBranchMenuType(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [branchMenuType])
+
+  const openBranchMenu = (type: 'rebase' | 'ff') => {
+    if (branchMenuType === type) {
+      setBranchMenuType(null)
       return
-    setIsMerging(true)
-    setShowMergeMenu(false)
-    setShowMenu(false)
+    }
+    setBranchMenuType(type)
+    fetchBranchesForMenu()
+  }
+
+  const handleBranchAction = async (targetBranch: string) => {
+    const isRebase = branchMenuType === 'rebase'
+    const action = isRebase ? 'rebase' : 'fast-forward'
+    const label = isRebase ? `Rebase onto ${targetBranch}` : `Fast-forward to ${targetBranch}`
+
+    if (!confirm(`${label}?`)) return
+
+    setIsBranchOp(true)
+    setBranchMenuType(null)
     setCommitResult(null)
     try {
-      const res = await fetch(`${gitBaseUrl}/merge`, {
+      const res = await fetch(`${gitBaseUrl}/${action}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source_branch: sourceBranch }),
+        body: JSON.stringify({ branch: targetBranch }),
       })
       const result = await res.json()
       if (!res.ok) {
-        setCommitResult({ type: 'error', message: result.detail || 'Merge failed' })
+        setCommitResult({ type: 'error', message: result.detail || `${label} failed` })
       } else {
         setCommitResult({
           type: 'success',
@@ -336,9 +362,9 @@ const FileList = memo(function FileList({
         onGitAction?.()
       }
     } catch {
-      setCommitResult({ type: 'error', message: 'Merge failed' })
+      setCommitResult({ type: 'error', message: `${label} failed` })
     } finally {
-      setIsMerging(false)
+      setIsBranchOp(false)
       setTimeout(() => setCommitResult(null), 5000)
     }
   }
@@ -431,8 +457,62 @@ const FileList = memo(function FileList({
                 <Play size={16} />
               </button>
             )}
-            {isWorkingChanges && sessionName && (
-              <BranchSelector gitBaseUrl={gitBaseUrl} onBranchChange={onRefresh} />
+            {sessionName && (
+              <>
+                {isWorkingChanges && (
+                  <BranchSelector gitBaseUrl={gitBaseUrl} onBranchChange={onRefresh} />
+                )}
+                <div className="relative" ref={branchMenuRef}>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => openBranchMenu('rebase')}
+                      disabled={isBranchOp}
+                      className={`px-1.5 py-0.5 rounded text-xs transition-colors ${
+                        branchMenuType === 'rebase'
+                          ? 'bg-orange-600/30 text-orange-400'
+                          : 'text-text-muted hover:text-orange-400 hover:bg-control-bg'
+                      } disabled:opacity-50`}
+                      title="Rebase onto another branch"
+                    >
+                      <GitBranch size={14} />
+                    </button>
+                    <button
+                      onClick={() => openBranchMenu('ff')}
+                      disabled={isBranchOp}
+                      className={`px-1.5 py-0.5 rounded text-xs transition-colors ${
+                        branchMenuType === 'ff'
+                          ? 'bg-green-600/30 text-green-400'
+                          : 'text-text-muted hover:text-green-400 hover:bg-control-bg'
+                      } disabled:opacity-50`}
+                      title="Fast-forward to another branch"
+                    >
+                      <FastForward size={14} />
+                    </button>
+                  </div>
+                  {branchMenuType && (
+                    <div className="absolute top-full left-0 mt-1 min-w-[180px] max-h-[250px] overflow-auto bg-bg-surface border border-border-default rounded shadow-lg z-50">
+                      <div className="px-3 py-1.5 text-xs text-text-muted uppercase bg-bg-sunken border-b border-border-default">
+                        {branchMenuType === 'rebase' ? 'Rebase onto...' : 'Fast-forward to...'}
+                      </div>
+                      {!branchMenuData ? (
+                        <div className="px-3 py-2 text-sm text-text-muted">Loading...</div>
+                      ) : (
+                        branchMenuData.local
+                          .filter((b) => !b.current)
+                          .map((branch) => (
+                            <button
+                              key={branch.name}
+                              onClick={() => handleBranchAction(branch.name)}
+                              className="w-full text-left px-3 py-2 text-sm text-text-secondary hover:bg-control-bg-hover font-mono transition-colors"
+                            >
+                              {branch.name}
+                            </button>
+                          ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
           {!isWorkingChanges && commit?.author && (
@@ -572,39 +652,6 @@ const FileList = memo(function FileList({
                     >
                       Pop stash
                     </button>
-                    <div className="border-t border-border-default" />
-                    <div className="relative">
-                      <button
-                        onClick={() => {
-                          setShowMergeMenu((v) => !v)
-                          if (!mergeBranches) fetchMergeBranches()
-                        }}
-                        disabled={isMerging}
-                        className="w-full flex items-center gap-2 text-left px-3 py-2 text-sm text-text-secondary hover:bg-control-bg-hover transition-colors"
-                      >
-                        <GitMerge size={14} />
-                        {isMerging ? 'Merging...' : 'Merge branch...'}
-                      </button>
-                      {showMergeMenu && (
-                        <div className="absolute left-full top-0 ml-1 min-w-[180px] max-h-[250px] overflow-auto bg-bg-surface border border-border-default rounded shadow-lg z-50">
-                          {!mergeBranches ? (
-                            <div className="px-3 py-2 text-sm text-text-muted">Loading...</div>
-                          ) : (
-                            mergeBranches.local
-                              .filter((b) => !b.current)
-                              .map((branch) => (
-                                <button
-                                  key={branch.name}
-                                  onClick={() => handleMerge(branch.name)}
-                                  className="w-full text-left px-3 py-2 text-sm text-text-secondary hover:bg-control-bg-hover font-mono transition-colors"
-                                >
-                                  {branch.name}
-                                </button>
-                              ))
-                          )}
-                        </div>
-                      )}
-                    </div>
                   </div>
                 )}
               </div>

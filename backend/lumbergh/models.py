@@ -46,11 +46,10 @@ class CreateBranchInput(BaseModel):
     start_point: str | None = None
 
 
-class MergeInput(BaseModel):
-    """Input for merging a branch into the current branch."""
+class BranchTargetInput(BaseModel):
+    """Input specifying a target branch for fast-forward or rebase."""
 
-    source_branch: str
-    strategy: str = "merge"  # "merge" | "rebase"
+    branch: str
 
 
 class ResetToInput(BaseModel):

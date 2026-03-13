@@ -1281,47 +1281,15 @@ def git_pull_rebase(cwd: Path) -> dict:
     }
 
 
-def _abort_merge_or_rebase(repo: Repo, strategy: str) -> None:
-    """Abort an in-progress merge or rebase."""
-    try:
-        if strategy == "rebase":
-            repo.git.rebase("--abort")
-        else:
-            repo.git.merge("--abort")
-    except GitCommandError:
-        pass
-
-
-def _handle_merge_conflict(
-    repo: Repo, strategy: str, stashed: bool, current: str, source: str
-) -> dict:
-    """Abort merge/rebase on conflict and restore stash."""
-    _abort_merge_or_rebase(repo, strategy)
-    if stashed:
-        _safe_stash_pop(repo)
-    return {
-        "error": f"Merge conflicts detected between {current} and {source}. "
-        "Resolve manually in the terminal."
-    }
-
-
-def _execute_merge(repo: Repo, source_branch: str, strategy: str) -> None:
-    """Run the actual merge or rebase git command."""
-    if strategy == "rebase":
-        repo.git.rebase(source_branch)
-    else:
-        repo.git.merge(source_branch, "--no-edit")
-
-
-def git_merge_branch(cwd: Path, source_branch: str, strategy: str = "merge") -> dict:
-    """Merge or rebase a source branch into the current branch."""
+def git_fast_forward(cwd: Path, source_branch: str) -> dict:
+    """Fast-forward current branch to match source branch (--ff-only)."""
     try:
         repo = get_repo(cwd)
     except InvalidGitRepositoryError:
         return {"error": "Not a git repository"}
 
     if repo.head.is_detached:
-        return {"error": "Cannot merge: HEAD is detached"}
+        return {"error": "Cannot fast-forward: HEAD is detached"}
 
     current_branch = repo.active_branch.name
 
@@ -1330,31 +1298,87 @@ def git_merge_branch(cwd: Path, source_branch: str, strategy: str = "merge") -> 
     except Exception:
         return {"error": f"Branch '{source_branch}' not found"}
 
+    if repo.is_dirty(untracked_files=False):
+        return {"error": "Cannot fast-forward: working directory has uncommitted changes"}
+
+    try:
+        repo.git.merge("--ff-only", source_branch)
+    except GitCommandError:
+        return {
+            "error": f"Cannot fast-forward {current_branch} to {source_branch}. "
+            f"Rebase {source_branch} onto {current_branch} first."
+        }
+
+    return {
+        "status": "fast-forwarded",
+        "message": f"Fast-forwarded {current_branch} to {source_branch}",
+        "hash": repo.head.commit.hexsha[:7],
+    }
+
+
+def _handle_rebase_error(
+    e: GitCommandError, repo: Repo, stashed: bool, current: str, target: str
+) -> dict:
+    """Handle a rebase failure: abort on conflicts and restore stash."""
+    if _is_conflict_error(e):
+        try:
+            repo.git.rebase("--abort")
+        except GitCommandError:
+            pass
+        if stashed:
+            _safe_stash_pop(repo)
+        return {
+            "error": f"Rebase conflicts between {current} and {target}. "
+            "Resolve manually in the terminal."
+        }
+    if stashed:
+        _safe_stash_pop(repo)
+    return {"error": f"Rebase failed: {e}"}
+
+
+def _restore_stash_after_op(repo: Repo, result: dict[str, str | bool]) -> None:
+    """Pop stash after a successful git operation, flagging conflicts."""
+    try:
+        repo.git.stash("pop")
+    except GitCommandError:
+        result["stashConflict"] = True
+        result["message"] = str(result["message"]) + " (stash conflicts — resolve manually)"
+
+
+def git_rebase_onto(cwd: Path, target_branch: str) -> dict:
+    """Rebase current branch onto target branch."""
+    try:
+        repo = get_repo(cwd)
+    except InvalidGitRepositoryError:
+        return {"error": "Not a git repository"}
+
+    if repo.head.is_detached:
+        return {"error": "Cannot rebase: HEAD is detached"}
+
+    current_branch = repo.active_branch.name
+
+    try:
+        repo.commit(target_branch)
+    except Exception:
+        return {"error": f"Branch '{target_branch}' not found"}
+
     stashed, stash_err = _auto_stash_if_dirty(repo)
     if stash_err:
         return {"error": stash_err}
 
     try:
-        _execute_merge(repo, source_branch, strategy)
+        repo.git.rebase(target_branch)
     except GitCommandError as e:
-        if _is_conflict_error(e):
-            return _handle_merge_conflict(repo, strategy, stashed, current_branch, source_branch)
-        if stashed:
-            _safe_stash_pop(repo)
-        return {"error": f"Merge failed: {e}"}
+        return _handle_rebase_error(e, repo, stashed, current_branch, target_branch)
 
     result: dict[str, str | bool] = {
-        "status": "merged",
-        "message": f"Merged {source_branch} into {current_branch}",
+        "status": "rebased",
+        "message": f"Rebased {current_branch} onto {target_branch}",
         "hash": repo.head.commit.hexsha[:7],
     }
 
     if stashed:
-        try:
-            repo.git.stash("pop")
-        except GitCommandError:
-            result["stashConflict"] = True
-            result["message"] = str(result["message"]) + " (stash conflicts — resolve manually)"
+        _restore_stash_after_op(repo, result)
 
     return result
 

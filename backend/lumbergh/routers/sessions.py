@@ -39,10 +39,11 @@ from lumbergh.git_utils import (
     get_graph_log,
     get_porcelain_status,
     get_remote_status,
+    git_fast_forward,
     git_force_push,
-    git_merge_branch,
     git_pull_rebase,
     git_push,
+    git_rebase_onto,
     git_stash,
     git_stash_drop,
     git_stash_pop,
@@ -55,11 +56,11 @@ from lumbergh.git_utils import (
 )
 from lumbergh.models import (
     AmendInput,
+    BranchTargetInput,
     CheckoutInput,
     CommitInput,
     CreateBranchInput,
     CreateSessionRequest,
-    MergeInput,
     PromptTemplateList,
     ResetToInput,
     RevertFileInput,
@@ -976,13 +977,33 @@ async def session_git_pull(name: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/{name}/git/merge")
-async def session_git_merge(name: str, body: MergeInput):
-    """Merge a branch into the current branch."""
+@router.post("/{name}/git/fast-forward")
+async def session_git_fast_forward(name: str, body: BranchTargetInput):
+    """Fast-forward current branch to another branch (--ff-only)."""
     workdir = get_session_workdir(name)
 
     try:
-        result = git_merge_branch(workdir, body.source_branch, body.strategy)
+        result = git_fast_forward(workdir, body.branch)
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+        from lumbergh.diff_cache import diff_cache
+
+        diff_cache.invalidate(name)
+        _files_cache.pop(name, None)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{name}/git/rebase")
+async def session_git_rebase(name: str, body: BranchTargetInput):
+    """Rebase current branch onto another branch."""
+    workdir = get_session_workdir(name)
+
+    try:
+        result = git_rebase_onto(workdir, body.branch)
         if "error" in result:
             status_code = 409 if "conflict" in result["error"].lower() else 400
             raise HTTPException(status_code=status_code, detail=result["error"])
