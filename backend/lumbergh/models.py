@@ -136,6 +136,12 @@ class TodoMoveRequest(BaseModel):
     todo_index: int
 
 
+class CherryPickInput(BaseModel):
+    """Input for cherry-picking a commit."""
+
+    hash: str
+
+
 class RevertFileInput(BaseModel):
     """Input for reverting a single file."""
 

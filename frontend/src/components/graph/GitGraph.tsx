@@ -479,6 +479,31 @@ export default function GitGraph({
     }
   }, [sessionName, menuCommit, afterAction])
 
+  const handleCherryPick = useCallback(async () => {
+    if (!menuCommit || !sessionName) return
+
+    const confirmed = confirm(
+      `Cherry-pick commit ${menuCommit.shortHash} onto current branch?\n\n"${menuCommit.message}"`
+    )
+    if (!confirmed) return
+
+    try {
+      const res = await fetch(`${getApiBase()}/sessions/${sessionName}/git/cherry-pick`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hash: menuCommit.hash }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.detail || `Cherry-pick failed (HTTP ${res.status})`)
+        return
+      }
+      afterAction()
+    } catch {
+      alert('Cherry-pick failed')
+    }
+  }, [sessionName, menuCommit, afterAction])
+
   const handleCheckout = useCallback(
     async (branchName: string, ref: { local: boolean; remote: boolean }) => {
       if (!sessionName || !menuCommit) return
@@ -1338,6 +1363,12 @@ export default function GitGraph({
                       className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
                     >
                       Create branch here...
+                    </button>
+                    <button
+                      onClick={handleCherryPick}
+                      className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:bg-control-bg-hover hover:text-text-primary"
+                    >
+                      Cherry-pick this commit
                     </button>
                     {menuCommit.refs
                       .filter((r) => r.name !== graphData?.head?.branch)

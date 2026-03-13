@@ -39,6 +39,7 @@ from lumbergh.git_utils import (
     get_graph_log,
     get_porcelain_status,
     get_remote_status,
+    git_cherry_pick,
     git_fast_forward,
     git_force_push,
     git_pull_rebase,
@@ -58,6 +59,7 @@ from lumbergh.models import (
     AmendInput,
     BranchTargetInput,
     CheckoutInput,
+    CherryPickInput,
     CommitInput,
     CreateBranchInput,
     CreateSessionRequest,
@@ -1063,6 +1065,27 @@ async def session_git_reword(name: str, body: RewordInput):
         result = reword_commit(workdir, body.hash, body.message)
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
+        from lumbergh.diff_cache import diff_cache
+
+        diff_cache.invalidate(name)
+        _files_cache.pop(name, None)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{name}/git/cherry-pick")
+async def session_git_cherry_pick(name: str, body: CherryPickInput):
+    """Cherry-pick a commit onto the current branch."""
+    workdir = get_session_workdir(name)
+
+    try:
+        result = git_cherry_pick(workdir, body.hash)
+        if "error" in result:
+            status_code = 409 if "conflict" in result["error"].lower() else 400
+            raise HTTPException(status_code=status_code, detail=result["error"])
         from lumbergh.diff_cache import diff_cache
 
         diff_cache.invalidate(name)

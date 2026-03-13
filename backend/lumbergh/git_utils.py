@@ -1383,6 +1383,50 @@ def git_rebase_onto(cwd: Path, target_branch: str) -> dict:
     return result
 
 
+def git_cherry_pick(cwd: Path, commit_hash: str) -> dict:
+    """Cherry-pick a commit onto the current branch."""
+    try:
+        repo = get_repo(cwd)
+    except InvalidGitRepositoryError:
+        return {"error": "Not a git repository"}
+
+    if repo.head.is_detached:
+        return {"error": "Cannot cherry-pick: HEAD is detached"}
+
+    try:
+        commit = repo.commit(commit_hash)
+    except Exception:
+        return {"error": f"Commit '{commit_hash}' not found"}
+
+    stashed, stash_err = _auto_stash_if_dirty(repo)
+    if stash_err:
+        return {"error": stash_err}
+
+    try:
+        repo.git.cherry_pick(commit.hexsha)
+    except GitCommandError as e:
+        # Abort the cherry-pick on conflict
+        try:
+            repo.git.cherry_pick("--abort")
+        except GitCommandError:
+            pass
+        if stashed:
+            _restore_stash_after_op(repo, {})
+        msg = str(e.stderr or e.stdout or e).strip()
+        return {"error": f"Cherry-pick failed (conflict): {msg}"}
+
+    result: dict[str, str | bool] = {
+        "status": "cherry-picked",
+        "message": f"Cherry-picked {commit.hexsha[:7]} onto {repo.active_branch.name}",
+        "hash": repo.head.commit.hexsha[:7],
+    }
+
+    if stashed:
+        _restore_stash_after_op(repo, result)
+
+    return result
+
+
 # --- Git Worktree Utilities ---
 
 
