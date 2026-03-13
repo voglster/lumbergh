@@ -15,10 +15,6 @@ Two send modes:
 - **Send text only** -- sends the text without a trailing newline. Useful for composing multi-line input before executing.
 - **Send with Enter** -- sends the text followed by a newline, executing it immediately.
 
-## Window Selector
-
-If the tmux session has multiple windows, buttons appear above the terminal to switch between them. Click a window button to attach to that window.
-
 ## Text Selection
 
 !!! important "Hold Shift to select text"

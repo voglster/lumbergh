@@ -58,3 +58,7 @@ Delete removes the session from Lumbergh and kills the tmux session. For worktre
 
 !!! warning
     If the worktree has uncommitted changes, you'll see a warning before deletion. Committed work on the branch is never lost — only the worktree checkout directory is removed.
+
+## Uncommitted Changes Warning
+
+When switching between sessions or performing destructive actions, Lumbergh checks for uncommitted changes in the working directory and warns you before proceeding. This prevents accidentally losing in-progress AI work.

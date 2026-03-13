@@ -36,6 +36,20 @@ An interactive commit history visualization rendered directly in the browser.
 !!! tip "Adjusting graph depth"
     In **Settings**, you can configure how many commits the graph displays. The range is 10--1000, with a default of 100. Lower values load faster; higher values give you more history.
 
+## Branch Operations
+
+Right-click a branch in the git graph or use the branch menu to perform common operations:
+
+- **Merge** -- merge another branch into the current one
+- **Rebase** -- rebase the current branch onto another
+- **Fast-forward** -- fast-forward the current branch when it's behind the target
+- **Cherry-pick** -- apply individual commits from one branch onto another
+
+These run as git subprocesses against the session's working directory and report results back in the UI.
+
+!!! warning
+    Branch operations modify your git state. Make sure the AI isn't actively committing before running a merge or rebase.
+
 ## How It Works
 
-All git operations run as subprocesses against the session's working directory. Lumbergh never modifies your git state -- it only reads. Branch information is displayed alongside the diff and graph views.
+All read-only git operations (diffs, graph, commit list) run as subprocesses against the session's working directory. Branch information is displayed alongside the diff and graph views.

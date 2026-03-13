@@ -11,7 +11,7 @@ The **Todo** tab in the right pane gives you a lightweight task tracker and scra
 A per-session checklist for tracking what you've asked the AI to do.
 
 - **Add tasks** using the input field at the top
-- **Check off** completed items
+- **Check off** completed items -- completed tasks automatically sort to the bottom
 - **Drag to reorder** -- prioritize what matters
 
 !!! tip "A practical workflow"

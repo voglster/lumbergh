@@ -45,12 +45,14 @@ Watch diffs roll in, fire off prompts, check todos, and keep your AI workers on 
 - **Multi-session dashboard** — all your Claude Code sessions at a glance with live status detection
 - **Live terminals** — interact with real terminal sessions via xterm.js + WebSockets
 - **Git diff viewer** — watch diffs, commits, and branch changes as the AI writes code
+- **Git operations** — merge, rebase, fast-forward, and cherry-pick branches from the UI
 - **Git graph** — interactive commit history visualization
-- **File browser** — browse project files with syntax highlighting
+- **File browser** — browse project files with syntax highlighting and markdown preview
 - **Prompt templates** — reusable prompts with variables, fire them with one click
 - **Todos & scratchpad** — per-project notes and task tracking
 - **Shared files** — share context across sessions
 - **Mobile-first + PWA** — responsive design, installable on your phone or tablet
+- **Tailscale integration** — auto-detects Tailscale for secure remote access
 - **Dark and light themes** — toggle with one click
 
 ## Quick Install
