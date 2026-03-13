@@ -151,6 +151,10 @@ const FileList = memo(function FileList({
 
   const isWorkingChanges = !commit
   const hasChanges = data.files.length > 0
+  const sortedFiles = useMemo(
+    () => [...data.files].sort((a, b) => a.path.localeCompare(b.path)),
+    [data.files]
+  )
 
   const handleReset = async () => {
     if (
@@ -679,7 +683,7 @@ const FileList = memo(function FileList({
 
       {/* File list */}
       <div className="flex-1 overflow-auto">
-        {data.files.map((file) => (
+        {sortedFiles.map((file) => (
           <FileRow
             key={file.path}
             file={file}
