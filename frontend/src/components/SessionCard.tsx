@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { getApiBase } from '../config'
 import {
   Minus,
   Pause,
@@ -81,21 +82,30 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
     }
   }
 
-  const handleDelete = (e: React.MouseEvent) => {
+  const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation()
 
     if (session.type === 'worktree') {
-      // For worktree sessions, ask if user wants to cleanup worktree too
-      const choice = confirm(
-        `Delete session "${session.name}"?\n\nThis is a worktree session. Click OK to delete session only, or cancel and use the cleanup option.`
-      )
-      if (choice) {
-        // Ask about worktree cleanup
-        const cleanup = confirm(
-          'Also delete the worktree directory? This will remove the checkout at:\n' +
-            session.workdir
-        )
-        onDelete(session.name, cleanup)
+      // Check for uncommitted changes before deleting worktree
+      let dirty = false
+      try {
+        const res = await fetch(`${getApiBase()}/sessions/${session.name}/git/status`)
+        if (res.ok) {
+          const data = await res.json()
+          dirty = data.files && data.files.length > 0
+        }
+      } catch {
+        // If we can't check, proceed with caution
+      }
+
+      const msg = dirty
+        ? `Delete session "${session.name}" and its worktree?\n\n` +
+          `WARNING: This worktree has uncommitted changes that will be lost.\n` +
+          `${session.workdir}`
+        : `Delete session "${session.name}" and its worktree?\n\n${session.workdir}`
+
+      if (confirm(msg)) {
+        onDelete(session.name, true)
       }
     } else {
       if (confirm(`Delete session "${session.name}"?`)) {

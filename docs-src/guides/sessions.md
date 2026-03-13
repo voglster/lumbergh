@@ -54,7 +54,7 @@ Reset restarts the underlying tmux session. Use this when the AI gets stuck or y
 
 ### Deleting
 
-Delete removes the session from Lumbergh and kills the tmux session. If the session was created in worktree mode, you'll be prompted to optionally remove the worktree from disk as well.
+Delete removes the session from Lumbergh and kills the tmux session. For worktree sessions, the worktree directory is also automatically removed — the branch itself remains safe in the parent repo.
 
 !!! warning
-    Deleting a worktree removes the directory and any uncommitted changes in it.
+    If the worktree has uncommitted changes, you'll see a warning before deletion. Committed work on the branch is never lost — only the worktree checkout directory is removed.
