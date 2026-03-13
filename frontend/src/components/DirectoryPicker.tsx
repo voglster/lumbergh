@@ -208,7 +208,9 @@ export default function DirectoryPicker({ value, onChange, onManualEntry }: Prop
             <div className="px-3 py-2 text-red-400 text-sm">{error}</div>
           ) : directories.length === 0 && !isLoading ? (
             <div className="px-3 py-2 text-text-tertiary text-sm">
-              {query ? 'No matching repositories found' : 'No repositories found in ~/src/'}
+              {query
+                ? 'No matching repositories found'
+                : 'No repositories found in the configured search directory'}
             </div>
           ) : (
             directories.map((dir, index) => (

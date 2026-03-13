@@ -3,6 +3,7 @@ Settings router - Global application settings.
 Stores settings in ~/.config/lumbergh/settings.json
 """
 
+import os
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -16,37 +17,45 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 settings_db = get_settings_db()
 settings_table = settings_db.table("settings")
 
-# Default settings
-DEFAULTS = {
-    "repoSearchDir": str(Path.home() / "src"),
-    "gitGraphCommits": 100,
-    "ai": {
-        "provider": "ollama",
-        "providers": {
-            "ollama": {
-                "baseUrl": "http://localhost:11434",
-                "model": "gemma3:latest",
-            },
-            "openai": {
-                "apiKey": "",
-                "model": "gpt-4o",
-            },
-            "anthropic": {
-                "apiKey": "",
-                "model": "claude-sonnet-4-20250514",
-            },
-            "google": {
-                "apiKey": "",
-                "model": "gemini-3-flash-preview",
-            },
-            "openai_compatible": {
-                "baseUrl": "",
-                "apiKey": "",
-                "model": "",
+
+def _get_defaults() -> dict:
+    """Get default settings, using LUMBERGH_LAUNCH_DIR for repoSearchDir if available."""
+    launch_dir = os.environ.get("LUMBERGH_LAUNCH_DIR", "")
+    if launch_dir and launch_dir != "/" and Path(launch_dir).exists():
+        repo_search_dir = launch_dir
+    else:
+        repo_search_dir = str(Path.home())
+
+    return {
+        "repoSearchDir": repo_search_dir,
+        "gitGraphCommits": 100,
+        "ai": {
+            "provider": "ollama",
+            "providers": {
+                "ollama": {
+                    "baseUrl": "http://localhost:11434",
+                    "model": "gemma3:latest",
+                },
+                "openai": {
+                    "apiKey": "",
+                    "model": "gpt-4o",
+                },
+                "anthropic": {
+                    "apiKey": "",
+                    "model": "claude-sonnet-4-20250514",
+                },
+                "google": {
+                    "apiKey": "",
+                    "model": "gemini-3-flash-preview",
+                },
+                "openai_compatible": {
+                    "baseUrl": "",
+                    "apiKey": "",
+                    "model": "",
+                },
             },
         },
-    },
-}
+    }
 
 
 class AIProviderConfig(BaseModel):
@@ -84,13 +93,15 @@ def get_settings() -> dict:
     """Get current settings, deep merged with defaults."""
     all_settings = settings_table.all()
     stored = all_settings[0] if all_settings else {}
-    return deep_merge(DEFAULTS, stored)
+    return deep_merge(_get_defaults(), stored)
 
 
 @router.get("")
 async def read_settings():
     """Get all settings."""
-    return get_settings()
+    settings = get_settings()
+    is_first_run = len(settings_table.all()) == 0
+    return {**settings, "isFirstRun": is_first_run}
 
 
 @router.patch("")

@@ -1,6 +1,7 @@
 """CLI entry point for Lumbergh."""
 
 import argparse
+import os
 import platform
 import shutil
 import sys
@@ -71,6 +72,8 @@ def run():
         print("  Use localhost instead — 0.0.0.0 won't work in your browser.")
         print("=" * 60)
         print()
+
+    os.environ["LUMBERGH_LAUNCH_DIR"] = os.getcwd()
 
     import uvicorn
 

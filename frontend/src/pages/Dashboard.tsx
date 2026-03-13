@@ -15,6 +15,7 @@ import { getApiBase } from '../config'
 import SessionCard from '../components/SessionCard'
 import CreateSessionModal from '../components/CreateSessionModal'
 import SettingsModal from '../components/SettingsModal'
+import WelcomeCard from '../components/WelcomeCard'
 import { useTheme } from '../hooks/useTheme'
 
 interface Session {
@@ -42,6 +43,8 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [isFirstRun, setIsFirstRun] = useState<boolean | null>(null)
+  const [defaultRepoDir, setDefaultRepoDir] = useState('')
   const [lbSharedInstalled, setLbSharedInstalled] = useState<boolean | null>(null)
   const [installingLbShared, setInstallingLbShared] = useState(false)
   const [tmuxMouseEnabled, setTmuxMouseEnabled] = useState<boolean | null>(null)
@@ -89,6 +92,19 @@ export default function Dashboard() {
       setError(err instanceof Error ? err.message : 'Failed to fetch sessions')
     } finally {
       setLoading(false)
+    }
+  }, [])
+
+  const checkFirstRun = useCallback(async () => {
+    try {
+      const res = await fetch(`${getApiBase()}/api/settings`)
+      if (res.ok) {
+        const data = await res.json()
+        setIsFirstRun(data.isFirstRun ?? false)
+        setDefaultRepoDir(data.repoSearchDir ?? '')
+      }
+    } catch {
+      // Silently fail - not critical
     }
   }, [])
 
@@ -166,13 +182,14 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchSessions()
+    checkFirstRun()
     checkLbSharedStatus()
     checkTmuxMouse()
     checkVersion()
     // Poll for session updates every 10 seconds
     const interval = setInterval(fetchSessions, 10000)
     return () => clearInterval(interval)
-  }, [fetchSessions, checkLbSharedStatus, checkTmuxMouse, checkVersion])
+  }, [fetchSessions, checkFirstRun, checkLbSharedStatus, checkTmuxMouse, checkVersion])
 
   const handleDelete = async (name: string, cleanupWorktree?: boolean) => {
     try {
@@ -378,6 +395,18 @@ export default function Dashboard() {
                 Retry
               </button>
             </div>
+          ) : sessions.length === 0 && isFirstRun ? (
+            <WelcomeCard
+              defaultRepoDir={defaultRepoDir}
+              onComplete={() => {
+                setIsFirstRun(false)
+                setShowCreateModal(true)
+              }}
+              onOpenSettings={() => {
+                setIsFirstRun(false)
+                setShowSettingsModal(true)
+              }}
+            />
           ) : sessions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 gap-4 text-text-muted">
               <Monitor size={64} strokeWidth={1} />
