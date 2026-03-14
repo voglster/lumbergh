@@ -381,6 +381,9 @@ export default function Dashboard() {
             <ArrowUpCircle size={20} className="text-yellow-400 flex-shrink-0" />
             <span className="text-sm text-text-secondary">
               {getUpdateMessage(updateInfo.current, updateInfo.latest)}
+              <code className="ml-2 text-xs bg-black/30 px-1.5 py-0.5 rounded font-mono">
+                Run: uv tool upgrade pylumbergh
+              </code>
             </span>
           </div>
           <div className="flex items-center gap-2">
