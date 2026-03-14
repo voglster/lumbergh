@@ -42,6 +42,9 @@ export default function SessionDetail() {
   const navigate = useNavigate()
   const isDesktop = useIsDesktop()
 
+  const [notFound, setNotFound] = useState(false)
+  const [countdown, setCountdown] = useState(5)
+
   const [rightPanel, setRightPanel] = useState<RightPanel>(() => {
     const saved = localStorage.getItem('lumbergh:rightPanel')
     if (
@@ -63,12 +66,27 @@ export default function SessionDetail() {
   const [diffData, setDiffData] = useState<DiffData | null>(null)
   const focusFnRef = useRef<(() => void) | null>(null)
 
-  // Touch session to track last used time
+  // Touch session to track last used time + check existence
   useEffect(() => {
     if (name) {
-      fetch(`${getApiBase()}/sessions/${name}/touch`, { method: 'POST' }).catch(() => {})
+      fetch(`${getApiBase()}/sessions/${name}/touch`, { method: 'POST' })
+        .then((res) => {
+          if (res.status === 404) setNotFound(true)
+        })
+        .catch(() => {})
     }
   }, [name])
+
+  // Auto-redirect countdown when session not found
+  useEffect(() => {
+    if (!notFound) return
+    if (countdown <= 0) {
+      navigate('/')
+      return
+    }
+    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [notFound, countdown, navigate])
 
   // Persist right panel selection
   useEffect(() => {
@@ -384,6 +402,25 @@ export default function SessionDetail() {
       </div>
     </div>
   )
+
+  if (notFound) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center bg-bg-sunken text-text-primary gap-4">
+        <div className="text-red-400 text-xl font-semibold">Session Not Found</div>
+        <p className="text-text-tertiary text-sm text-center px-4">
+          The session <span className="text-text-secondary font-mono">"{name}"</span> does not exist
+          or has been deleted.
+        </p>
+        <button
+          onClick={() => navigate('/')}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-sm transition-colors"
+        >
+          Go to Dashboard
+        </button>
+        <p className="text-text-tertiary text-xs">Redirecting in {countdown}s...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="h-full flex flex-col bg-bg-sunken text-text-primary">
