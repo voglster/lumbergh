@@ -1,17 +1,9 @@
 import { useState, useEffect, useCallback, useRef, memo } from 'react'
 import '@git-diff-view/react/styles/diff-view.css'
-import {
-  RefreshCw,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
-  ArrowDown,
-  ArrowDownUp,
-  X,
-  CloudDownload,
-} from 'lucide-react'
+import { RefreshCw, ArrowLeft, ArrowRight, X, CloudDownload } from 'lucide-react'
 import { getApiBase } from '../config'
 import { FileList, FileDiff, BranchSelector } from './diff'
+import RemoteStatusView from './diff/RemoteStatusView'
 import type { DiffData, CommitDiff } from './diff'
 
 interface Props {
@@ -460,134 +452,15 @@ const DiffViewer = memo(function DiffViewer({
                   {remoteStatus.httpAuthWarning}
                 </div>
               )}
-              {remoteStatus && remoteStatus.ahead > 0 && remoteStatus.behind > 0 ? (
-                // Diverged state - need to pull before push
-                <>
-                  <div className="text-center">
-                    <div className="text-lg text-yellow-400 mb-1">Branches have diverged</div>
-                    <div className="text-text-muted">
-                      {remoteStatus.ahead} unpushed commit{remoteStatus.ahead > 1 ? 's' : ''},{' '}
-                      {remoteStatus.behind} commit{remoteStatus.behind > 1 ? 's' : ''} behind{' '}
-                      <span className="font-mono">{remoteStatus.remote || 'origin'}</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-3">
-                    <button
-                      onClick={handlePullAndPush}
-                      disabled={isPulling || isPushing}
-                      className="px-6 py-3 bg-yellow-600 hover:bg-yellow-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
-                    >
-                      {isPulling ? (
-                        <>Pulling...</>
-                      ) : isPushing ? (
-                        <>Pushing...</>
-                      ) : (
-                        <>
-                          <ArrowDownUp size={18} />
-                          <span>Pull (rebase) & Push</span>
-                        </>
-                      )}
-                    </button>
-                    {onJumpToTodos && (
-                      <button
-                        onClick={onJumpToTodos}
-                        className="px-4 py-2 text-text-tertiary hover:text-text-secondary text-sm transition-colors"
-                      >
-                        Something else to work on? Jump to Todos →
-                      </button>
-                    )}
-                  </div>
-                </>
-              ) : remoteStatus && remoteStatus.ahead > 0 ? (
-                <>
-                  <div className="text-center">
-                    <div className="text-lg text-text-secondary mb-1">No local changes</div>
-                    <div className="text-text-muted">
-                      You have {remoteStatus.ahead} unpushed commit
-                      {remoteStatus.ahead > 1 ? 's' : ''} on{' '}
-                      <span className="text-blue-400 font-mono">{remoteStatus.branch}</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-3">
-                    <button
-                      onClick={handlePush}
-                      disabled={isPushing}
-                      className="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
-                    >
-                      {isPushing ? (
-                        <>Pushing...</>
-                      ) : (
-                        <>
-                          <ArrowUp size={18} />
-                          <span>Push to {remoteStatus.remote || 'origin'}</span>
-                        </>
-                      )}
-                    </button>
-                    {onJumpToTodos && (
-                      <button
-                        onClick={onJumpToTodos}
-                        className="px-4 py-2 text-text-tertiary hover:text-text-secondary text-sm transition-colors"
-                      >
-                        Something else to work on? Jump to Todos →
-                      </button>
-                    )}
-                  </div>
-                </>
-              ) : remoteStatus && remoteStatus.behind > 0 ? (
-                <>
-                  <div className="text-center">
-                    <div className="text-lg text-text-secondary mb-1">No local changes</div>
-                    <div className="text-yellow-500">
-                      {remoteStatus.behind} commit{remoteStatus.behind > 1 ? 's' : ''} behind{' '}
-                      <span className="font-mono">{remoteStatus.remote || 'origin'}</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-3">
-                    <button
-                      onClick={handlePull}
-                      disabled={isPulling}
-                      className="px-6 py-3 bg-yellow-600 hover:bg-yellow-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
-                    >
-                      {isPulling ? (
-                        <>Pulling...</>
-                      ) : (
-                        <>
-                          <ArrowDown size={18} />
-                          <span>Pull from {remoteStatus.remote || 'origin'}</span>
-                        </>
-                      )}
-                    </button>
-                    {onJumpToTodos && (
-                      <button
-                        onClick={onJumpToTodos}
-                        className="px-4 py-2 text-text-tertiary hover:text-text-secondary text-sm transition-colors"
-                      >
-                        Something else to work on? Jump to Todos →
-                      </button>
-                    )}
-                  </div>
-                </>
-              ) : remoteStatus ? (
-                <>
-                  <div className="text-center">
-                    <div className="text-lg text-text-secondary mb-1">All caught up</div>
-                    <div className="text-text-muted">
-                      No local changes, in sync with{' '}
-                      <span className="font-mono">{remoteStatus.remote || 'origin'}</span>
-                    </div>
-                  </div>
-                  {onJumpToTodos && (
-                    <button
-                      onClick={onJumpToTodos}
-                      className="px-4 py-2 text-text-tertiary hover:text-text-secondary text-sm transition-colors"
-                    >
-                      Something else to work on? Jump to Todos →
-                    </button>
-                  )}
-                </>
-              ) : (
-                <div className="text-text-muted">No changes detected</div>
-              )}
+              <RemoteStatusView
+                remoteStatus={remoteStatus}
+                isPushing={isPushing}
+                isPulling={isPulling}
+                onPush={handlePush}
+                onPull={handlePull}
+                onPullAndPush={handlePullAndPush}
+                onJumpToTodos={onJumpToTodos}
+              />
             </div>
           </div>
         )
