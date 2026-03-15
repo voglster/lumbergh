@@ -14,6 +14,8 @@ from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
+from lumbergh.auth import AuthMiddleware
+from lumbergh.auth import router as auth_router
 from lumbergh.file_utils import get_file_language, list_project_files, validate_path_within_root
 from lumbergh.git_utils import (
     get_commit_diff,
@@ -58,6 +60,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001 - required by FastAPI
 
 
 app = FastAPI(title="Lumbergh", description="Tmux session supervisor", lifespan=lifespan)
+app.include_router(auth_router)
 app.include_router(ai.router)
 app.include_router(notes.router)
 app.include_router(sessions.router)
@@ -77,6 +80,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(AuthMiddleware)
 
 
 @app.get("/api/health")

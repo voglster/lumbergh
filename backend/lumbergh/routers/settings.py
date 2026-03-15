@@ -76,6 +76,7 @@ class SettingsUpdate(BaseModel):
     gitGraphCommits: int | None = None  # noqa: N815 - API field name
     ai: AISettings | None = None
     defaultAgent: str | None = None  # noqa: N815 - API field name
+    password: str | None = None
 
 
 def deep_merge(base: dict, override: dict) -> dict:
@@ -118,22 +119,30 @@ async def read_settings():
     """Get all settings."""
     settings = get_settings()
     is_first_run = len(settings_table.all()) == 0
+
+    # Don't leak the password value — just report whether auth is configured
+    env_pw = os.environ.get("LUMBERGH_PASSWORD", "").strip()
+    config_pw = settings.get("password", "").strip()
+    password_source = "env" if env_pw else ("config" if config_pw else None)
+
+    # Strip password from response
+    response = {k: v for k, v in settings.items() if k != "password"}
     return {
-        **settings,
+        **response,
         "isFirstRun": is_first_run,
         "aiConfigured": _is_ai_configured(settings),
         "agentProviders": PROVIDERS,
+        "passwordSet": bool(env_pw or config_pw),
+        "passwordSource": password_source,
     }
 
 
-@router.patch("")
-async def update_settings(updates: SettingsUpdate):
-    """Update settings. Only provided fields are updated."""
+def _validate_updates(updates: SettingsUpdate) -> dict[str, object]:
+    """Validate and extract update data from a settings update request."""
     update_data: dict[str, object] = {}
 
     if updates.repoSearchDir is not None:
         path = Path(updates.repoSearchDir).expanduser().resolve()
-
         if not path.exists():
             raise HTTPException(
                 status_code=400,
@@ -144,7 +153,6 @@ async def update_settings(updates: SettingsUpdate):
                 status_code=400,
                 detail=f"Path is not a directory: {updates.repoSearchDir}",
             )
-
         update_data["repoSearchDir"] = str(path)
 
     if updates.gitGraphCommits is not None:
@@ -163,20 +171,34 @@ async def update_settings(updates: SettingsUpdate):
             )
         update_data["defaultAgent"] = updates.defaultAgent
 
+    if updates.password is not None:
+        update_data["password"] = updates.password.strip()
+
     if updates.ai is not None:
-        ai_update = updates.ai.model_dump(exclude_none=True)
-        # Convert nested pydantic models to dicts
-        if "providers" in ai_update:
-            ai_update["providers"] = {
-                k: v.model_dump(exclude_none=True) if hasattr(v, "model_dump") else v
-                for k, v in ai_update["providers"].items()
-            }
-        update_data["ai"] = ai_update
+        update_data["ai"] = _serialize_ai_update(updates.ai)
+
+    return update_data
+
+
+def _serialize_ai_update(ai: AISettings) -> dict:
+    """Convert AI settings update to a plain dict."""
+    ai_update = ai.model_dump(exclude_none=True)
+    if "providers" in ai_update:
+        ai_update["providers"] = {
+            k: v.model_dump(exclude_none=True) if hasattr(v, "model_dump") else v
+            for k, v in ai_update["providers"].items()
+        }
+    return ai_update
+
+
+@router.patch("")
+async def update_settings(updates: SettingsUpdate):
+    """Update settings. Only provided fields are updated."""
+    update_data = _validate_updates(updates)
 
     current = get_settings()
     merged = deep_merge(current, update_data)
 
-    # Store the merged settings (we store everything since AI settings are complex)
     settings_table.truncate()
     settings_table.insert(merged)
 

@@ -21,6 +21,8 @@ interface Settings {
   repoSearchDir: string
   gitGraphCommits: number
   ai: AISettings
+  passwordSet?: boolean
+  passwordSource?: string | null
 }
 
 interface OllamaModel {
@@ -29,7 +31,7 @@ interface OllamaModel {
   parameter_size: string
 }
 
-type TabId = 'general' | 'ai'
+type TabId = 'general' | 'ai' | 'security'
 
 // Provider configuration - data-driven approach
 interface ProviderDef {
@@ -146,10 +148,15 @@ export default function SettingsModal({ onClose }: Props) {
     })
     return initial
   })
+  const [password, setPassword] = useState('')
+  const [passwordSet, setPasswordSet] = useState(false)
+  const [passwordSource, setPasswordSource] = useState<string | null>(null)
+  const [passwordChanged, setPasswordChanged] = useState(false)
   const [ollamaModels, setOllamaModels] = useState<OllamaModel[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [restartNeeded, setRestartNeeded] = useState(false)
   const [isLoadingModels, setIsLoadingModels] = useState(false)
 
   useEffect(() => {
@@ -160,6 +167,8 @@ export default function SettingsModal({ onClose }: Props) {
         const data: Settings = await res.json()
         setRepoSearchDir(data.repoSearchDir || '')
         if (data.gitGraphCommits) setGitGraphCommits(String(data.gitGraphCommits))
+        setPasswordSet(data.passwordSet ?? false)
+        setPasswordSource(data.passwordSource ?? null)
 
         if (data.ai) {
           setAiProvider(data.ai.provider || 'ollama')
@@ -228,6 +237,9 @@ export default function SettingsModal({ onClose }: Props) {
         provider: aiProvider,
         providers: providerConfigs,
       }
+      if (passwordChanged) {
+        payload.password = password
+      }
 
       const res = await fetch(`${getApiBase()}/settings`, {
         method: 'PATCH',
@@ -241,7 +253,11 @@ export default function SettingsModal({ onClose }: Props) {
       }
 
       await res.json()
-      onClose()
+      if (passwordChanged) {
+        setRestartNeeded(true)
+      } else {
+        onClose()
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings')
     } finally {
@@ -312,6 +328,7 @@ export default function SettingsModal({ onClose }: Props) {
   const tabs: { id: TabId; label: string }[] = [
     { id: 'general', label: 'General' },
     { id: 'ai', label: 'AI' },
+    { id: 'security', label: 'Security' },
   ]
 
   const currentProvider = PROVIDERS.find((p) => p.id === aiProvider)
@@ -417,6 +434,56 @@ export default function SettingsModal({ onClose }: Props) {
                       </div>
                     ))}
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* Security Tab */}
+            {activeTab === 'security' && (
+              <div className="space-y-4">
+                {restartNeeded ? (
+                  <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded text-sm text-yellow-300">
+                    Password updated. Restart Lumbergh for the change to take effect.
+                  </div>
+                ) : passwordSource === 'env' ? (
+                  <div className="p-3 bg-bg-elevated/50 rounded text-sm text-text-muted">
+                    Password is set via the{' '}
+                    <code className="text-text-secondary">LUMBERGH_PASSWORD</code> environment
+                    variable. To manage it here instead, remove the env var and restart.
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm text-text-tertiary mb-1">Password</label>
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => {
+                          setPassword(e.target.value)
+                          setPasswordChanged(true)
+                        }}
+                        placeholder={passwordSet ? '(unchanged)' : 'Set a password to enable auth'}
+                        className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-sm"
+                      />
+                      <p className="text-xs text-text-muted mt-1">
+                        {passwordSet
+                          ? 'Enter a new password to change it, or clear it to disable auth.'
+                          : 'Anyone with network access can currently view and control sessions.'}
+                      </p>
+                    </div>
+                    {passwordSet && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPassword('')
+                          setPasswordChanged(true)
+                        }}
+                        className="text-sm text-red-400 hover:text-red-300 transition-colors"
+                      >
+                        Remove password
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             )}
