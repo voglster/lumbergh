@@ -1,20 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import {
-  GripVertical,
-  Play,
-  SendHorizonal,
-  ChevronDown,
-  ChevronRight,
-  StickyNote,
-  ExternalLink,
-  Trash2,
-} from 'lucide-react'
 import { getApiBase } from '../config'
 import { usePrompts } from '../hooks/usePrompts'
 import { useLocalStorageDraft } from '../hooks/useLocalStorageDraft'
 import { expandPromptReferences } from '../utils/promptResolver'
 import PromptMentionInput from './PromptMentionInput'
-import MentionText from './MentionText'
+import TodoItem from './TodoItem'
 
 interface Todo {
   text: string
@@ -359,143 +349,38 @@ export default function TodoList({
                       <div className="flex-1 border-t border-border-default" />
                     </div>
                   )}
-                  <div
-                    className={`bg-bg-surface rounded border border-border-default ${
-                      dragIndex === index ? 'opacity-50' : ''
-                    } ${dragOverIndex === index && dragIndex !== index ? 'border-blue-500' : ''} ${
-                      highlightIndex === index ? 'todo-highlight' : ''
-                    }`}
-                  >
-                    <div
-                      draggable
-                      onDragStart={() => handleDragStart(index)}
-                      onDragOver={(e) => handleDragOver(e, index)}
-                      onDragEnd={handleDragEnd}
-                      className="flex items-center gap-3 px-3 py-1 cursor-grab active:cursor-grabbing"
-                    >
-                      <GripVertical size={16} className="text-text-muted select-none" />
-                      {sessionName && !todo.done && (
-                        <>
-                          <button
-                            onClick={() => handleSendToTerminal(index, false)}
-                            className="text-text-muted hover:text-yellow-400 transition-colors px-1"
-                            title="Send text (no Enter)"
-                          >
-                            <Play size={18} />
-                          </button>
-                          <button
-                            onClick={() => handleSendToTerminal(index, true)}
-                            className="text-text-muted hover:text-blue-400 transition-colors px-1"
-                            title="Send + Enter (yolo)"
-                          >
-                            <SendHorizonal size={18} />
-                          </button>
-                        </>
-                      )}
-                      <button
-                        onClick={() => handleToggleExpand(index)}
-                        className="w-8 h-8 flex items-center justify-center text-text-muted hover:text-text-secondary hover:bg-control-bg rounded transition-colors text-xl"
-                        title={expandedIndex === index ? 'Collapse' : 'Expand'}
-                      >
-                        {expandedIndex === index ? (
-                          <ChevronDown size={18} />
-                        ) : (
-                          <ChevronRight size={18} />
-                        )}
-                      </button>
-                      {editingIndex === index ? (
-                        <PromptMentionInput
-                          value={editingText}
-                          onChange={setEditingText}
-                          prompts={allPrompts}
-                          onBlur={handleSaveEdit}
-                          onKeyDown={handleEditKeyDown}
-                          autoFocus
-                          containerClassName="flex-1 min-w-0"
-                          className="w-full px-2 py-1 bg-input-bg text-text-primary text-base rounded border border-blue-500 focus:outline-none"
-                        />
-                      ) : (
-                        <span
-                          onClick={() => handleStartEdit(index)}
-                          className={`flex-1 cursor-text ${
-                            todo.done ? 'text-text-muted line-through' : 'text-text-primary'
-                          }`}
-                        >
-                          {todo.done ? (
-                            todo.text
-                          ) : (
-                            <MentionText text={todo.text} prompts={allPrompts} />
-                          )}
-                          {todo.description && expandedIndex !== index && (
-                            <span className="ml-2 inline-flex" title="Has description">
-                              <StickyNote size={14} className="text-text-muted" />
-                            </span>
-                          )}
-                        </span>
-                      )}
-                      {sessionName && !todo.done && (
-                        <button
-                          onClick={() => handleOpenMovePicker(index)}
-                          className={`text-sm text-text-muted hover:text-green-400 transition-colors px-1 ${movePickerIndex === index ? 'text-green-400' : ''}`}
-                          title="Move to another session"
-                        >
-                          <ExternalLink size={16} />
-                        </button>
-                      )}
-                      {todo.done && (
-                        <button
-                          onClick={() => handleDelete(index)}
-                          className="text-sm text-red-400/50 hover:text-red-400 transition-colors px-1"
-                          title="Delete task"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      )}
-                      <input
-                        type="checkbox"
-                        checked={todo.done}
-                        onChange={() => handleToggle(index)}
-                        data-testid="todo-checkbox"
-                        className="w-5 h-5 rounded bg-bg-surface border-input-border text-blue-500 focus:ring-blue-500 accent-blue-500"
-                      />
-                    </div>
-                    {movePickerIndex === index && (
-                      <div ref={movePickerRef} className="px-3 py-2 border-t border-border-default">
-                        <div className="text-xs text-text-muted mb-1">Move to:</div>
-                        {availableSessions.length === 0 ? (
-                          <div className="text-xs text-text-muted">No other sessions available</div>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {availableSessions.map((s) => (
-                              <button
-                                key={s.name}
-                                onClick={() => handleMoveTodo(index, s.name)}
-                                className="px-2 py-1 text-xs bg-control-bg hover:bg-blue-600 text-text-secondary hover:text-white rounded transition-colors"
-                              >
-                                {s.displayName || s.name}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {expandedIndex === index && (
-                      <div className="px-3 pb-3 pt-0">
-                        <PromptMentionInput
-                          value={editingDescription}
-                          onChange={setEditingDescription}
-                          prompts={allPrompts}
-                          onBlur={() => handleSaveDescription(index)}
-                          onKeyDown={handleDescriptionKeyDown}
-                          placeholder="Add details, context, acceptance criteria... (use @ to reference prompts)"
-                          multiline
-                          rows={5}
-                          autoFocus
-                          className="w-full h-32 px-3 py-2 bg-input-bg text-text-primary text-sm rounded border border-input-border focus:outline-none focus:border-blue-500 resize-y"
-                        />
-                      </div>
-                    )}
-                  </div>
+                  <TodoItem
+                    todo={todo}
+                    index={index}
+                    sessionName={sessionName}
+                    allPrompts={allPrompts}
+                    isEditing={editingIndex === index}
+                    editingText={editingText}
+                    isExpanded={expandedIndex === index}
+                    editingDescription={editingDescription}
+                    isDragging={dragIndex === index}
+                    isDragOver={dragOverIndex === index && dragIndex !== index}
+                    isHighlighted={highlightIndex === index}
+                    movePickerIndex={movePickerIndex}
+                    availableSessions={availableSessions}
+                    movePickerRef={movePickerRef}
+                    onToggle={handleToggle}
+                    onStartEdit={handleStartEdit}
+                    onSaveEdit={handleSaveEdit}
+                    onEditTextChange={setEditingText}
+                    onEditKeyDown={handleEditKeyDown}
+                    onToggleExpand={handleToggleExpand}
+                    onDescriptionChange={setEditingDescription}
+                    onSaveDescription={handleSaveDescription}
+                    onDescriptionKeyDown={handleDescriptionKeyDown}
+                    onSendToTerminal={handleSendToTerminal}
+                    onDelete={handleDelete}
+                    onOpenMovePicker={handleOpenMovePicker}
+                    onMoveTodo={handleMoveTodo}
+                    onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
+                    onDragEnd={handleDragEnd}
+                  />
                 </li>
               )
             })}
