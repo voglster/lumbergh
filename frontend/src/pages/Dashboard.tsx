@@ -38,6 +38,140 @@ interface Session {
   agentProvider?: string | null
 }
 
+function DashboardBanners({
+  lbSharedInstalled,
+  installingLbShared,
+  tmuxMouseEnabled,
+  enablingTmuxMouse,
+  isFirstRun,
+  defaultRepoDir,
+  updateInfo,
+  onInstallLbShared,
+  onEnableTmuxMouse,
+  onOpenSettings,
+  onDismissFirstRun,
+  onDismissUpdate,
+  getUpdateMessage,
+}: {
+  lbSharedInstalled: boolean | null
+  installingLbShared: boolean
+  tmuxMouseEnabled: boolean | null
+  enablingTmuxMouse: boolean
+  isFirstRun: boolean | null
+  defaultRepoDir: string
+  updateInfo: { current: string; latest: string } | null
+  onInstallLbShared: () => void
+  onEnableTmuxMouse: (mode: 'full' | 'mouse_only') => void
+  onOpenSettings: () => void
+  onDismissFirstRun: () => void
+  onDismissUpdate: (version: string) => void
+  getUpdateMessage: (current: string, latest: string) => string
+}) {
+  return (
+    <>
+      {lbSharedInstalled === false && (
+        <div className="mx-4 mt-4 p-3 bg-blue-900/50 border border-blue-700 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Info size={20} className="text-blue-400 flex-shrink-0" />
+            <span className="text-sm text-text-secondary">
+              Enable cross-session sharing by adding LB Shared commands to your CLAUDE.md
+            </span>
+          </div>
+          <button
+            onClick={onInstallLbShared}
+            disabled={installingLbShared}
+            className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 rounded transition-colors"
+          >
+            {installingLbShared ? 'Installing...' : 'Enable'}
+          </button>
+        </div>
+      )}
+
+      {tmuxMouseEnabled === false && (
+        <div className="mx-4 mt-4 p-3 bg-yellow-900/50 border border-yellow-700 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Info size={20} className="text-yellow-400 flex-shrink-0" />
+            <span className="text-sm text-text-secondary">
+              Tmux mouse mode is off — terminal scrolling and clicking won't work in the browser
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onEnableTmuxMouse('mouse_only')}
+              disabled={enablingTmuxMouse}
+              className="px-3 py-1.5 text-sm bg-yellow-700 hover:bg-yellow-600 disabled:bg-yellow-800 rounded transition-colors"
+            >
+              Just enable mouse
+            </button>
+            <button
+              onClick={() => onEnableTmuxMouse('full')}
+              disabled={enablingTmuxMouse}
+              className="px-3 py-1.5 text-sm bg-yellow-600 hover:bg-yellow-500 disabled:bg-yellow-800 rounded transition-colors"
+            >
+              Install full config
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isFirstRun && defaultRepoDir && (
+        <div className="mx-4 mt-4 p-3 bg-blue-900/50 border border-blue-700 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <FolderOpen size={20} className="text-blue-400 flex-shrink-0" />
+            <span className="text-sm text-text-secondary">
+              Searching for repos in <span className="font-mono">{defaultRepoDir}</span> —{' '}
+              <button
+                onClick={onOpenSettings}
+                className="text-blue-400 hover:text-blue-300 underline"
+              >
+                Change in Settings
+              </button>
+            </span>
+          </div>
+          <button
+            onClick={onDismissFirstRun}
+            title="Dismiss"
+            className="p-1.5 text-text-tertiary hover:text-text-primary rounded transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {updateInfo && (
+        <div className="mx-4 mt-4 p-3 bg-yellow-900/50 border border-yellow-700 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <ArrowUpCircle size={20} className="text-yellow-400 flex-shrink-0" />
+            <span className="text-sm text-text-secondary">
+              {getUpdateMessage(updateInfo.current, updateInfo.latest)}
+              <code className="ml-2 text-xs bg-black/30 px-1.5 py-0.5 rounded font-mono">
+                Run: uv tool upgrade pylumbergh
+              </code>
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <a
+              href={`https://github.com/voglster/lumbergh/releases/tag/v${updateInfo.latest}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 text-sm bg-yellow-600 hover:bg-yellow-500 rounded transition-colors"
+            >
+              View Release
+            </a>
+            <button
+              onClick={() => onDismissUpdate(updateInfo.latest)}
+              title="Dismiss"
+              className="p-1.5 text-text-tertiary hover:text-text-primary rounded transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function Dashboard() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
@@ -303,109 +437,21 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* LB Shared setup banner */}
-      {lbSharedInstalled === false && (
-        <div className="mx-4 mt-4 p-3 bg-blue-900/50 border border-blue-700 rounded-lg flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Info size={20} className="text-blue-400 flex-shrink-0" />
-            <span className="text-sm text-text-secondary">
-              Enable cross-session sharing by adding LB Shared commands to your CLAUDE.md
-            </span>
-          </div>
-          <button
-            onClick={installLbShared}
-            disabled={installingLbShared}
-            className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 rounded transition-colors"
-          >
-            {installingLbShared ? 'Installing...' : 'Enable'}
-          </button>
-        </div>
-      )}
-
-      {/* Tmux mouse mode banner */}
-      {tmuxMouseEnabled === false && (
-        <div className="mx-4 mt-4 p-3 bg-yellow-900/50 border border-yellow-700 rounded-lg flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Info size={20} className="text-yellow-400 flex-shrink-0" />
-            <span className="text-sm text-text-secondary">
-              Tmux mouse mode is off — terminal scrolling and clicking won't work in the browser
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => enableTmuxMouse('mouse_only')}
-              disabled={enablingTmuxMouse}
-              className="px-3 py-1.5 text-sm bg-yellow-700 hover:bg-yellow-600 disabled:bg-yellow-800 rounded transition-colors"
-            >
-              Just enable mouse
-            </button>
-            <button
-              onClick={() => enableTmuxMouse('full')}
-              disabled={enablingTmuxMouse}
-              className="px-3 py-1.5 text-sm bg-yellow-600 hover:bg-yellow-500 disabled:bg-yellow-800 rounded transition-colors"
-            >
-              Install full config
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* First-run repo search directory banner */}
-      {isFirstRun && defaultRepoDir && (
-        <div className="mx-4 mt-4 p-3 bg-blue-900/50 border border-blue-700 rounded-lg flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <FolderOpen size={20} className="text-blue-400 flex-shrink-0" />
-            <span className="text-sm text-text-secondary">
-              Searching for repos in <span className="font-mono">{defaultRepoDir}</span> —{' '}
-              <button
-                onClick={() => setShowSettingsModal(true)}
-                className="text-blue-400 hover:text-blue-300 underline"
-              >
-                Change in Settings
-              </button>
-            </span>
-          </div>
-          <button
-            onClick={() => setIsFirstRun(false)}
-            title="Dismiss"
-            className="p-1.5 text-text-tertiary hover:text-text-primary rounded transition-colors"
-          >
-            <X size={16} />
-          </button>
-        </div>
-      )}
-
-      {/* Update available banner */}
-      {updateInfo && (
-        <div className="mx-4 mt-4 p-3 bg-yellow-900/50 border border-yellow-700 rounded-lg flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <ArrowUpCircle size={20} className="text-yellow-400 flex-shrink-0" />
-            <span className="text-sm text-text-secondary">
-              {getUpdateMessage(updateInfo.current, updateInfo.latest)}
-              <code className="ml-2 text-xs bg-black/30 px-1.5 py-0.5 rounded font-mono">
-                Run: uv tool upgrade pylumbergh
-              </code>
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <a
-              href={`https://github.com/voglster/lumbergh/releases/tag/v${updateInfo.latest}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3 py-1.5 text-sm bg-yellow-600 hover:bg-yellow-500 rounded transition-colors"
-            >
-              View Release
-            </a>
-            <button
-              onClick={() => dismissUpdate(updateInfo.latest)}
-              title="Dismiss"
-              className="p-1.5 text-text-tertiary hover:text-text-primary rounded transition-colors"
-            >
-              <X size={16} />
-            </button>
-          </div>
-        </div>
-      )}
+      <DashboardBanners
+        lbSharedInstalled={lbSharedInstalled}
+        installingLbShared={installingLbShared}
+        tmuxMouseEnabled={tmuxMouseEnabled}
+        enablingTmuxMouse={enablingTmuxMouse}
+        isFirstRun={isFirstRun}
+        defaultRepoDir={defaultRepoDir}
+        updateInfo={updateInfo}
+        onInstallLbShared={installLbShared}
+        onEnableTmuxMouse={enableTmuxMouse}
+        onOpenSettings={() => setShowSettingsModal(true)}
+        onDismissFirstRun={() => setIsFirstRun(false)}
+        onDismissUpdate={dismissUpdate}
+        getUpdateMessage={getUpdateMessage}
+      />
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-4">
