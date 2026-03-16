@@ -46,6 +46,72 @@ interface Props {
   onGitAction?: () => void
 }
 
+function WipRow({
+  workingChanges,
+  selectedCommit,
+  sessionName,
+  headRow,
+  branchPanelWidth,
+  graphPanelWidth,
+  onSelectCommit,
+  afterAction,
+}: {
+  workingChanges?: { files: number } | null
+  selectedCommit?: string | null
+  sessionName?: string
+  headRow: number
+  branchPanelWidth: number
+  graphPanelWidth: number
+  onSelectCommit?: (hash: string | null) => void
+  afterAction: () => void
+}) {
+  if (!workingChanges) return null
+  return (
+    <div
+      onClick={() => onSelectCommit?.(null)}
+      className={`absolute right-0 flex items-center gap-2 px-1 border-b border-orange-500/20 cursor-pointer group ${
+        selectedCommit === null
+          ? 'bg-orange-500/[0.2] border-l-2 border-l-orange-400'
+          : 'bg-orange-500/[0.1] hover:bg-orange-500/[0.16]'
+      }`}
+      style={{
+        top: headRow * ROW_HEIGHT,
+        height: ROW_HEIGHT,
+        left: branchPanelWidth + graphPanelWidth + 8,
+        paddingLeft: 4,
+      }}
+    >
+      <span className="px-1.5 py-0.5 text-xs rounded font-semibold leading-none bg-orange-500/25 text-orange-300 ring-1 ring-orange-400/50 shrink-0">
+        WIP
+      </span>
+      <span className="text-base text-orange-200/90 truncate min-w-0">
+        {workingChanges.files} uncommitted{' '}
+        {workingChanges.files === 1 ? 'change' : 'changes'}
+      </span>
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          if (!sessionName) return
+          fetch(`${getApiBase()}/sessions/${sessionName}/git/stash`, { method: 'POST' })
+            .then(async (res) => {
+              if (!res.ok) {
+                const data = await res.json().catch(() => ({}))
+                alert(data.detail || `Stash failed (HTTP ${res.status})`)
+                return
+              }
+              afterAction()
+            })
+            .catch(() => alert('Stash failed'))
+        }}
+        className="ml-auto shrink-0 p-1 rounded hover:bg-orange-500/25 text-orange-300/70 hover:text-orange-200 transition-opacity opacity-0 group-hover:opacity-100"
+        title="Stash changes"
+      >
+        <Archive size={16} />
+      </button>
+    </div>
+  )
+}
+
 export default function GitGraph({
   sessionName,
   onSelectCommit,
@@ -1208,50 +1274,16 @@ export default function GitGraph({
             />
 
             {/* WIP row */}
-            {hasWip && graphData?.workingChanges && (
-              <div
-                onClick={() => onSelectCommit?.(null)}
-                className={`absolute right-0 flex items-center gap-2 px-1 border-b border-orange-500/20 cursor-pointer group ${
-                  selectedCommit === null
-                    ? 'bg-orange-500/[0.2] border-l-2 border-l-orange-400'
-                    : 'bg-orange-500/[0.1] hover:bg-orange-500/[0.16]'
-                }`}
-                style={{
-                  top: headRow * ROW_HEIGHT,
-                  height: ROW_HEIGHT,
-                  left: branchPanelWidth + graphPanelWidth + 8,
-                  paddingLeft: 4,
-                }}
-              >
-                <span className="px-1.5 py-0.5 text-xs rounded font-semibold leading-none bg-orange-500/25 text-orange-300 ring-1 ring-orange-400/50 shrink-0">
-                  WIP
-                </span>
-                <span className="text-base text-orange-200/90 truncate min-w-0">
-                  {graphData.workingChanges.files} uncommitted{' '}
-                  {graphData.workingChanges.files === 1 ? 'change' : 'changes'}
-                </span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    if (!sessionName) return
-                    fetch(`${getApiBase()}/sessions/${sessionName}/git/stash`, { method: 'POST' })
-                      .then(async (res) => {
-                        if (!res.ok) {
-                          const data = await res.json().catch(() => ({}))
-                          alert(data.detail || `Stash failed (HTTP ${res.status})`)
-                          return
-                        }
-                        afterAction()
-                      })
-                      .catch(() => alert('Stash failed'))
-                  }}
-                  className="ml-auto shrink-0 p-1 rounded hover:bg-orange-500/25 text-orange-300/70 hover:text-orange-200 transition-opacity opacity-0 group-hover:opacity-100"
-                  title="Stash changes"
-                >
-                  <Archive size={16} />
-                </button>
-              </div>
-            )}
+            <WipRow
+              workingChanges={graphData?.workingChanges}
+              selectedCommit={selectedCommit}
+              sessionName={sessionName}
+              headRow={headRow}
+              branchPanelWidth={branchPanelWidth}
+              graphPanelWidth={graphPanelWidth}
+              onSelectCommit={onSelectCommit}
+              afterAction={afterAction}
+            />
 
             {/* Day separators */}
             {daySeparators.map(({ row, label }) => (
