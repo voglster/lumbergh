@@ -124,6 +124,108 @@ function isImagePath(path: string): boolean {
   return IMAGE_EXTENSIONS.has(ext)
 }
 
+function FileContentView({
+  selectedFile,
+  sessionName,
+  sidebarCollapsed,
+  showMarkdownPreview,
+  theme,
+  contentRef,
+  getHighlightedCode,
+  onSendPathToTerminal,
+  onToggleSidebar,
+  onTogglePreview,
+  renderBreadcrumb,
+}: {
+  selectedFile: FileContent
+  sessionName?: string
+  sidebarCollapsed: boolean
+  showMarkdownPreview: boolean
+  theme: string
+  contentRef: React.RefObject<HTMLPreElement | null>
+  getHighlightedCode: (content: string, language: string) => string
+  onSendPathToTerminal: () => void
+  onToggleSidebar: () => void
+  onTogglePreview: () => void
+  renderBreadcrumb: (path: string) => React.ReactNode
+}) {
+  return (
+    <div className="h-full flex flex-col">
+      <div className="p-2 bg-bg-surface border-b border-border-default flex items-center justify-between">
+        <div className="font-mono text-sm flex items-center gap-2">
+          {sidebarCollapsed && (
+            <button
+              onClick={onToggleSidebar}
+              className="text-text-tertiary hover:text-text-secondary px-1"
+              title="Show file tree"
+            >
+              <ChevronRight size={16} />
+            </button>
+          )}
+          {renderBreadcrumb(selectedFile.path)}
+        </div>
+        <div className="flex items-center gap-2">
+          {sessionName && (
+            <button
+              onClick={onSendPathToTerminal}
+              className="text-xs px-2 py-1 bg-control-bg hover:bg-control-bg-hover rounded text-text-secondary"
+              title="Send file path to terminal"
+            >
+              Send Path
+            </button>
+          )}
+          {selectedFile.path.endsWith('.md') && (
+            <button
+              onClick={onTogglePreview}
+              className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-white"
+              title={showMarkdownPreview ? 'Show code' : 'Preview markdown'}
+            >
+              {showMarkdownPreview ? 'Code' : 'Preview'}
+            </button>
+          )}
+          <span className="text-text-muted text-xs">{selectedFile.language}</span>
+        </div>
+      </div>
+      {isImagePath(selectedFile.path) ? (
+        <div className="flex-1 overflow-auto flex items-center justify-center p-4 bg-[repeating-conic-gradient(#80808018_0%_25%,transparent_0%_50%)] bg-[length:20px_20px]">
+          <img
+            src={`${getApiBase()}${sessionName ? `/sessions/${sessionName}/files/${selectedFile.path}` : `/files/${selectedFile.path}`}?raw=1`}
+            alt={selectedFile.path}
+            crossOrigin="anonymous"
+            className="max-w-full max-h-full object-contain"
+          />
+        </div>
+      ) : showMarkdownPreview && selectedFile.path.endsWith('.md') ? (
+        <div className="flex-1 overflow-auto p-4 md:p-8">
+          <div className="max-w-4xl mx-auto">
+            <MarkdownPreview
+              source={selectedFile.content}
+              style={{
+                backgroundColor: 'transparent',
+                color: theme === 'dark' ? '#e5e7eb' : '#073642',
+              }}
+              wrapperElement={{
+                'data-color-mode': theme,
+              }}
+              components={{
+                code: Code,
+              }}
+            />
+          </div>
+        </div>
+      ) : (
+        <pre className="flex-1 p-4 overflow-auto text-sm font-mono" ref={contentRef}>
+          <HighlightedCode
+            content={selectedFile.content}
+            language={selectedFile.language}
+            getHighlightedCode={getHighlightedCode}
+          />
+        </pre>
+      )}
+    </div>
+  )
+}
+
 interface Props {
   sessionName?: string
   onFocusTerminal?: () => void
@@ -541,79 +643,19 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
             Loading file...
           </div>
         ) : selectedFile ? (
-          <div className="h-full flex flex-col">
-            <div className="p-2 bg-bg-surface border-b border-border-default flex items-center justify-between">
-              <div className="font-mono text-sm flex items-center gap-2">
-                {sidebarCollapsed && (
-                  <button
-                    onClick={() => setSidebarCollapsed(false)}
-                    className="text-text-tertiary hover:text-text-secondary px-1"
-                    title="Show file tree"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                )}
-                {renderBreadcrumb(selectedFile.path)}
-              </div>
-              <div className="flex items-center gap-2">
-                {sessionName && (
-                  <button
-                    onClick={handleSendPathToTerminal}
-                    className="text-xs px-2 py-1 bg-control-bg hover:bg-control-bg-hover rounded text-text-secondary"
-                    title="Send file path to terminal"
-                  >
-                    Send Path
-                  </button>
-                )}
-                {selectedFile.path.endsWith('.md') && (
-                  <button
-                    onClick={() => setShowMarkdownPreview(!showMarkdownPreview)}
-                    className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-white"
-                    title={showMarkdownPreview ? 'Show code' : 'Preview markdown'}
-                  >
-                    {showMarkdownPreview ? 'Code' : 'Preview'}
-                  </button>
-                )}
-                <span className="text-text-muted text-xs">{selectedFile.language}</span>
-              </div>
-            </div>
-            {isImagePath(selectedFile.path) ? (
-              <div className="flex-1 overflow-auto flex items-center justify-center p-4 bg-[repeating-conic-gradient(#80808018_0%_25%,transparent_0%_50%)] bg-[length:20px_20px]">
-                <img
-                  src={`${getApiBase()}${sessionName ? `/sessions/${sessionName}/files/${selectedFile.path}` : `/files/${selectedFile.path}`}?raw=1`}
-                  alt={selectedFile.path}
-                  crossOrigin="anonymous"
-                  className="max-w-full max-h-full object-contain"
-                />
-              </div>
-            ) : showMarkdownPreview && selectedFile.path.endsWith('.md') ? (
-              <div className="flex-1 overflow-auto p-4 md:p-8">
-                <div className="max-w-4xl mx-auto">
-                  <MarkdownPreview
-                    source={selectedFile.content}
-                    style={{
-                      backgroundColor: 'transparent',
-                      color: theme === 'dark' ? '#e5e7eb' : '#073642',
-                    }}
-                    wrapperElement={{
-                      'data-color-mode': theme,
-                    }}
-                    components={{
-                      code: Code,
-                    }}
-                  />
-                </div>
-              </div>
-            ) : (
-              <pre className="flex-1 p-4 overflow-auto text-sm font-mono" ref={contentRef}>
-                <HighlightedCode
-                  content={selectedFile.content}
-                  language={selectedFile.language}
-                  getHighlightedCode={getHighlightedCode}
-                />
-              </pre>
-            )}
-          </div>
+          <FileContentView
+            selectedFile={selectedFile}
+            sessionName={sessionName}
+            sidebarCollapsed={sidebarCollapsed}
+            showMarkdownPreview={showMarkdownPreview}
+            theme={theme}
+            contentRef={contentRef}
+            getHighlightedCode={getHighlightedCode}
+            onSendPathToTerminal={handleSendPathToTerminal}
+            onToggleSidebar={() => setSidebarCollapsed(false)}
+            onTogglePreview={() => setShowMarkdownPreview(!showMarkdownPreview)}
+            renderBreadcrumb={renderBreadcrumb}
+          />
         ) : (
           <div className="h-full flex flex-col">
             {sidebarCollapsed && (
