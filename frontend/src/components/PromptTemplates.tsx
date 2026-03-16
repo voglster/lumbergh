@@ -18,6 +18,155 @@ interface PromptTemplate {
   prompt: string
 }
 
+function TemplateItem({
+  template,
+  index,
+  scope,
+  editMode,
+  sessionName,
+  isDragging,
+  isDragOver,
+  onDragStart,
+  onDragOver,
+  onDragEnd,
+  onEdit,
+  onSendToTerminal,
+  onCopyToGlobal,
+  onCopyToProject,
+  onDelete,
+}: {
+  template: PromptTemplate
+  index: number
+  scope: 'project' | 'global'
+  editMode: boolean
+  sessionName?: string | null
+  isDragging: boolean
+  isDragOver: boolean
+  onDragStart: (index: number, scope: 'project' | 'global') => void
+  onDragOver: (e: React.DragEvent, index: number, scope: 'project' | 'global') => void
+  onDragEnd: () => void
+  onEdit: (template: PromptTemplate, scope: 'project' | 'global') => void
+  onSendToTerminal: (template: PromptTemplate, sendEnter: boolean) => void
+  onCopyToGlobal: (template: PromptTemplate) => void
+  onCopyToProject: (template: PromptTemplate) => void
+  onDelete: (id: string, scope: 'project' | 'global') => void
+}) {
+  return (
+    <div
+      draggable={editMode}
+      onDragStart={() => onDragStart(index, scope)}
+      onDragOver={(e) => onDragOver(e, index, scope)}
+      onDragEnd={onDragEnd}
+      onClick={editMode ? () => onEdit(template, scope) : undefined}
+      className={`flex items-center gap-2 p-3 bg-bg-surface rounded border border-border-default group ${
+        editMode ? 'cursor-pointer hover:border-blue-500/50' : ''
+      } ${isDragging ? 'opacity-50' : ''} ${isDragOver ? 'border-blue-500' : ''}`}
+    >
+      {editMode && <GripVertical size={16} className="text-text-muted select-none" />}
+      {!editMode && sessionName && (
+        <button
+          onClick={() => onSendToTerminal(template, false)}
+          className="text-text-muted hover:text-yellow-400 transition-colors px-1"
+          title="Send text (no Enter)"
+        >
+          <Play size={18} />
+        </button>
+      )}
+      <span className="flex-1 text-text-primary truncate" title={template.prompt}>
+        {template.name}
+      </span>
+      {editMode && (
+        <>
+          {scope === 'project' ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onCopyToGlobal(template)
+              }}
+              className="text-sm text-text-muted hover:text-green-400 transition-colors px-1"
+              title="Move to Global"
+            >
+              ↑G
+            </button>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onCopyToProject(template)
+              }}
+              className="text-sm text-text-muted hover:text-green-400 transition-colors px-1"
+              title="Copy to Project"
+            >
+              ↓P
+            </button>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete(template.id, scope)
+            }}
+            className="text-sm text-text-muted hover:text-red-400 transition-colors px-1"
+            title="Delete"
+          >
+            <X size={16} />
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
+function TemplateSection({
+  title,
+  scope,
+  templates,
+  editMode,
+  showForm,
+  editingTemplate,
+  onStartAdd,
+  renderInlineEditForm,
+  renderTemplateItem,
+}: {
+  title: string
+  scope: 'project' | 'global'
+  templates: PromptTemplate[]
+  editMode: boolean
+  showForm: 'project' | 'global' | null
+  editingTemplate: PromptTemplate | null
+  onStartAdd: (scope: 'project' | 'global') => void
+  renderInlineEditForm: (template: PromptTemplate, scope: 'project' | 'global') => React.ReactNode
+  renderTemplateItem: (template: PromptTemplate, index: number, scope: 'project' | 'global') => React.ReactNode
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-medium text-text-tertiary">{title}</h3>
+        {editMode && showForm !== scope && (
+          <button
+            type="button"
+            onClick={() => onStartAdd(scope)}
+            className="text-xs px-2 py-1 bg-control-bg text-text-tertiary rounded hover:bg-control-bg-hover hover:text-text-secondary transition-colors"
+          >
+            + Add
+          </button>
+        )}
+      </div>
+      {showForm === scope && !editingTemplate && (
+        <div className="mb-2">
+          {renderInlineEditForm({ id: '', name: '', prompt: '' }, scope)}
+        </div>
+      )}
+      {templates.length === 0 && showForm !== scope ? (
+        <div className="text-text-muted text-sm py-2">No {title.toLowerCase()} yet.</div>
+      ) : (
+        <div className="space-y-2">
+          {templates.map((template, index) => renderTemplateItem(template, index, scope))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface PromptTemplatesProps {
   sessionName?: string | null
   onFocusTerminal?: () => void
@@ -312,77 +461,29 @@ export default function PromptTemplates({ sessionName, onFocusTerminal }: Prompt
     index: number,
     scope: 'project' | 'global'
   ) => {
-    // If this template is being edited inline, show the edit form
     if (editMode && editingTemplate?.id === template.id && showForm === scope) {
       return renderInlineEditForm(template, scope)
     }
 
-    const isDragging = dragScope === scope && dragIndex === index
-    const isDragOver = dragScope === scope && dragOverIndex === index && dragIndex !== index
-
     return (
-      <div
+      <TemplateItem
         key={template.id}
-        draggable={editMode}
-        onDragStart={() => handleDragStart(index, scope)}
-        onDragOver={(e) => handleDragOver(e, index, scope)}
+        template={template}
+        index={index}
+        scope={scope}
+        editMode={editMode}
+        sessionName={sessionName}
+        isDragging={dragScope === scope && dragIndex === index}
+        isDragOver={dragScope === scope && dragOverIndex === index && dragIndex !== index}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
-        onClick={editMode ? () => handleEdit(template, scope) : undefined}
-        className={`flex items-center gap-2 p-3 bg-bg-surface rounded border border-border-default group ${
-          editMode ? 'cursor-pointer hover:border-blue-500/50' : ''
-        } ${isDragging ? 'opacity-50' : ''} ${isDragOver ? 'border-blue-500' : ''}`}
-      >
-        {editMode && <GripVertical size={16} className="text-text-muted select-none" />}
-        {!editMode && sessionName && (
-          <button
-            onClick={() => handleSendToTerminal(template, false)}
-            className="text-text-muted hover:text-yellow-400 transition-colors px-1"
-            title="Send text (no Enter)"
-          >
-            <Play size={18} />
-          </button>
-        )}
-        <span className="flex-1 text-text-primary truncate" title={template.prompt}>
-          {template.name}
-        </span>
-        {editMode && (
-          <>
-            {scope === 'project' ? (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleCopyToGlobal(template)
-                }}
-                className="text-sm text-text-muted hover:text-green-400 transition-colors px-1"
-                title="Move to Global"
-              >
-                ↑G
-              </button>
-            ) : (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleCopyToProject(template)
-                }}
-                className="text-sm text-text-muted hover:text-green-400 transition-colors px-1"
-                title="Copy to Project"
-              >
-                ↓P
-              </button>
-            )}
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                handleDelete(template.id, scope)
-              }}
-              className="text-sm text-text-muted hover:text-red-400 transition-colors px-1"
-              title="Delete"
-            >
-              <X size={16} />
-            </button>
-          </>
-        )}
-      </div>
+        onEdit={handleEdit}
+        onSendToTerminal={handleSendToTerminal}
+        onCopyToGlobal={handleCopyToGlobal}
+        onCopyToProject={handleCopyToProject}
+        onDelete={handleDelete}
+      />
     )
   }
 
@@ -408,65 +509,28 @@ export default function PromptTemplates({ sessionName, onFocusTerminal }: Prompt
 
       {/* Template lists */}
       <div className="flex-1 overflow-y-auto space-y-4">
-        {/* Project templates */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-text-tertiary">Project Templates</h3>
-            {editMode && showForm !== 'project' && (
-              <button
-                type="button"
-                onClick={() => handleStartAdd('project')}
-                className="text-xs px-2 py-1 bg-control-bg text-text-tertiary rounded hover:bg-control-bg-hover hover:text-text-secondary transition-colors"
-              >
-                + Add
-              </button>
-            )}
-          </div>
-          {showForm === 'project' && !editingTemplate && (
-            <div className="mb-2">
-              {renderInlineEditForm({ id: '', name: '', prompt: '' }, 'project')}
-            </div>
-          )}
-          {projectTemplates.length === 0 && showForm !== 'project' ? (
-            <div className="text-text-muted text-sm py-2">No project templates yet.</div>
-          ) : (
-            <div className="space-y-2">
-              {projectTemplates.map((template, index) =>
-                renderTemplateItem(template, index, 'project')
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Global templates */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-text-tertiary">Global Templates</h3>
-            {editMode && showForm !== 'global' && (
-              <button
-                type="button"
-                onClick={() => handleStartAdd('global')}
-                className="text-xs px-2 py-1 bg-control-bg text-text-tertiary rounded hover:bg-control-bg-hover hover:text-text-secondary transition-colors"
-              >
-                + Add
-              </button>
-            )}
-          </div>
-          {showForm === 'global' && !editingTemplate && (
-            <div className="mb-2">
-              {renderInlineEditForm({ id: '', name: '', prompt: '' }, 'global')}
-            </div>
-          )}
-          {globalTemplates.length === 0 && showForm !== 'global' ? (
-            <div className="text-text-muted text-sm py-2">No global templates yet.</div>
-          ) : (
-            <div className="space-y-2">
-              {globalTemplates.map((template, index) =>
-                renderTemplateItem(template, index, 'global')
-              )}
-            </div>
-          )}
-        </div>
+        <TemplateSection
+          title="Project Templates"
+          scope="project"
+          templates={projectTemplates}
+          editMode={editMode}
+          showForm={showForm}
+          editingTemplate={editingTemplate}
+          onStartAdd={handleStartAdd}
+          renderInlineEditForm={renderInlineEditForm}
+          renderTemplateItem={renderTemplateItem}
+        />
+        <TemplateSection
+          title="Global Templates"
+          scope="global"
+          templates={globalTemplates}
+          editMode={editMode}
+          showForm={showForm}
+          editingTemplate={editingTemplate}
+          onStartAdd={handleStartAdd}
+          renderInlineEditForm={renderInlineEditForm}
+          renderTemplateItem={renderTemplateItem}
+        />
       </div>
 
       {/* Saving indicator */}
