@@ -53,26 +53,27 @@ function GitActionsMenu({
   )
 }
 
-const CommitForm = memo(function CommitForm({
+function CommitButtons({
   commitMessage,
-  onCommitMessageChange,
-  hasChanges,
   isCommitting,
   isPushing,
-  isGenerating,
   isResetting,
-  commitResult,
-  generateUrl,
+  busy,
   onCommit,
-  onGenerate,
   onMenuAction,
-}: Props) {
+}: {
+  commitMessage: string
+  isCommitting: boolean
+  isPushing: boolean
+  isResetting: boolean
+  busy: boolean
+  onCommit: (andPush?: boolean) => void
+  onMenuAction: (action: 'amend' | 'force-push' | 'stash' | 'stash-pop') => void
+}) {
   const [showMenu, setShowMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const menuBtnRef = useRef<HTMLButtonElement>(null)
-  const [aiConfigured, setAiConfigured] = useState<boolean | null>(null)
 
-  // Close menu on click outside
   useEffect(() => {
     if (!showMenu) return
     const handleClick = (e: MouseEvent) => {
@@ -89,7 +90,65 @@ const CommitForm = memo(function CommitForm({
     return () => document.removeEventListener('mousedown', handleClick)
   }, [showMenu])
 
-  // Check if AI is configured
+  const handleMenuAction = (action: 'amend' | 'force-push' | 'stash' | 'stash-pop') => {
+    setShowMenu(false)
+    onMenuAction(action)
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => onCommit(true)}
+        disabled={!commitMessage.trim() || busy}
+        data-testid="commit-btn"
+        className="px-3 py-2 bg-green-600 hover:bg-green-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-text-primary text-sm rounded transition-colors"
+        title="Commit & push (Ctrl/Cmd+Shift+Enter)"
+      >
+        {isCommitting ? 'Committing...' : isPushing ? 'Pushing...' : 'Commit & Push'}
+      </button>
+      <div className="relative flex gap-1">
+        <button
+          onClick={() => onCommit(false)}
+          disabled={!commitMessage.trim() || busy}
+          className="flex-1 px-2 py-1 text-text-tertiary hover:text-text-secondary disabled:text-text-muted disabled:cursor-not-allowed text-xs transition-colors"
+          title="Commit only (Ctrl/Cmd+Enter)"
+        >
+          Commit
+        </button>
+        <button
+          ref={menuBtnRef}
+          onClick={() => setShowMenu((v) => !v)}
+          disabled={isCommitting || isPushing || isResetting}
+          className="px-1.5 py-1 text-text-tertiary hover:text-text-secondary disabled:text-text-muted disabled:cursor-not-allowed text-xs transition-colors"
+          title="More git actions"
+        >
+          <MoreHorizontal size={16} />
+        </button>
+        {showMenu && (
+          <div ref={menuRef}>
+            <GitActionsMenu onAction={handleMenuAction} />
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+function AIGenerateButton({
+  generateUrl,
+  hasChanges,
+  isGenerating,
+  busy,
+  onGenerate,
+}: {
+  generateUrl: string | null
+  hasChanges: boolean
+  isGenerating: boolean
+  busy: boolean
+  onGenerate: () => void
+}) {
+  const [aiConfigured, setAiConfigured] = useState<boolean | null>(null)
+
   useEffect(() => {
     if (!generateUrl) return
     fetch(`${getApiBase()}/settings`)
@@ -98,6 +157,42 @@ const CommitForm = memo(function CommitForm({
       .catch(() => setAiConfigured(false))
   }, [generateUrl])
 
+  if (!generateUrl || !hasChanges) return null
+
+  return (
+    <button
+      onClick={aiConfigured ? onGenerate : undefined}
+      disabled={!aiConfigured || busy}
+      className={`px-3 py-2 text-sm rounded transition-colors ${
+        aiConfigured
+          ? 'bg-purple-600 hover:bg-purple-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-text-primary'
+          : 'bg-control-bg-hover text-text-muted cursor-not-allowed'
+      }`}
+      title={
+        aiConfigured
+          ? 'Generate commit message with AI'
+          : 'Configure an AI provider in Settings to enable this'
+      }
+    >
+      {isGenerating ? '...' : 'AI'}
+    </button>
+  )
+}
+
+const CommitForm = memo(function CommitForm({
+  commitMessage,
+  onCommitMessageChange,
+  hasChanges,
+  isCommitting,
+  isPushing,
+  isGenerating,
+  isResetting,
+  commitResult,
+  generateUrl,
+  onCommit,
+  onGenerate,
+  onMenuAction,
+}: Props) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!commitMessage.trim()) return
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
@@ -107,11 +202,6 @@ const CommitForm = memo(function CommitForm({
       e.preventDefault()
       onCommit(false)
     }
-  }
-
-  const handleMenuAction = (action: 'amend' | 'force-push' | 'stash' | 'stash-pop') => {
-    setShowMenu(false)
-    onMenuAction(action)
   }
 
   const busy = isCommitting || isPushing || isGenerating || isResetting
@@ -129,57 +219,22 @@ const CommitForm = memo(function CommitForm({
           disabled={isCommitting || isGenerating}
         />
         <div className="flex flex-col gap-1.5 shrink-0">
-          <button
-            onClick={() => onCommit(true)}
-            disabled={!commitMessage.trim() || busy}
-            data-testid="commit-btn"
-            className="px-3 py-2 bg-green-600 hover:bg-green-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-text-primary text-sm rounded transition-colors"
-            title="Commit & push (Ctrl/Cmd+Shift+Enter)"
-          >
-            {isCommitting ? 'Committing...' : isPushing ? 'Pushing...' : 'Commit & Push'}
-          </button>
-          <div className="relative flex gap-1">
-            <button
-              onClick={() => onCommit(false)}
-              disabled={!commitMessage.trim() || busy}
-              className="flex-1 px-2 py-1 text-text-tertiary hover:text-text-secondary disabled:text-text-muted disabled:cursor-not-allowed text-xs transition-colors"
-              title="Commit only (Ctrl/Cmd+Enter)"
-            >
-              Commit
-            </button>
-            <button
-              ref={menuBtnRef}
-              onClick={() => setShowMenu((v) => !v)}
-              disabled={isCommitting || isPushing || isResetting}
-              className="px-1.5 py-1 text-text-tertiary hover:text-text-secondary disabled:text-text-muted disabled:cursor-not-allowed text-xs transition-colors"
-              title="More git actions"
-            >
-              <MoreHorizontal size={16} />
-            </button>
-            {showMenu && (
-              <div ref={menuRef}>
-                <GitActionsMenu onAction={handleMenuAction} />
-              </div>
-            )}
-          </div>
-          {generateUrl && hasChanges && (
-            <button
-              onClick={aiConfigured ? onGenerate : undefined}
-              disabled={!aiConfigured || busy}
-              className={`px-3 py-2 text-sm rounded transition-colors ${
-                aiConfigured
-                  ? 'bg-purple-600 hover:bg-purple-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-text-primary'
-                  : 'bg-control-bg-hover text-text-muted cursor-not-allowed'
-              }`}
-              title={
-                aiConfigured
-                  ? 'Generate commit message with AI'
-                  : 'Configure an AI provider in Settings to enable this'
-              }
-            >
-              {isGenerating ? '...' : 'AI'}
-            </button>
-          )}
+          <CommitButtons
+            commitMessage={commitMessage}
+            isCommitting={isCommitting}
+            isPushing={isPushing}
+            isResetting={isResetting}
+            busy={busy}
+            onCommit={onCommit}
+            onMenuAction={onMenuAction}
+          />
+          <AIGenerateButton
+            generateUrl={generateUrl}
+            hasChanges={hasChanges}
+            isGenerating={isGenerating}
+            busy={busy}
+            onGenerate={onGenerate}
+          />
         </div>
       </div>
       {commitResult && (
