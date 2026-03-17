@@ -4,8 +4,8 @@ Maps provider keys to their launch commands and display labels.
 """
 
 PROVIDERS: dict[str, dict[str, str]] = {
-    "claude-code": {"launch": "claude --continue", "label": "Claude Code"},
-    "cursor": {"launch": "agent --continue", "label": "Cursor"},
+    "claude-code": {"launch": "claude --continue || claude", "label": "Claude Code"},
+    "cursor": {"launch": "agent --continue || agent", "label": "Cursor"},
     "opencode": {"launch": "opencode", "label": "OpenCode"},
     "gemini-cli": {"launch": "gemini", "label": "Gemini CLI"},
     "aider": {"launch": "aider", "label": "Aider"},

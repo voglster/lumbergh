@@ -166,7 +166,7 @@ def find_venv_activate(workdir: Path) -> Path | None:
 
 
 def create_tmux_session(
-    name: str, workdir: Path, launch_command: str = "claude --continue"
+    name: str, workdir: Path, launch_command: str = "claude --continue || claude"
 ) -> None:
     """Create a tmux session with optional venv activation and agent start.
 
