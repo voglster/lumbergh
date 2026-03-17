@@ -754,9 +754,17 @@ async def session_git_diff_stats(name: str):
 
 @router.get("/{name}/git/graph")
 async def session_git_graph(name: str, limit: int = 100):
-    """Get commit graph data for metro-style visualization."""
-    workdir = get_session_workdir(name)
+    """Get commit graph data for metro-style visualization (served from background cache)."""
+    from lumbergh.diff_cache import diff_cache
 
+    diff_cache.mark_active(name)
+    diff_cache.set_graph_limit(name, limit)
+    cached = diff_cache.get_graph(name)
+    if cached is not None:
+        return cached
+
+    # Cache miss (first request before background loop runs) — compute inline
+    workdir = get_session_workdir(name)
     try:
         return await _run_git(get_graph_log, workdir, limit)
     except HTTPException:
