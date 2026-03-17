@@ -10,8 +10,10 @@ expensive git commands when nothing has changed.
 """
 
 import asyncio
+import hashlib
 import logging
 import os
+import subprocess
 import time
 from pathlib import Path
 
@@ -24,10 +26,11 @@ ACTIVE_TTL_SECONDS = 60.0
 
 
 def _git_fingerprint(workdir: Path) -> tuple:
-    """Cheap fingerprint of git state using filesystem metadata.
+    """Fingerprint of git state using filesystem metadata + worktree status.
 
-    Checks mtime of .git/HEAD, .git/index, and .git/refs/ (recursive).
-    If none have changed, no commits, staging, or branch changes happened.
+    Checks mtime of .git/HEAD, .git/index, and .git/refs/ (recursive) for
+    commit/staging/branch changes. Also hashes `git status --porcelain` output
+    to detect unstaged working tree changes (modified, untracked, deleted files).
     """
     git_dir = workdir / ".git"
     if not git_dir.is_dir():
@@ -53,7 +56,20 @@ def _git_fingerprint(workdir: Path) -> tuple:
             for f in files
         )
 
-    return tuple(mtimes)
+    # Worktree status hash — catches modified/untracked/deleted files that
+    # don't touch .git/index or refs
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=workdir,
+            capture_output=True,
+            timeout=5,
+        )
+        status_hash = hashlib.md5(result.stdout).hexdigest()
+    except Exception:
+        status_hash = ""
+
+    return (*mtimes, status_hash)
 
 
 class DiffCache:

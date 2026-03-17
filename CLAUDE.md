@@ -72,6 +72,13 @@ Or run separately:
 
 Run `./lint.sh` before finishing any task. It auto-fixes what it can (ruff format, prettier, eslint --fix) and exits non-zero if unfixable errors remain. Fix all errors before considering work done.
 
+## Testing
+
+- **Red-green-refactor**: When fixing a bug, write a failing test first that reproduces it, verify it fails, then fix the code and verify the test passes.
+- Backend unit tests: `cd backend && uv run pytest`
+- E2E tests: `./test/e2e-vm.sh` (spins up QEMU VM, runs all E2E + UI tests)
+- Run E2E locally against running server: `cd test/e2e && pytest`
+
 ## Conventions
 
 - Keep the backend simple - it's a thin layer over tmux/git subprocesses

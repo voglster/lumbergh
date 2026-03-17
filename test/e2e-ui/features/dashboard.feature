@@ -13,7 +13,7 @@ Feature: Dashboard
     When I enter the test-repo-2 workdir in the create modal
     And I enter session name "e2e-ui-created" in the create modal
     And I submit the create session form
-    Then I should see the session card for "e2e-ui-created"
+    Then I should be on the session page for "e2e-ui-created"
 
   Scenario: Delete a session
     Given I am on the dashboard

@@ -50,10 +50,19 @@ def submit_create_form(page: Page):
     # Wait for directory validation to complete and button to become enabled
     expect(btn).to_be_enabled(timeout=10000)
     btn.click()
-    # Wait for modal to close and session list to refresh
-    page.wait_for_timeout(2000)
-    page.reload()
-    page.wait_for_load_state("networkidle")
+    # After submit, the app navigates to the new session's detail page
+    # Wait for the modal to close as confirmation
+    modal = page.locator('[data-testid="create-session-modal"]')
+    expect(modal).not_to_be_visible(timeout=15000)
+
+
+@then(parsers.parse('I should be on the session page for "{name}"'))
+def on_session_page(page: Page, name: str):
+    # The app navigates to /session/{name} after creation
+    page.wait_for_url(f"**/session/{name}", timeout=10000)
+    # Terminal container should be visible on the session detail page
+    terminal = page.locator('[data-testid="terminal-container"]')
+    expect(terminal).to_be_visible(timeout=10000)
 
 
 @when(parsers.parse('I delete the session "{name}"'))
@@ -61,5 +70,5 @@ def delete_session(page: Page, base_url: str, name: str):
     # Use API to delete — UI delete involves confirmation modal which varies
     with httpx.Client(base_url=base_url, timeout=10.0) as client:
         client.delete(f"/api/sessions/{name}")
-    page.reload()
+    page.goto(base_url)
     page.wait_for_load_state("networkidle")
