@@ -63,16 +63,6 @@ export default function Terminal({
       typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
   )
 
-  // Toggle scroll mode (tmux copy-mode)
-  const toggleScrollMode = useCallback(() => {
-    if (scrollMode) {
-      sendRef.current('q') // Exit copy-mode
-    } else {
-      sendRef.current('\x01[') // Ctrl-A + [ to enter copy-mode
-    }
-    setScrollMode(!scrollMode)
-  }, [scrollMode])
-
   // Send text via backend API (uses tmux send-keys which works better with Claude Code)
   const sendViaApi = useCallback(
     async (text: string, sendEnter: boolean = true) => {
@@ -93,17 +83,32 @@ export default function Terminal({
   const sendTmuxCommand = useCallback(
     async (command: string) => {
       try {
-        await fetch(`${getApiBase()}/session/${sessionName}/tmux-command`, {
+        const url = `${getApiBase()}/session/${sessionName}/tmux-command`
+        console.log(`[tmux-cmd] POST ${url} command=${command}`)
+        const resp = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ command }),
         })
+        const body = await resp.json()
+        console.log(`[tmux-cmd] ${command} → ${resp.status}`, body)
       } catch (err) {
         console.error('Failed to send tmux command:', err)
       }
     },
     [sessionName]
   )
+
+  // Toggle scroll mode (tmux copy-mode)
+  // Uses tmux commands directly so it works regardless of the user's prefix key
+  const toggleScrollMode = useCallback(() => {
+    if (scrollMode) {
+      sendTmuxCommand('copy-mode-cancel')
+    } else {
+      sendTmuxCommand('copy-mode')
+    }
+    setScrollMode(!scrollMode)
+  }, [scrollMode, sendTmuxCommand])
 
   const handleData = useCallback((data: string) => {
     termRef.current?.write(data)
@@ -464,14 +469,14 @@ export default function Terminal({
       {isTouchDevice && scrollMode && (
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-10">
           <button
-            onClick={() => sendRef.current('\x1b[5~')} // Page Up
+            onClick={() => sendTmuxCommand('page-up')}
             className="w-14 h-14 bg-yellow-600/90 hover:bg-yellow-500 rounded-lg flex items-center justify-center shadow-lg"
             title="Page Up"
           >
             <ChevronUp size={24} />
           </button>
           <button
-            onClick={() => sendRef.current('\x1b[6~')} // Page Down
+            onClick={() => sendTmuxCommand('page-down')}
             className="w-14 h-14 bg-yellow-600/90 hover:bg-yellow-500 rounded-lg flex items-center justify-center shadow-lg"
             title="Page Down"
           >

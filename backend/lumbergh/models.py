@@ -10,7 +10,15 @@ from pydantic import BaseModel
 class TmuxCommand(BaseModel):
     """A tmux window navigation command."""
 
-    command: Literal["next-window", "prev-window", "new-window"]
+    command: Literal[
+        "next-window",
+        "prev-window",
+        "new-window",
+        "copy-mode",
+        "copy-mode-cancel",
+        "page-up",
+        "page-down",
+    ]
 
 
 class SendInput(BaseModel):

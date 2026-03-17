@@ -332,7 +332,8 @@ async def send_to_session(session_name: str, body: SendInput):
 
 @app.post("/api/session/{session_name}/tmux-command")
 async def send_tmux_command(session_name: str, cmd: TmuxCommand):
-    """Send a tmux window navigation command to a session."""
+    """Send a tmux command to a session."""
+    logger.info("tmux-command: session=%s command=%s", session_name, cmd.command)
     from lumbergh.routers.sessions import get_session_workdir
 
     if cmd.command == "new-window":
@@ -342,6 +343,14 @@ async def send_tmux_command(session_name: str, cmd: TmuxCommand):
         await _run_tmux("next-window", "-t", session_name)
     elif cmd.command == "prev-window":
         await _run_tmux("previous-window", "-t", session_name)
+    elif cmd.command == "copy-mode":
+        await _run_tmux("copy-mode", "-t", session_name)
+    elif cmd.command == "copy-mode-cancel":
+        await _run_tmux("send-keys", "-t", session_name, "q")
+    elif cmd.command == "page-up":
+        await _run_tmux("send-keys", "-t", session_name, "PageUp")
+    elif cmd.command == "page-down":
+        await _run_tmux("send-keys", "-t", session_name, "PageDown")
     else:
         raise HTTPException(status_code=400, detail=f"Unknown command: {cmd.command}")
     return {"status": "ok"}
