@@ -12,21 +12,21 @@ Override with the `LUMBERGH_DATA_DIR` environment variable.
 
 ```
 ~/.config/lumbergh/
-├── sessions.json              # Session registry (names, workdirs, descriptions)
-├── session_data/
-│   └── <name>.json            # Per-session data (todos, scratchpad, project prompts)
-├── settings.json              # AI provider config, repo search path, git graph commits
-├── global.json                # Global prompt templates
+├── sessions.json              # Session registry (names, workdirs, descriptions, agent, idle state)
+├── projects/
+│   └── <repo-hash>.json       # Per-project data (todos, scratchpad, prompts, AI prompts)
+├── settings.json              # AI provider config, repo search path, git graph commits, password
+├── global.json                # Global prompt templates and global AI prompts
 └── shared/                    # Shared files accessible from all sessions
 ```
 
 | File | Contents |
 |------|----------|
-| `sessions.json` | Session registry -- names, working directories, descriptions |
-| `session_data/<name>.json` | Per-session todos, scratchpad notes, and project-specific prompts |
-| `settings.json` | AI provider configuration, repo search path, git graph commit count |
-| `global.json` | Global prompt templates shared across all sessions |
-| `shared/` | Shared files accessible from every session |
+| `sessions.json` | Session registry -- names, working directories, descriptions, agent provider, idle state, display names |
+| `projects/<hash>.json` | Per-project todos, scratchpad notes, project-specific prompts, and AI prompt overrides. Keyed by repo path hash, so multiple sessions on the same repo share data. |
+| `settings.json` | AI provider configuration, repo search path, git graph commit count, default agent, password |
+| `global.json` | Global prompt templates and global AI prompt templates |
+| `shared/` | Shared files (including images) accessible from every session |
 
 ## Format
 

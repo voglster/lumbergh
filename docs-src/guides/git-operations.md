@@ -8,17 +8,27 @@ The **Git** tab in the right pane of the session detail view gives you real-time
 
 ## Diff Viewer
 
-The diff viewer shows three categories of changes:
+The diff viewer shows the working tree diff (staged + unstaged + untracked files) with syntax highlighting. A **diff stats badge** at the top shows the file count, insertions, and deletions at a glance.
 
-- **Unstaged changes** -- modified files not yet added to the index
-- **Staged changes** -- files added to the index, ready to commit
-- **Recent commits** -- committed changes with line-by-line additions and deletions
+Diffs are computed by a background cache service every 5 seconds using git fingerprinting (filesystem metadata + worktree status). The frontend polls with ETag support, so unchanged data returns a `304 Not Modified` -- keeping bandwidth low even with frequent polling.
 
-Diffs auto-poll every few seconds, so you can watch changes appear in near real-time as the AI writes code.
+## Committing
+
+The commit form lets you stage all changes and commit directly from the UI:
+
+- Type a commit message manually, or
+- Click **Generate** to have your configured AI provider write a conventional commit message from the current diff
+
+!!! tip "Amend"
+    Use the amend option to update the last commit message or add changes to it.
 
 ## Commit List
 
-Below the diff viewer is a list of recent commits with their messages. Use this to track what the AI has committed and verify it matches what you asked for.
+Below the diff viewer is a list of recent commits with their messages. Click any commit to view its full diff. Use this to track what the AI has committed and verify it matches what you asked for.
+
+## Remote Status
+
+When the current branch tracks a remote, Lumbergh shows an **ahead/behind indicator** so you can see at a glance whether you need to push or pull.
 
 ## Git Graph
 
@@ -38,18 +48,38 @@ An interactive commit history visualization rendered directly in the browser.
 
 ## Branch Operations
 
-Right-click a branch in the git graph or use the branch menu to perform common operations:
+Use the branch menu or the git graph context actions to perform:
 
+- **Create branch** -- create a new branch from the current HEAD
+- **Delete branch** -- remove a local branch
 - **Merge** -- merge another branch into the current one
 - **Rebase** -- rebase the current branch onto another
 - **Fast-forward** -- fast-forward the current branch when it's behind the target
 - **Cherry-pick** -- apply individual commits from one branch onto another
 
-These run as git subprocesses against the session's working directory and report results back in the UI.
+## Commit Operations
+
+From the commit list or git graph, you can:
+
+- **Reword** -- edit a commit message
+- **Reset to** -- reset the branch to a specific commit (hard or soft)
+- **Revert** -- create a revert commit
+
+## Stash
+
+- **Stash push** -- stash working tree changes with an optional message
+- **Stash pop** -- apply and remove the top stash entry
+- **Stash drop** -- discard a stash entry
+
+## Push & Pull
+
+- **Push** -- push the current branch to its tracking remote
+- **Force push** -- force push with lease (safe force push)
+- **Pull** -- pull from the tracking remote
 
 !!! warning
-    Branch operations modify your git state. Make sure the AI isn't actively committing before running a merge or rebase.
+    Git operations modify your repository state. Make sure the AI isn't actively committing before running a merge, rebase, or reset.
 
 ## How It Works
 
-All read-only git operations (diffs, graph, commit list) run as subprocesses against the session's working directory. Branch information is displayed alongside the diff and graph views.
+All git operations run as subprocesses against the session's working directory. Read-only data (diffs, graph, commit list) is cached in the background and served instantly via the API. Write operations (commit, merge, rebase, etc.) run on demand and invalidate the cache.

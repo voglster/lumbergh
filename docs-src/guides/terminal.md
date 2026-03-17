@@ -27,6 +27,18 @@ Two send modes:
 
 The terminal automatically resizes when you resize the browser window or drag the pane divider. The PTY dimensions update in real time so command output wraps correctly.
 
+## Tmux Controls
+
+Below the terminal, a toolbar provides quick access to tmux operations:
+
+- **Window navigation** -- switch between tmux windows in the session
+- **Copy mode** -- enter tmux copy mode for scrolling through output history
+- **Page Up / Page Down** -- scroll through terminal output without entering full copy mode
+
+## Send to Terminal
+
+Other tabs (Todos, Prompts) include **Send to Terminal** buttons that inject text directly into the active terminal. This lets you fire off a prompt template or a todo item without copy-pasting.
+
 ## Notifications
 
 A notification bell sound plays when the terminal emits a bell event (ASCII `\a`). This is useful for getting alerted when a long-running command finishes or when the AI needs your attention.

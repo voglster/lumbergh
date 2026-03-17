@@ -1,6 +1,6 @@
 # Lumbergh Documentation
 
-Welcome to the Lumbergh docs — a self-hosted web dashboard for supervising multiple Claude Code AI sessions running in tmux.
+Welcome to the Lumbergh docs — a self-hosted web dashboard for supervising multiple AI coding agent sessions (Claude Code, Cursor, Aider, and more) running in tmux.
 
 Watch diffs roll in, fire off prompts, check todos, and keep your AI workers on task — all from your browser or phone.
 
@@ -42,17 +42,21 @@ Watch diffs roll in, fire off prompts, check todos, and keep your AI workers on 
 
 ## What You Get
 
-- **Multi-session dashboard** — all your Claude Code sessions at a glance with live status detection
+- **Multi-session dashboard** — all your AI sessions at a glance with live idle detection (working / idle / error / stalled)
+- **Multi-agent support** — run Claude Code, Cursor, Aider, Gemini CLI, OpenCode, or Codex per session
 - **Live terminals** — interact with real terminal sessions via xterm.js + WebSockets
 - **Git diff viewer** — watch diffs, commits, and branch changes as the AI writes code
-- **Git operations** — merge, rebase, fast-forward, and cherry-pick branches from the UI
-- **Git graph** — interactive commit history visualization
+- **Git operations** — commit, merge, rebase, cherry-pick, stash, reword, reset, force-push, and more
+- **AI commit messages** — generate conventional commit messages from the current diff
+- **Git graph** — interactive metro-style commit history visualization
 - **File browser** — browse project files with syntax highlighting and markdown preview
-- **Prompt templates** — reusable prompts with variables, fire them with one click
-- **Todos & scratchpad** — per-project notes and task tracking
-- **Shared files** — share context across sessions
+- **Prompt templates** — reusable prompts at project and global scope, fire them with one click
+- **Todos & scratchpad** — per-project notes and task tracking with cross-session todo moves
+- **Shared files** — share context (including images) across sessions
+- **AI status summaries** — AI-generated labels for what each session is doing
+- **Optional authentication** — password protection with signed cookie sessions
 - **Mobile-first + PWA** — responsive design, installable on your phone or tablet
-- **Tailscale integration** — auto-detects Tailscale for secure remote access
+- **Tailscale integration** — auto-detects Tailscale for secure remote access with HTTPS/TLS support
 - **Dark and light themes** — toggle with one click
 
 ## Quick Install

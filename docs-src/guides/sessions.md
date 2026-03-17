@@ -8,7 +8,7 @@ A session is a single Claude Code AI workspace tied to a tmux session and a work
 
 ## Creating a Session
 
-Click **+ New Session** on the dashboard. There are two creation modes:
+Click **+ New Session** on the dashboard. There are three creation modes:
 
 ### Direct Mode
 
@@ -17,6 +17,7 @@ Point at an existing directory on disk.
 1. Give the session a name
 2. Pick a working directory using the **repo finder** (scans your configured repo search directory) or type a path manually
 3. Optionally add a description
+4. Choose which **AI agent** to run (defaults to your global setting)
 
 ### Worktree Mode
 
@@ -28,6 +29,27 @@ Create a git worktree from an existing repo -- perfect for running parallel feat
 
 !!! tip "When to use worktrees"
     Worktrees let you have multiple branches checked out simultaneously. Spin up two sessions on different features of the same repo and let them work in parallel without conflicts.
+
+### New Project Mode
+
+Initialize a brand-new git repository and start from scratch.
+
+1. Give the session a name
+2. Specify a directory path for the new project
+3. Lumbergh runs `git init` and spawns a fresh session
+
+## Agent Selection
+
+Each session runs an AI coding agent. You can choose from:
+
+- **Claude Code** (default) -- `claude`
+- **Cursor** -- `cursor`
+- **OpenCode** -- `opencode`
+- **Gemini CLI** -- `gemini`
+- **Aider** -- `aider`
+- **Codex** -- `codex`
+
+Set a default agent globally in **Settings**, or override per-session during creation or via the session edit panel.
 
 ## Session IDs
 

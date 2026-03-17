@@ -64,5 +64,20 @@ ssh -L 8420:localhost:8420 your-server
 
 ## Security
 
-!!! warning "No built-in authentication"
-    Lumbergh does not include authentication. It trusts your network. Use Tailscale, an SSH tunnel, or a reverse proxy with auth for any untrusted network.
+Lumbergh includes **optional password protection**. When a password is set (via Settings or the `LUMBERGH_PASSWORD` environment variable), all API and WebSocket connections require authentication via a signed session cookie.
+
+See [Authentication](#authentication) below for details.
+
+!!! tip "Tailscale + password = defense in depth"
+    Even with Tailscale, setting a password adds an extra layer of protection. Tailscale handles network-level security; the password prevents unauthorized access from other devices on your tailnet.
+
+## Authentication
+
+When enabled, Lumbergh uses a single shared password with cookie-based sessions:
+
+1. Set a password in **Settings** or via the `LUMBERGH_PASSWORD` environment variable
+2. On first visit, you'll see a login page
+3. After logging in, a signed cookie (HMAC-SHA256, 30-day expiry) keeps you authenticated
+4. The `/api/health` endpoint is always accessible without auth (for monitoring)
+
+To disable auth, clear the password in Settings.

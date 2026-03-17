@@ -13,6 +13,8 @@ A per-session checklist for tracking what you've asked the AI to do.
 - **Add tasks** using the input field at the top
 - **Check off** completed items -- completed tasks automatically sort to the bottom
 - **Drag to reorder** -- prioritize what matters
+- **Send to terminal** -- click a todo to inject it into the active terminal session
+- **Move between sessions** -- transfer todos from one project to another
 
 !!! tip "A practical workflow"
     Before kicking off a session, jot down the tasks you want the AI to tackle. Check them off as you review the diffs. This keeps you organized when managing multiple sessions.
@@ -29,10 +31,10 @@ Use it for:
 
 ## Persistence
 
-Both todos and scratchpad content persist across restarts. Data is stored per-session in:
+Both todos and scratchpad content persist across restarts. Data is stored **per-project** (keyed by repository path), so multiple sessions pointing at the same repo share the same todos and scratchpad.
 
 ```
-session_data/{session-name}.json
+~/.config/lumbergh/projects/{repo-hash}.json
 ```
 
 No external database required -- everything is local JSON files.

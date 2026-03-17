@@ -51,6 +51,19 @@ The session's tmux session may have been killed externally. Click **Reset** on t
 
 - Make sure the session's working directory is a valid git repository.
 - Check that `git` is installed and accessible from the shell.
+- Diffs are cached in the background every 5 seconds. If you just made a change, wait a moment for the cache to refresh.
+
+---
+
+### Locked out after setting a password?
+
+If you set a password and can't log in:
+
+1. Stop Lumbergh
+2. Edit `~/.config/lumbergh/settings.json` and clear the `"password"` field (set it to `""`)
+3. Restart Lumbergh
+
+Alternatively, unset the `LUMBERGH_PASSWORD` environment variable if that's how you configured it.
 
 ---
 

@@ -10,6 +10,8 @@ Click the **gear icon** in the dashboard top-right corner to open settings.
 |---------|-------------|---------|
 | Repository search directory | Root path Lumbergh scans to find git repos when creating sessions | Directory where `lumbergh` was launched |
 | Git graph commits | Number of commits shown in the graph visualization (10--1000) | `100` |
+| Default agent | Which AI coding agent to launch for new sessions | `claude-code` |
+| Password | Optional password for authentication (leave blank to disable) | *(none)* |
 
 ### AI
 
@@ -27,6 +29,8 @@ lumbergh [OPTIONS]
 | `--port`, `-p` | Port number | `8420` |
 | `--reload` | Enable auto-reload (development only) | off |
 | `--tailscale-only` | Bind only to the Tailscale interface | off |
+| `--tls-cert` | Path to TLS certificate file (for HTTPS) | *(none)* |
+| `--tls-key` | Path to TLS private key file (for HTTPS) | *(none)* |
 
 **Examples:**
 
@@ -54,6 +58,7 @@ Use `--tailscale-only` to bind exclusively to the Tailscale interface. This ensu
 |----------|-------------|---------|
 | `LUMBERGH_DATA_DIR` | Override the data directory | `~/.config/lumbergh/` |
 | `LUMBERGH_LAUNCH_DIR` | Override the default repo search directory (set automatically to CWD on startup) | CWD |
+| `LUMBERGH_PASSWORD` | Set the authentication password (alternative to Settings UI) | *(none)* |
 
 ```bash
 # Store data in a custom location
