@@ -64,9 +64,7 @@ export default function TerminalHeader({
           )}
         </div>
         <span
-          onClick={
-            onCycleSession ? (e) => onCycleSession(e.shiftKey ? 'prev' : 'next') : undefined
-          }
+          onClick={onCycleSession ? (e) => onCycleSession(e.shiftKey ? 'prev' : 'next') : undefined}
           className={`flex-1 min-w-0 flex items-center gap-1 text-sm font-semibold text-text-secondary ${onCycleSession ? 'cursor-pointer group hover:text-text-primary transition-colors' : 'pointer-events-none'}`}
           title={onCycleSession ? 'Click: next session · Shift+click: previous' : undefined}
         >

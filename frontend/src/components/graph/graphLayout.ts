@@ -84,11 +84,7 @@ function allocateNewLane(
 }
 
 /** Process parent commits: assign first parent to same lane, allocate lanes for merge parents */
-function processParents(
-  commit: GraphCommit,
-  lane: number,
-  activeLanes: (string | null)[]
-): void {
+function processParents(commit: GraphCommit, lane: number, activeLanes: (string | null)[]): void {
   for (let p = 0; p < commit.parents.length; p++) {
     const parentHash = commit.parents[p]
     if (p === 0) {
@@ -116,7 +112,13 @@ export function computeGraphLayout(commits: GraphCommit[], headHash: string | nu
 
     let lane = activeLanes.indexOf(commit.hash)
     if (lane === -1) {
-      lane = allocateNewLane(activeLanes, currentBranchSet.has(commit.hash), currentBranchSet, nodes, row)
+      lane = allocateNewLane(
+        activeLanes,
+        currentBranchSet.has(commit.hash),
+        currentBranchSet,
+        nodes,
+        row
+      )
     }
 
     activeLanes[lane] = null

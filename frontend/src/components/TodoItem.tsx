@@ -84,7 +84,13 @@ function TodoMovePicker({
   )
 }
 
-function TodoSendButtons({ index, onSendToTerminal }: { index: number; onSendToTerminal: (index: number, sendEnter: boolean) => void }) {
+function TodoSendButtons({
+  index,
+  onSendToTerminal,
+}: {
+  index: number
+  onSendToTerminal: (index: number, sendEnter: boolean) => void
+}) {
   return (
     <>
       <button
@@ -171,9 +177,7 @@ export default function TodoItem({
     <div
       className={`bg-bg-surface rounded border border-border-default ${
         isDragging ? 'opacity-50' : ''
-      } ${isDragOver ? 'border-blue-500' : ''} ${
-        isHighlighted ? 'todo-highlight' : ''
-      }`}
+      } ${isDragOver ? 'border-blue-500' : ''} ${isHighlighted ? 'todo-highlight' : ''}`}
     >
       <div
         draggable

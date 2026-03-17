@@ -29,9 +29,7 @@ export default function ExistingRepoForm({
             className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-sm"
             required
           />
-          {dirStatus === 'checking' && (
-            <p className="text-xs text-text-muted mt-1">Checking...</p>
-          )}
+          {dirStatus === 'checking' && <p className="text-xs text-text-muted mt-1">Checking...</p>}
           {dirStatus === 'exists' && (
             <p className="text-xs text-green-400 mt-1">Directory exists</p>
           )}

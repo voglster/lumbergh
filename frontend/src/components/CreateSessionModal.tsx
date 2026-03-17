@@ -27,7 +27,13 @@ function toSlug(text: string): string {
     .replace(/^-|-$/g, '') // Trim leading/trailing hyphens
 }
 
-function deriveSlug(name: string, mode: SessionMode, workdir: string, projectSlug: string, parentRepo: string): string {
+function deriveSlug(
+  name: string,
+  mode: SessionMode,
+  workdir: string,
+  projectSlug: string,
+  parentRepo: string
+): string {
   const lastSegment = (path: string) => toSlug(path.split('/').filter(Boolean).pop() || '')
   if (toSlug(name)) return toSlug(name)
   if (mode === 'existing') return lastSegment(workdir)

@@ -279,8 +279,24 @@ function isMarkdown(filename: string): boolean {
 function isTextFile(filename: string): boolean {
   const ext = filename.toLowerCase().split('.').pop()
   return [
-    'txt', 'json', 'yml', 'yaml', 'py', 'js', 'ts', 'tsx', 'jsx', 'css',
-    'html', 'sh', 'toml', 'cfg', 'ini', 'log', 'csv', 'xml',
+    'txt',
+    'json',
+    'yml',
+    'yaml',
+    'py',
+    'js',
+    'ts',
+    'tsx',
+    'jsx',
+    'css',
+    'html',
+    'sh',
+    'toml',
+    'cfg',
+    'ini',
+    'log',
+    'csv',
+    'xml',
   ].includes(ext || '')
 }
 

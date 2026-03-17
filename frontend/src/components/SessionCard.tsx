@@ -162,13 +162,13 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
           </div>
         </div>
         <SessionCardActions
-            alive={session.alive}
-            paused={session.paused}
-            onTogglePaused={handleTogglePaused}
-            onEdit={handleEditClick}
-            onReset={handleReset}
-            onDelete={handleDelete}
-          />
+          alive={session.alive}
+          paused={session.paused}
+          onTogglePaused={handleTogglePaused}
+          onEdit={handleEditClick}
+          onReset={handleReset}
+          onDelete={handleDelete}
+        />
       </div>
 
       <SessionCardBadges

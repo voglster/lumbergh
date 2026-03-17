@@ -135,7 +135,11 @@ function TemplateSection({
   editingTemplate: PromptTemplate | null
   onStartAdd: (scope: 'project' | 'global') => void
   renderInlineEditForm: (template: PromptTemplate, scope: 'project' | 'global') => React.ReactNode
-  renderTemplateItem: (template: PromptTemplate, index: number, scope: 'project' | 'global') => React.ReactNode
+  renderTemplateItem: (
+    template: PromptTemplate,
+    index: number,
+    scope: 'project' | 'global'
+  ) => React.ReactNode
 }) {
   return (
     <div>
@@ -152,9 +156,7 @@ function TemplateSection({
         )}
       </div>
       {showForm === scope && !editingTemplate && (
-        <div className="mb-2">
-          {renderInlineEditForm({ id: '', name: '', prompt: '' }, scope)}
-        </div>
+        <div className="mb-2">{renderInlineEditForm({ id: '', name: '', prompt: '' }, scope)}</div>
       )}
       {templates.length === 0 && showForm !== scope ? (
         <div className="text-text-muted text-sm py-2">No {title.toLowerCase()} yet.</div>

@@ -161,7 +161,13 @@ function BehindView({
   )
 }
 
-function InSyncView({ remoteStatus, onJumpToTodos }: { remoteStatus: RemoteStatus; onJumpToTodos?: () => void }) {
+function InSyncView({
+  remoteStatus,
+  onJumpToTodos,
+}: {
+  remoteStatus: RemoteStatus
+  onJumpToTodos?: () => void
+}) {
   return (
     <>
       <div className="text-center">

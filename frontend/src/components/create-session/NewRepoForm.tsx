@@ -36,8 +36,7 @@ export default function NewRepoForm({
         />
         {projectSlug && projectSlug !== projectName && (
           <p className="text-xs text-text-muted mt-1">
-            Directory name:{' '}
-            <span className="text-text-tertiary font-mono">{projectSlug}</span>
+            Directory name: <span className="text-text-tertiary font-mono">{projectSlug}</span>
           </p>
         )}
       </div>

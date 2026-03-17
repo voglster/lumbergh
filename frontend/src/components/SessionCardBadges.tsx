@@ -57,13 +57,9 @@ export default function SessionCardBadges({
         </p>
       )}
 
-      {description && (
-        <p className="text-sm text-text-muted truncate mb-1">{description}</p>
-      )}
+      {description && <p className="text-sm text-text-muted truncate mb-1">{description}</p>}
 
-      {status && (
-        <p className="text-sm text-blue-400 truncate mb-2 italic">{status}</p>
-      )}
+      {status && <p className="text-sm text-blue-400 truncate mb-2 italic">{status}</p>}
     </>
   )
 }

@@ -112,7 +112,9 @@ export function useMentionInput({
     }, 0)
   }
 
-  const handleDropdownNav = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>): boolean => {
+  const handleDropdownNav = (
+    e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>
+  ): boolean => {
     if (!isOpen || filteredPrompts.length === 0) return false
     switch (e.key) {
       case 'ArrowDown':
@@ -141,7 +143,9 @@ export function useMentionInput({
     }
   }
 
-  const handleMentionBackspace = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>): boolean => {
+  const handleMentionBackspace = (
+    e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>
+  ): boolean => {
     if (e.key !== 'Backspace' || isOpen) return false
     const cursorPos = inputRef.current?.selectionStart || 0
     const selectionEnd = inputRef.current?.selectionEnd || 0

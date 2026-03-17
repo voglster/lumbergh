@@ -85,8 +85,7 @@ function WipRow({
         WIP
       </span>
       <span className="text-base text-orange-200/90 truncate min-w-0">
-        {workingChanges.files} uncommitted{' '}
-        {workingChanges.files === 1 ? 'change' : 'changes'}
+        {workingChanges.files} uncommitted {workingChanges.files === 1 ? 'change' : 'changes'}
       </span>
       <button
         onClick={(e) => {
