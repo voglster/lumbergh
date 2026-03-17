@@ -310,17 +310,23 @@ export default function GitGraph({
       .catch(() => {})
   }, [])
 
+  const etagRef = useRef<string>('')
+
   const fetchGraph = useCallback(async () => {
     if (!sessionName) return
-    setLoading(true)
-    setError(null)
     try {
+      const headers: Record<string, string> = {}
+      if (etagRef.current) headers['If-None-Match'] = etagRef.current
       const res = await fetch(
-        `${getApiBase()}/sessions/${sessionName}/git/graph?limit=${commitLimit}`
+        `${getApiBase()}/sessions/${sessionName}/git/graph?limit=${commitLimit}`,
+        { headers }
       )
+      if (res.status === 304) return // Not modified
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      etagRef.current = res.headers.get('etag') || ''
       const data: GraphData = await res.json()
       setGraphData(data)
+      setLoading(false)
       // Auto-select on first load: WIP if uncommitted changes, else HEAD commit
       if (!didAutoSelect.current && onSelectCommitRef.current) {
         didAutoSelect.current = true
@@ -332,7 +338,6 @@ export default function GitGraph({
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch graph')
-    } finally {
       setLoading(false)
     }
   }, [sessionName, commitLimit])
@@ -1021,16 +1026,6 @@ export default function GitGraph({
       if (node.isHead) {
         return (
           <g key={node.commit.hash}>
-            {/* Pulsing glow */}
-            <circle cx={cx} cy={cy} r={16} fill={color} opacity={0.15}>
-              <animate attributeName="r" values="14;18;14" dur="2s" repeatCount="indefinite" />
-              <animate
-                attributeName="opacity"
-                values="0.18;0.08;0.18"
-                dur="2s"
-                repeatCount="indefinite"
-              />
-            </circle>
             {/* Outer ring */}
             <circle
               cx={cx}

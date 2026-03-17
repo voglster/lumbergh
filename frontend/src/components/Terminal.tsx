@@ -83,15 +83,11 @@ export default function Terminal({
   const sendTmuxCommand = useCallback(
     async (command: string) => {
       try {
-        const url = `${getApiBase()}/session/${sessionName}/tmux-command`
-        console.log(`[tmux-cmd] POST ${url} command=${command}`)
-        const resp = await fetch(url, {
+        await fetch(`${getApiBase()}/session/${sessionName}/tmux-command`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ command }),
         })
-        const body = await resp.json()
-        console.log(`[tmux-cmd] ${command} → ${resp.status}`, body)
       } catch (err) {
         console.error('Failed to send tmux command:', err)
       }

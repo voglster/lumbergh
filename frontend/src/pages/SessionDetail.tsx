@@ -164,11 +164,17 @@ export default function SessionDetail() {
     }
   }, [name])
 
+  const diffEtagRef = useRef<string>('')
+
   const fetchDiffData = useCallback(async () => {
     if (!name) return
     try {
-      const res = await fetch(`${getApiBase()}/sessions/${name}/git/diff`)
+      const headers: Record<string, string> = {}
+      if (diffEtagRef.current) headers['If-None-Match'] = diffEtagRef.current
+      const res = await fetch(`${getApiBase()}/sessions/${name}/git/diff`, { headers })
+      if (res.status === 304) return
       const data = await res.json()
+      diffEtagRef.current = res.headers.get('etag') || ''
       // Only update state if data actually changed to prevent scroll resets
       setDiffData((prev) => (diffDataEquals(prev, data) ? prev : data))
     } catch (err) {
@@ -187,13 +193,19 @@ export default function SessionDetail() {
   const isDiffVisible = isDesktop ? rightPanel === 'git' : mobileTab === 'git'
 
   // Poll lightweight diff-stats every 10s (for badge counts)
+  const statsEtagRef = useRef<string>('')
   useEffect(() => {
     if (!name) return
     const fetchStats = async () => {
       try {
-        const res = await fetch(`${getApiBase()}/sessions/${name}/git/diff-stats`)
+        const headers: Record<string, string> = {}
+        if (statsEtagRef.current) headers['If-None-Match'] = statsEtagRef.current
+        const res = await fetch(`${getApiBase()}/sessions/${name}/git/diff-stats`, {
+          headers,
+        })
+        if (res.status === 304) return
+        statsEtagRef.current = res.headers.get('etag') || ''
         const data = await res.json()
-        // Only update state if values actually changed to avoid re-renders
         setDiffStats((prev) => {
           if (
             prev &&

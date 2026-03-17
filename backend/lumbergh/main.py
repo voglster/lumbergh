@@ -5,14 +5,16 @@ Run with: uv run python main.py
 """
 
 import asyncio
+import hashlib
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, WebSocket
+from fastapi import FastAPI, HTTPException, Request, Response, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from lumbergh.auth import AuthMiddleware
 from lumbergh.auth import router as auth_router
@@ -59,6 +61,39 @@ async def lifespan(app: FastAPI):  # noqa: ARG001 - required by FastAPI
     idle_monitor.stop()
 
 
+class ETagMiddleware(BaseHTTPMiddleware):
+    """Add ETag support to GET responses. Returns 304 if content unchanged."""
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+
+        if request.method != "GET" or response.status_code != 200:
+            return response
+
+        # Read the response body
+        body = b"".join(
+            [
+                chunk if isinstance(chunk, bytes) else chunk.encode()
+                async for chunk in response.body_iterator
+            ]
+        )
+
+        # Compute ETag from body hash
+        etag = f'"{hashlib.md5(body).hexdigest()}"'
+
+        # Check If-None-Match
+        if_none_match = request.headers.get("if-none-match")
+        if if_none_match == etag:
+            return Response(status_code=304, headers={"ETag": etag})
+
+        return Response(
+            content=body,
+            status_code=response.status_code,
+            headers={**dict(response.headers), "ETag": etag},
+            media_type=response.media_type,
+        )
+
+
 app = FastAPI(title="Lumbergh", description="Tmux session supervisor", lifespan=lifespan)
 app.include_router(auth_router)
 app.include_router(ai.router)
@@ -79,8 +114,10 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["ETag"],
 )
 app.add_middleware(AuthMiddleware)
+app.add_middleware(ETagMiddleware)
 
 
 @app.get("/api/health")
@@ -333,7 +370,6 @@ async def send_to_session(session_name: str, body: SendInput):
 @app.post("/api/session/{session_name}/tmux-command")
 async def send_tmux_command(session_name: str, cmd: TmuxCommand):
     """Send a tmux command to a session."""
-    logger.info("tmux-command: session=%s command=%s", session_name, cmd.command)
     from lumbergh.routers.sessions import get_session_workdir
 
     if cmd.command == "new-window":
