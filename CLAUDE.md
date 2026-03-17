@@ -85,6 +85,10 @@ Run `./lint.sh` before finishing any task. It auto-fixes what it can (ruff forma
 
 When asked to release, read and follow `docs/release-workflow.md`.
 
+## Lumbergh Cloud (Sibling Project)
+
+`../lumbergh-cloud/` is the closed-source companion server (Home Assistant model). See `../lumbergh-cloud/docs/launch-plan.md` for the full plan. The cloud server handles prompt sharing, settings sync, and future paid features (hosted VMs, team workspaces). The open-source app works 100% offline without it.
+
 ## Current Phase
 
 Phase 4: "The Manager & Context" - Building the AI chat/review pane. Phases 1-3 complete (terminal, diff viewer, file browser, todos, prompts, multi-session dashboard all working).
