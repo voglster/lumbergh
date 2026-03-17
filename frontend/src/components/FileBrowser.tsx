@@ -141,7 +141,7 @@ function FileContentView({
   sessionName?: string
   sidebarCollapsed: boolean
   showMarkdownPreview: boolean
-  theme: string
+  theme: 'dark' | 'light'
   contentRef: React.RefObject<HTMLPreElement | null>
   getHighlightedCode: (content: string, language: string) => string
   onSendPathToTerminal: () => void
