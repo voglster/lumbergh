@@ -269,6 +269,22 @@ function ExpandedRow({
         >
           <ChevronDown size={16} />
         </button>
+        <button
+          onClick={() => onSendRaw('\x03')}
+          disabled={!isConnected}
+          className="px-2 py-1 text-xs bg-red-700 hover:bg-red-600 disabled:opacity-50 rounded"
+          title="Send Ctrl+C (interrupt)"
+        >
+          ^C
+        </button>
+        <button
+          onClick={() => onSendRaw('\x04')}
+          disabled={!isConnected}
+          className="px-2 py-1 text-xs bg-red-700 hover:bg-red-600 disabled:opacity-50 rounded"
+          title="Send Ctrl+D (EOF)"
+        >
+          ^D
+        </button>
         {['1', '2', '3', '4', 'yes'].map((text) => (
           <button
             key={text}
