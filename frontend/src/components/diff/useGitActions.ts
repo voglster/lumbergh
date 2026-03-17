@@ -25,6 +25,7 @@ export function useGitActions({ sessionName, onRefresh, onGitAction }: UseGitAct
   const [revertingFile, setRevertingFile] = useState<string | null>(null)
   const [commitResult, setCommitResult] = useState<CommitResult | null>(null)
   const [isBranchOp, setIsBranchOp] = useState(false)
+  const [isDeletingBranch, setIsDeletingBranch] = useState(false)
 
   const gitBaseUrl = sessionName
     ? `${getApiBase()}/sessions/${sessionName}/git`
@@ -264,6 +265,36 @@ export function useGitActions({ sessionName, onRefresh, onGitAction }: UseGitAct
     [gitBaseUrl, notifySuccess]
   )
 
+  const handleDeleteBranch = useCallback(
+    async (branchName: string, deleteRemote: boolean) => {
+      const scope = deleteRemote ? 'local and remote' : 'local'
+      if (!confirm(`Delete ${scope} branch "${branchName}"? This cannot be undone.`)) return
+
+      setIsDeletingBranch(true)
+      setCommitResult(null)
+      try {
+        const res = await fetch(`${gitBaseUrl}/delete-branch`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ branch: branchName, delete_remote: deleteRemote }),
+        })
+        const result = await res.json()
+        if (!res.ok) {
+          setCommitResult({ type: 'error', message: result.detail || 'Delete failed' })
+        } else {
+          setCommitResult({ type: 'success', message: result.message })
+          notifySuccess()
+        }
+      } catch {
+        setCommitResult({ type: 'error', message: `Failed to delete branch ${branchName}` })
+      } finally {
+        setIsDeletingBranch(false)
+        clearAfter(setCommitResult, 3000)
+      }
+    },
+    [gitBaseUrl, notifySuccess]
+  )
+
   return {
     commitMessage,
     setCommitMessage,
@@ -274,6 +305,7 @@ export function useGitActions({ sessionName, onRefresh, onGitAction }: UseGitAct
     revertingFile,
     commitResult,
     isBranchOp,
+    isDeletingBranch,
     gitBaseUrl,
     generateUrl,
     handleReset,
@@ -282,5 +314,6 @@ export function useGitActions({ sessionName, onRefresh, onGitAction }: UseGitAct
     handleRevertFile,
     handleMenuAction,
     handleBranchAction,
+    handleDeleteBranch,
   }
 }

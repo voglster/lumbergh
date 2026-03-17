@@ -33,6 +33,7 @@ from lumbergh.git_utils import (
     checkout_branch,
     create_branch_at,
     create_worktree,
+    delete_branch,
     get_branches,
     get_branches_for_worktree,
     get_commit_diff,
@@ -66,6 +67,7 @@ from lumbergh.models import (
     CommitInput,
     CreateBranchInput,
     CreateSessionRequest,
+    DeleteBranchInput,
     PromptTemplateList,
     ResetToInput,
     RevertFileInput,
@@ -863,6 +865,25 @@ async def session_git_checkout(name: str, body: CheckoutInput):
 
         diff_cache.invalidate(name)
         _files_cache.pop(name, None)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{name}/git/delete-branch")
+async def session_git_delete_branch(name: str, body: DeleteBranchInput):
+    """Delete a local (and optionally remote) branch in a session's workdir."""
+    workdir = get_session_workdir(name)
+
+    try:
+        result = await _run_git(
+            delete_branch, workdir, body.branch, body.delete_remote, timeout=GIT_WRITE_TIMEOUT
+        )
+        if "error" in result:
+            status_code = 409 if "current branch" in result["error"].lower() else 400
+            raise HTTPException(status_code=status_code, detail=result["error"])
         return result
     except HTTPException:
         raise

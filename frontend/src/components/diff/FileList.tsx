@@ -119,6 +119,8 @@ const FileList = memo(function FileList({
         hasChanges={hasChanges}
         onReset={git.handleReset}
         onBranchAction={git.handleBranchAction}
+        onDeleteBranch={git.handleDeleteBranch}
+        isDeletingBranch={git.isDeletingBranch}
       />
 
       {isWorkingChanges && (

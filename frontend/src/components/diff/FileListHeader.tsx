@@ -41,6 +41,8 @@ interface Props {
   hasChanges: boolean
   onReset: () => void
   onBranchAction: (targetBranch: string, type: 'rebase' | 'ff') => void
+  onDeleteBranch?: (name: string, deleteRemote: boolean) => void
+  isDeletingBranch?: boolean
 }
 
 function RemoteButtons({
@@ -146,6 +148,8 @@ const FileListHeader = memo(function FileListHeader({
   hasChanges,
   onReset,
   onBranchAction,
+  onDeleteBranch,
+  isDeletingBranch,
 }: Props) {
   const isWorkingChanges = !commit
 
@@ -161,7 +165,12 @@ const FileListHeader = memo(function FileListHeader({
           {sessionName && (
             <>
               {isWorkingChanges && (
-                <BranchSelector gitBaseUrl={gitBaseUrl} onBranchChange={onRefresh} />
+                <BranchSelector
+                  gitBaseUrl={gitBaseUrl}
+                  onBranchChange={onRefresh}
+                  onDeleteBranch={onDeleteBranch}
+                  isDeletingBranch={isDeletingBranch}
+                />
               )}
               <BranchActions
                 gitBaseUrl={gitBaseUrl}

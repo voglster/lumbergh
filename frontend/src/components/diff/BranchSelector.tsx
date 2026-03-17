@@ -1,13 +1,20 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { ChevronUp, ChevronDown } from 'lucide-react'
+import { ChevronUp, ChevronDown, Trash2 } from 'lucide-react'
 import type { BranchData } from './types'
 
 interface Props {
   gitBaseUrl: string
   onBranchChange: () => void
+  onDeleteBranch?: (name: string, deleteRemote: boolean) => Promise<void> | void
+  isDeletingBranch?: boolean
 }
 
-export default function BranchSelector({ gitBaseUrl, onBranchChange }: Props) {
+export default function BranchSelector({
+  gitBaseUrl,
+  onBranchChange,
+  onDeleteBranch,
+  isDeletingBranch,
+}: Props) {
   const [branchData, setBranchData] = useState<BranchData | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -39,6 +46,12 @@ export default function BranchSelector({ gitBaseUrl, onBranchChange }: Props) {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  const handleDelete = async (branchName: string, deleteRemote: boolean) => {
+    if (!onDeleteBranch) return
+    await onDeleteBranch(branchName, deleteRemote)
+    await fetchBranches()
+  }
 
   const handleCheckout = async (branchName: string) => {
     setIsLoading(true)
@@ -100,19 +113,33 @@ export default function BranchSelector({ gitBaseUrl, onBranchChange }: Props) {
             <>
               <div className="px-3 py-1 text-xs text-text-muted uppercase bg-bg-sunken">Local</div>
               {branchData.local.map((branch) => (
-                <button
-                  key={branch.name}
-                  onClick={() => !branch.current && handleCheckout(branch.name)}
-                  disabled={isLoading || branch.current}
-                  className={`w-full px-3 py-2 text-left text-sm ${
-                    branch.current
-                      ? 'text-green-400 bg-bg-elevated/50'
-                      : 'text-text-secondary hover:bg-control-bg'
-                  }`}
-                >
-                  {branch.current && '✓ '}
-                  {branch.name}
-                </button>
+                <div key={branch.name} className="flex items-center group">
+                  <button
+                    onClick={() => !branch.current && handleCheckout(branch.name)}
+                    disabled={isLoading || branch.current}
+                    className={`flex-1 px-3 py-2 text-left text-sm ${
+                      branch.current
+                        ? 'text-green-400 bg-bg-elevated/50'
+                        : 'text-text-secondary hover:bg-control-bg'
+                    }`}
+                  >
+                    {branch.current && '✓ '}
+                    {branch.name}
+                  </button>
+                  {!branch.current && onDeleteBranch && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDelete(branch.name, false)
+                      }}
+                      disabled={isDeletingBranch}
+                      className="px-2 py-2 text-text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title={`Delete branch ${branch.name}`}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </div>
               ))}
             </>
           )}
@@ -122,14 +149,28 @@ export default function BranchSelector({ gitBaseUrl, onBranchChange }: Props) {
             <>
               <div className="px-3 py-1 text-xs text-text-muted uppercase bg-bg-sunken">Remote</div>
               {branchData.remote.map((branch) => (
-                <button
-                  key={branch.name}
-                  onClick={() => handleCheckout(branch.name)}
-                  disabled={isLoading}
-                  className="w-full px-3 py-2 text-left text-sm text-text-tertiary hover:bg-control-bg"
-                >
-                  {branch.name}
-                </button>
+                <div key={branch.name} className="flex items-center group">
+                  <button
+                    onClick={() => handleCheckout(branch.name)}
+                    disabled={isLoading}
+                    className="flex-1 px-3 py-2 text-left text-sm text-text-tertiary hover:bg-control-bg"
+                  >
+                    {branch.name}
+                  </button>
+                  {onDeleteBranch && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDelete(branch.name, true)
+                      }}
+                      disabled={isDeletingBranch}
+                      className="px-2 py-2 text-text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title={`Delete remote branch ${branch.name}`}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </div>
               ))}
             </>
           )}

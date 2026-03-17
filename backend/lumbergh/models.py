@@ -150,6 +150,13 @@ class RevertFileInput(BaseModel):
     path: str
 
 
+class DeleteBranchInput(BaseModel):
+    """Input for deleting a git branch."""
+
+    branch: str
+    delete_remote: bool = False
+
+
 class StatusSummaryInput(BaseModel):
     """Input for generating a status summary."""
 

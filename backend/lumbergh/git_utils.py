@@ -917,6 +917,37 @@ def checkout_branch(cwd: Path, branch: str, reset_to: str | None = None) -> dict
         return {"error": str(e)}
 
 
+def delete_branch(cwd: Path, branch: str, delete_remote: bool = False) -> dict:
+    """
+    Delete a local branch (and optionally its remote tracking branch).
+
+    Refuses to delete the currently checked-out branch.
+    """
+    try:
+        repo = get_repo(cwd)
+    except InvalidGitRepositoryError:
+        return {"error": "Not a git repository"}
+
+    current = get_current_branch(cwd)
+    if branch == current:
+        return {"error": f"Cannot delete the current branch '{branch}'."}
+
+    try:
+        repo.git.branch("-D", branch)
+        message = f"Deleted local branch '{branch}'"
+    except GitCommandError as e:
+        return {"error": f"Failed to delete local branch: {e}"}
+
+    if delete_remote:
+        try:
+            repo.git.push("origin", "--delete", branch)
+            message += f" and remote 'origin/{branch}'"
+        except GitCommandError as e:
+            return {"status": "partial", "message": f"{message}, but remote delete failed: {e}"}
+
+    return {"status": "success", "message": message}
+
+
 def reset_to_head(cwd: Path) -> dict:
     """
     Reset all changes to HEAD (discard all uncommitted changes).
