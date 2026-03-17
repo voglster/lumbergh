@@ -93,9 +93,9 @@ This roadmap focuses on a "Depth First" approach: get a single session working p
   - [x] Add routing (`react-router-dom`) to navigate between `/` (Dashboard) and `/session/:name`
   - [x] Session status indicators (green dot for alive, attached/orphan badges)
 
-## Phase 4: The "Manager" & Context ⏳
+## Phase 4: The "Manager" & Context ✅
 
-**Goal:** The "Brain" pane with Notes, Todos, and AI Chat.
+**Goal:** The "Brain" pane with Notes, Todos, and AI features.
 
 - [x] **Notes & Planning UI:**
   - [x] `<TodoList />` component with add/edit/delete/reorder
@@ -112,28 +112,88 @@ This roadmap focuses on a "Depth First" approach: get a single session working p
   - [x] Stall detection (WORKING > 10 minutes -> STALLED)
   - [x] Unified status indicator on SessionCard (green/yellow/red/gray)
   - [x] 5-state model: unknown, idle, working, error, stalled
+  - [x] Background idle monitor polling every 2 seconds
 
 - [x] **Notes API:**
-  - [x] `GET/POST /api/todos` - Todo list persistence
-  - [x] `GET/POST /api/scratchpad` - Scratchpad persistence
-  - [x] `GET/POST /api/prompts` - Project prompt templates
+  - [x] `GET/POST /api/sessions/{name}/todos` - Todo list persistence
+  - [x] `GET/POST /api/sessions/{name}/scratchpad` - Scratchpad persistence
+  - [x] `GET/POST /api/sessions/{name}/prompts` - Project prompt templates
   - [x] `GET/POST /api/global/prompts` - Global prompt templates
   - [x] Copy endpoints between project/global
+  - [x] `POST /api/sessions/{name}/todos/move` - Move todos between sessions
+
+- [x] **AI-Powered Features:**
+  - [x] Multi-provider support (Ollama, OpenAI, Anthropic, Google, OpenAI-compatible)
+  - [x] Commit message generation from diffs
+  - [x] Prompt name generation (snake_case from content)
+  - [x] Session status summaries (2-3 word AI-generated labels)
+  - [x] AI prompt template management (global + project-scoped)
+  - [x] Message buffer for capturing user instructions as AI context
+
+## Phase 5: Auth, Settings & Polish ✅
+
+**Goal:** Production-ready for real users on Tailscale.
+
+- [x] **Authentication:**
+  - [x] Optional password protection (env var or settings config)
+  - [x] Cookie-based sessions with HMAC-SHA256 signing (30-day expiry)
+  - [x] ASGI middleware for HTTP + WebSocket auth enforcement
+  - [x] Login page, health endpoint exempted from auth
+
+- [x] **Settings System:**
+  - [x] `GET/PATCH /api/settings` with deep merge
+  - [x] Configurable: repo search dir, git graph commits, AI provider, default agent, password
+  - [x] First-run detection
+
+- [x] **Shared Files:**
+  - [x] Cross-project context sharing (`~/.config/lumbergh/shared/`)
+  - [x] Upload, list, view, delete shared files
+  - [x] Save shared files as prompt templates
+  - [x] CLAUDE.md integration for LB Shared commands
+
+- [x] **Performance:**
+  - [x] Background diff cache with git fingerprinting (worktree status + git metadata)
+  - [x] Background graph cache with configurable commit limits
+  - [x] ETag middleware for HTTP response caching (304 Not Modified)
+  - [x] File listing cache with 10s TTL
+
+- [x] **Advanced Git Operations:**
+  - [x] Branch create/delete, cherry-pick, rebase, fast-forward
+  - [x] Commit reword, reset-to (hard/soft), force-push with lease
+  - [x] Stash push/pop/drop with ref support
+  - [x] Git graph with metro-style visualization
+  - [x] Remote status (ahead/behind tracking branch)
+
+- [x] **Session Enhancements:**
+  - [x] Display names and descriptions
+  - [x] Pause/unpause sessions
+  - [x] Per-session agent provider override (Claude Code, Cursor, Aider, etc.)
+  - [x] Session reset (kill windows + respawn agent)
+  - [x] Worktree mode with branch isolation
+  - [x] Directory picker with repo search
+
+- [x] **Mobile & PWA:**
+  - [x] Responsive design with tab-based navigation on mobile
+  - [x] Resizable panes with persistent split positions
+  - [x] VitePWA with workbox caching, installable web app
+  - [x] Tmux mouse mode configuration
+
+- [x] **Other:**
+  - [x] Version check endpoint (PyPI update detection)
+  - [x] Tailscale integration detection
+  - [x] HTTPS/TLS support with auto-redirect
+  - [x] Multi-agent support (Claude Code, Cursor, OpenCode, Gemini CLI, Aider, Codex)
+
+## Phase 6: Manager AI Chat ⏳
+
+**Goal:** The Manager Agent as a reactive code reviewer.
 
 - [ ] **The Manager Agent (Backend):**
-  - [ ] Integrate `anthropic` or `openai` SDK
-  - [ ] Construct the "Context Packet" (Plan + Diff + User Query)
-  - [ ] Create Chat Endpoint (`POST /api/chat`)
+  - [ ] Chat endpoint with streaming responses
+  - [ ] Auto-inject session context (terminal output, diff, file tree)
+  - [ ] Multi-turn conversation history per-session
 
 - [ ] **The Manager Agent (Frontend):**
-  - [ ] Build Chat UI in a new pane/tab
-  - [ ] Add "Review Code" button that sends the current Diff to the LLM
-
-## Phase 5: Polish & Mobile ⏳
-
-**Goal:** Make it usable on a phone.
-
-- [x] **Responsive Design:** Terminal/Diff/Notes stack correctly via tabs on mobile
-- [x] **Resizable Panes:** Persistent split positions via localStorage
-- [ ] **Virtual Keyboard Handling:** Prevent the keyboard from covering the input box
-- [x] **PWA Config:** VitePWA fully configured with manifest, icons, and workbox caching
+  - [ ] Chat UI pane with markdown rendering
+  - [ ] Quick prompts: "review the last commit", "what did this session do?"
+  - [ ] Select diff hunk → ask the manager about it

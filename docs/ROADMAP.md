@@ -2,27 +2,31 @@
 
 ## Where We Are
 
-Lumbergh is a **full supervision cockpit** for Claude Code sessions — terminal streaming, live diffs, git graph, file browser, todos, prompt templates, multi-session dashboard, mobile PWA, idle detection, AI status summaries, session pause/cycling. Phases 1–4 are complete.
+Lumbergh is a **full supervision cockpit** for AI coding sessions — terminal streaming, live diffs, git graph, file browser, todos, prompt templates, multi-session dashboard, mobile PWA, idle detection, AI-powered commit messages and status summaries, session pause/cycling, optional password auth, shared files, multi-provider AI support, and advanced git operations. Phases 1–5 are complete.
 
-It's running on Tailscale for friends and colleagues. Real users means real requirements: auth, stability, and polish matter now. The competitive landscape (claude-squad, agent-view, agtx) remains shallow — nobody else combines terminal + live diffs + todos + prompts + mobile in one tool.
+It's published on PyPI as `pylumbergh`, running on Tailscale for real users. The competitive landscape (claude-squad, agent-view, agtx) remains shallow — nobody else combines terminal + live diffs + todos + prompts + mobile + AI features in one tool.
 
 **Strategic direction:** Personal polish → Open-source community → Revenue/SaaS.
 
 ---
 
-## Phase 5: Auth & Security
+## Phase 5: Auth, Settings & Polish ✅
 
-**Why:** Real people are on the Tailscale network. A password-less dashboard that controls terminal sessions is a liability.
-
-- Simple password gate (single shared password, not multi-user accounts)
-- Protect all HTTP endpoints and WebSocket connections
-- Cookie/token-based session so you don't re-enter on every page load
-- Environment variable or config file for the password
-- No user management, no OAuth, no roles — just a lock on the front door
+- Optional password protection (HMAC-signed cookies, 30-day sessions)
+- Settings system (repo search dir, git graph limits, AI provider config, default agent)
+- Shared files for cross-project context (upload, serve, save-as-prompt, CLAUDE.md integration)
+- Background diff cache with git fingerprinting (worktree status + git metadata)
+- ETag middleware for bandwidth-efficient polling
+- Advanced git ops (cherry-pick, rebase, reword, stash, reset-to, force-push, branch create/delete)
+- Session enhancements (display names, descriptions, pause, per-session agent provider, reset)
+- Multi-agent support (Claude Code, Cursor, OpenCode, Gemini CLI, Aider, Codex)
+- Version check endpoint with PyPI update detection
+- Tmux mouse mode configuration
+- E2E test suite (97 API tests + 13 UI tests in QEMU VM)
 
 ---
 
-## Phase 6: Manager AI (Code Reviewer)
+## Phase 6: Manager AI (Code Reviewer) ⏳
 
 **Why:** The Manager AI starts as a **reactive code reviewer**, not an autonomous PM. It answers questions about what sessions are doing and reviews their work.
 

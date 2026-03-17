@@ -21,35 +21,60 @@ See `docs/` for full PRD, architecture, and implementation roadmap.
 ```
 lumbergh/
 ├── backend/
-│   ├── main.py             # FastAPI app, git/file/session endpoints
-│   ├── tmux_pty.py         # PTY/tmux attachment logic
-│   ├── session_manager.py  # PTY pooling for WebSocket clients
-│   ├── routers/
-│   │   └── notes.py        # Todo, scratchpad, prompt template APIs
-│   ├── pyproject.toml      # Python dependencies (uv)
+│   ├── lumbergh/
+│   │   ├── main.py             # FastAPI app, middleware, project-level endpoints
+│   │   ├── auth.py             # Password auth middleware + login/logout
+│   │   ├── diff_cache.py       # Background diff/graph caching with fingerprinting
+│   │   ├── idle_detector.py    # Pattern-based agent state detection
+│   │   ├── idle_monitor.py     # Background session monitoring service
+│   │   ├── session_manager.py  # PTY pooling for WebSocket clients
+│   │   ├── tmux_pty.py         # PTY/tmux attachment logic
+│   │   ├── file_utils.py       # Path validation, language detection
+│   │   ├── git_utils.py        # Git subprocess wrappers
+│   │   ├── version_check.py    # PyPI version checking
+│   │   ├── ai/
+│   │   │   ├── providers.py    # Multi-provider AI (Ollama, OpenAI, Anthropic, Google)
+│   │   │   └── prompts.py      # AI prompt templates with variable substitution
+│   │   └── routers/
+│   │       ├── sessions.py     # Session CRUD, git ops, todos, files, AI endpoints
+│   │       ├── ai.py           # AI status, commit gen, prompt management
+│   │       ├── settings.py     # Global settings read/write
+│   │       ├── shared.py       # Shared files upload/serve/manage
+│   │       ├── notes.py        # Global prompt templates
+│   │       └── tmux.py         # Mouse mode configuration
+│   ├── pyproject.toml
 │   └── start.sh
 ├── frontend/
 │   ├── src/
-│   │   ├── App.tsx         # Main app with session selector + tabs
+│   │   ├── App.tsx
+│   │   ├── pages/
+│   │   │   ├── Dashboard.tsx
+│   │   │   ├── SessionDetail.tsx
+│   │   │   └── LoginPage.tsx
 │   │   ├── components/
-│   │   │   ├── Terminal.tsx
+│   │   │   ├── Terminal.tsx, TerminalHeader.tsx
 │   │   │   ├── QuickInput.tsx
-│   │   │   ├── DiffViewer.tsx
+│   │   │   ├── DiffViewer.tsx, diff/
 │   │   │   ├── FileBrowser.tsx
-│   │   │   ├── TodoList.tsx
+│   │   │   ├── TodoList.tsx, TodoItem.tsx
 │   │   │   ├── Scratchpad.tsx
 │   │   │   ├── PromptTemplates.tsx
-│   │   │   ├── ResizablePanes.tsx
-│   │   │   ├── VerticalResizablePanes.tsx
-│   │   │   └── diff/
-│   │   │       ├── FileList.tsx
-│   │   │       ├── FileDiff.tsx
-│   │   │       └── CommitList.tsx
+│   │   │   ├── SharedFiles.tsx
+│   │   │   ├── SettingsModal.tsx
+│   │   │   ├── SessionCard.tsx
+│   │   │   ├── CreateSessionModal.tsx
+│   │   │   └── ResizablePanes.tsx, VerticalResizablePanes.tsx
 │   │   └── hooks/
-│   │       └── useTerminalSocket.ts
+│   │       ├── useTerminalSocket.ts
+│   │       ├── useAuth.tsx
+│   │       └── useApiClient.ts
 │   └── start.sh
-├── start.sh              # Start both backend + frontend
-└── docs/                 # PRD, architecture, roadmap
+├── test/
+│   ├── e2e/                # API E2E tests (httpx + pytest)
+│   ├── e2e-ui/             # UI E2E tests (Playwright + pytest-bdd)
+│   └── e2e-vm.sh           # QEMU VM test runner
+├── start.sh
+└── docs/
 ```
 
 ## Quick Start
@@ -98,4 +123,4 @@ When asked to release, read and follow `docs/release-workflow.md`.
 
 ## Current Phase
 
-Phase 4: "The Manager & Context" - Building the AI chat/review pane. Phases 1-3 complete (terminal, diff viewer, file browser, todos, prompts, multi-session dashboard all working).
+Phases 1-5 complete (terminal, diff viewer, file browser, todos, prompts, multi-session dashboard, auth, AI features, shared files, settings). Phase 6 (Manager AI chat) is next.
