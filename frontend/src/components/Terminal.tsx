@@ -72,6 +72,7 @@ export default function Terminal({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text, send_enter: sendEnter }),
         })
+        termRef.current?.focus()
       } catch (err) {
         console.error('Failed to send to terminal:', err)
       }
@@ -423,9 +424,11 @@ export default function Terminal({
         isTouchDevice={isTouchDevice}
         scrollMode={scrollMode}
         onToggleScrollMode={toggleScrollMode}
-        onSendRaw={(data) => sendRef.current(data)}
+        onSendRaw={(data) => {
+          sendRef.current(data)
+          termRef.current?.focus()
+        }}
         onSendViaApi={sendViaApi}
-        onFocusTerminal={() => termRef.current?.focus()}
         onSendTmuxCommand={sendTmuxCommand}
         onFit={handleFit}
         onBack={onBack}
