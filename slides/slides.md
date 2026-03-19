@@ -43,17 +43,17 @@ image: /images/cat-laptop.jpg
 
 # The Problem
 
-You're running 5 Claude Code sessions.
+You're running 5 Claude Code sessions in tmux.
 
 <br>
 
-- Tab 47: *"I refactored your auth module"* -- you didn't ask
-- Tab 48: stuck on a prompt, burning tokens
-- Tab 49: you forgot this one exists
-- Your mental model of the plan decays every 30 minutes
+- You kick off session 1 in the morning, dive deep into session 3
+- End of the day: *"oh shit, session 1 has been sitting idle for 6 hours"*
+- Meanwhile session 4 went overboard -- time to `git reset`
+- You can't herd 5 cats when you can only see one at a time
 
 <!--
-If you're using Claude Code or Cursor or any AI coding agent, you've probably hit this. You spin up a few sessions, and within 20 minutes you've lost track. One is doing something you didn't ask for, another is burning tokens waiting for input, and there's one you completely forgot about. Your brain can't hold the state of 5 parallel agents.
+True story. I had 5 Claude Code sessions running in tmux. I kicked one off in the morning, got deep into another session, and when I was logging off for the day I saw it -- just sitting there, idle, waiting for me. I wanted that work done today. Gone. And that's the nice failure mode -- the worse one is when you check on a session and it's gone way overboard, refactored half your codebase, and you're doing git resets. You can't herd 5 cats if you can only look at one at a time. tmux is great for persistence, but it doesn't help you see the big picture.
 -->
 
 ---
@@ -66,11 +66,11 @@ layout: center
 
 - You can't see what 5 agents are doing **at once**
 - You can't see their git diffs **without switching context**
-- You can't check on them **from your phone while making coffee**
-- You can't hand someone a URL and say "watch these"
+- You can't send the next prompt **from your phone between sets at the gym**
+- Rest periods are the perfect time to keep agents moving
 
 <!--
-The obvious question: just use terminal tabs. But tabs are sequential -- you can only look at one at a time. You can't glance at a dashboard and see all 5 agents at once. You definitely can't pull out your phone while getting coffee and check on them. And you can't share a URL with a teammate so they can watch your agents work.
+The obvious question: just use terminal tabs. But tabs are sequential -- you can only look at one at a time. You can't glance at a dashboard and see all 5 agents at once. And here's the thing -- I work out during the day, and between lifting sets you've got 2-3 minutes of rest. That's the perfect window to pull out your phone, check which agents are idle, and fire off the next prompt. Keep all 5 moving while you're away from the desk. Terminal tabs can't do that.
 -->
 
 ---
@@ -261,6 +261,107 @@ Here's what the core looks like. The terminal endpoint is 6 lines -- accept a We
 -->
 
 ---
+
+# Under the Hood: PTY Pooling & State Detection
+
+<div class="grid grid-cols-2 gap-6 mt-2">
+<div>
+
+```python
+# One PTY per session, many viewers
+class SessionManager:
+    async def register_client(self, name, ws):
+        async with self._lock:
+            if name not in self._sessions:
+                pty = TmuxPtySession(name)
+                pty.spawn()
+                self._sessions[name] = ManagedSession(
+                    pty=pty, clients={ws}
+                )
+            else:
+                self._sessions[name].clients.add(ws)
+```
+
+</div>
+<div>
+
+```python
+# Regex-based agent state detection
+class IdleDetector:
+    WORKING_PATTERNS = [
+        re.compile(r"⠋|⠙|⠹|⠸|⠼|⠴|⠦|⠧|⠇|⠏"),
+        re.compile(r"Running…|Executing"),
+    ]
+    IDLE_PATTERNS = [
+        re.compile(r"\u276f"),  # Agent prompt
+        re.compile(r"Do you want to proceed\?"),
+    ]
+    ERROR_PATTERNS = [
+        re.compile(r"rate limit|429", re.I),
+    ]
+```
+
+</div>
+</div>
+
+<div class="mt-4 p-3 bg-indigo-500/10 rounded-lg border border-indigo-500/20 text-center">
+No polling APIs, no agent plugins — just read the terminal output and pattern-match.
+</div>
+
+<!--
+Two pieces of Python I'm proud of. On the left: PTY pooling. When you open a session in your browser, we attach to the tmux pane via libtmux and create one PTY process. If you open a second tab, or your teammate opens the same URL, they share that same PTY -- no extra processes. An asyncio lock prevents race conditions. When the last viewer disconnects, we clean up.
+
+On the right: idle detection. The dashboard shows green/yellow/red status dots for each agent. How? We just read the last 10 lines of terminal output and pattern-match. Spinner characters mean working. The prompt character means idle. Rate limit messages mean error. No special API, no agent plugins -- just regex on terminal output. It works with Claude Code, Cursor, any CLI agent.
+-->
+
+---
+
+# Lumbergh Cloud: What's Next
+
+<div class="grid grid-cols-2 gap-8 mt-6">
+
+<div>
+
+```mermaid {scale: 0.7}
+%%{init: {'theme': 'dark', 'themeVariables': { 'primaryColor': '#3730a3', 'primaryTextColor': '#e0e7ff', 'primaryBorderColor': '#6366f1', 'lineColor': '#818cf8', 'secondaryColor': '#4c1d95', 'tertiaryColor': '#1e1b4b', 'mainBkg': '#3730a3', 'nodeTextColor': '#e0e7ff' }, 'flowchart': { 'curve': 'basis', 'padding': 12 }}}%%
+graph LR
+    Local["Your Machine<br/>+ Lumbergh"] -->|"WSS tunnel"| Cloud["Lumbergh Cloud<br/>FastAPI + MongoDB"]
+    Cloud -.->|"relay"| Local
+    Phone["Your Phone"] -->|"HTTPS"| Cloud
+```
+
+</div>
+
+<div class="flex flex-col justify-center">
+
+**What the cloud does**
+- Share & import prompt templates
+- Sync settings across machines
+- Mobile access — no port forwarding
+
+**Thinking about...**
+- Push notifications when agents idle
+- Team workspaces for shared sessions
+- Hosted VMs — no local box needed
+
+</div>
+</div>
+
+<div class="mt-4 p-3 bg-purple-500/10 rounded-lg border border-purple-500/20 text-center">
+The app works 100% offline. Cloud is just a companion I'm building — all FastAPI + Motor on the other side too.
+</div>
+
+<!--
+So what's next? I'm building a companion cloud server. The interesting bit: your local app opens an outbound WebSocket to the cloud -- no port forwarding, no firewall holes. The cloud relays requests back through that tunnel. It's FastAPI on both sides -- the cloud uses Motor for async MongoDB.
+
+What it does today: prompt sharing so you can publish templates and import others'. Settings sync across machines. And mobile access -- check your agents from your phone without needing Tailscale.
+
+Things I'm thinking about: push notifications when an agent needs input so you don't have to keep checking. Team workspaces so you can pair on sessions. Maybe hosted VMs eventually.
+
+But really -- this is all open source, I'd love contributions. Try it, break it, file issues. If you have ideas for features, the roadmap is completely open. It's about 5k lines of Python -- very approachable codebase.
+-->
+
+---
 layout: center
 class: text-center
 ---
@@ -305,6 +406,8 @@ uv tool install pylumbergh && lumbergh
 </div>
 
 <p class="mt-4 opacity-70">One command. Installs from PyPI, starts on localhost:8420.<br>No Docker. No database. No config files.</p>
+
+<p class="mt-4 text-sm opacity-60">Try it, break it, file issues. PRs welcome — it's all Python & React. The whole roadmap is open.</p>
 
 <div class="mt-8 flex justify-center gap-12">
 
