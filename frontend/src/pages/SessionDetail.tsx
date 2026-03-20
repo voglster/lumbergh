@@ -166,21 +166,30 @@ export default function SessionDetail() {
 
   const diffEtagRef = useRef<string>('')
 
-  const fetchDiffData = useCallback(async () => {
-    if (!name) return
-    try {
-      const headers: Record<string, string> = {}
-      if (diffEtagRef.current) headers['If-None-Match'] = diffEtagRef.current
-      const res = await fetch(`${getApiBase()}/sessions/${name}/git/diff`, { headers })
-      if (res.status === 304) return
-      const data = await res.json()
-      diffEtagRef.current = res.headers.get('etag') || ''
-      // Only update state if data actually changed to prevent scroll resets
-      setDiffData((prev) => (diffDataEquals(prev, data) ? prev : data))
-    } catch (err) {
-      console.error('Failed to fetch diff data:', err)
-    }
-  }, [name])
+  const fetchDiffData = useCallback(
+    async ({ force = false }: { force?: boolean } = {}) => {
+      if (!name) return
+      try {
+        const headers: Record<string, string> = {}
+        if (!force && diffEtagRef.current) headers['If-None-Match'] = diffEtagRef.current
+        if (force) {
+          // Invalidate backend cache so we get a fresh computation
+          await fetch(`${getApiBase()}/sessions/${name}/git/invalidate`, { method: 'POST' }).catch(
+            () => {}
+          )
+        }
+        const res = await fetch(`${getApiBase()}/sessions/${name}/git/diff`, { headers })
+        if (res.status === 304) return
+        const data = await res.json()
+        diffEtagRef.current = res.headers.get('etag') || ''
+        // Only update state if data actually changed to prevent scroll resets
+        setDiffData((prev) => (diffDataEquals(prev, data) ? prev : data))
+      } catch (err) {
+        console.error('Failed to fetch diff data:', err)
+      }
+    },
+    [name]
+  )
 
   // Lightweight stats for tab badges (polled always)
   const [diffStats, setDiffStats] = useState<{
@@ -375,7 +384,7 @@ export default function SessionDetail() {
           <GitTab
             sessionName={name}
             diffData={diffData}
-            onRefreshDiff={fetchDiffData}
+            onRefreshDiff={() => fetchDiffData({ force: true })}
             onJumpToTodos={handleJumpToTodos}
             onFocusTerminal={handleFocusTerminal}
             resetTrigger={gitTabResetTrigger}
@@ -497,7 +506,7 @@ export default function SessionDetail() {
               <GitTab
                 sessionName={name}
                 diffData={diffData}
-                onRefreshDiff={fetchDiffData}
+                onRefreshDiff={() => fetchDiffData({ force: true })}
                 onJumpToTodos={handleJumpToTodos}
                 onFocusTerminal={handleFocusTerminal}
                 resetTrigger={gitTabResetTrigger}
