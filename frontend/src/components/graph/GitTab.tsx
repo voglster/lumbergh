@@ -31,7 +31,7 @@ export default function GitTab({
   const [commitSelectVersion, setCommitSelectVersion] = useState(0)
 
   const handleSelectCommit = useCallback((hash: string | null) => {
-    setSelectedCommit(hash)
+    setSelectedCommit((prev) => (prev === hash ? null : hash))
     setCommitSelectVersion((n) => n + 1)
   }, [])
 
