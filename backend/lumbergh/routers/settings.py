@@ -4,6 +4,7 @@ Stores settings in ~/.config/lumbergh/settings.json
 """
 
 import os
+import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -93,8 +94,29 @@ def deep_merge(base: dict, override: dict) -> dict:
     return result
 
 
+def _ensure_installation_id() -> str:
+    """Ensure an installation ID exists in settings, generating one if missing.
+
+    Handles both fresh installs and upgrades from versions without an ID.
+    """
+    all_settings = settings_table.all()
+    if all_settings and all_settings[0].get("installationId"):
+        return all_settings[0]["installationId"]
+
+    installation_id = str(uuid.uuid4())
+    if all_settings:
+        # Upgrade path: patch existing settings
+
+        settings_table.update({"installationId": installation_id}, doc_ids=[all_settings[0].doc_id])
+    else:
+        # Fresh install: insert with just the ID (defaults merge later)
+        settings_table.insert({"installationId": installation_id})
+    return installation_id
+
+
 def get_settings() -> dict:
     """Get current settings, deep merged with defaults."""
+    _ensure_installation_id()
     all_settings = settings_table.all()
     stored = all_settings[0] if all_settings else {}
     return deep_merge(_get_defaults(), stored)
