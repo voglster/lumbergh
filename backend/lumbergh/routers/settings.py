@@ -32,6 +32,7 @@ def _get_defaults() -> dict:
         "repoSearchDir": repo_search_dir,
         "gitGraphCommits": 100,
         "defaultAgent": DEFAULT_PROVIDER,
+        "cloudUrl": "https://lumbergh.jc.turbo.inc",
         "ai": {
             "provider": "ollama",
             "providers": {
@@ -79,6 +80,9 @@ class SettingsUpdate(BaseModel):
     defaultAgent: str | None = None  # noqa: N815 - API field name
     password: str | None = None
     telemetryConsent: bool | None = None  # noqa: N815 - API field name
+    cloudUrl: str | None = None  # noqa: N815 - API field name
+    cloudToken: str | None = None  # noqa: N815 - API field name
+    cloudUsername: str | None = None  # noqa: N815 - API field name
 
 
 def deep_merge(base: dict, override: dict) -> dict:
@@ -148,8 +152,8 @@ async def read_settings():
     config_pw = settings.get("password", "").strip()
     password_source = "env" if env_pw else ("config" if config_pw else None)
 
-    # Strip password from response
-    response = {k: v for k, v in settings.items() if k != "password"}
+    # Strip secrets from response
+    response = {k: v for k, v in settings.items() if k not in ("password", "cloudToken")}
     return {
         **response,
         "isFirstRun": is_first_run,
@@ -168,6 +172,17 @@ def _validate_repo_search_dir(raw: str) -> str:
     if not path.is_dir():
         raise HTTPException(status_code=400, detail=f"Path is not a directory: {raw}")
     return str(path)
+
+
+_OPTIONAL_FIELDS = ("password", "telemetryConsent", "cloudUrl", "cloudToken", "cloudUsername")
+
+
+def _copy_optional_fields(updates: SettingsUpdate, update_data: dict[str, object]) -> None:
+    """Copy non-None optional fields, stripping strings."""
+    for field in _OPTIONAL_FIELDS:
+        val = getattr(updates, field)
+        if val is not None:
+            update_data[field] = val.strip() if isinstance(val, str) else val
 
 
 def _validate_updates(updates: SettingsUpdate) -> dict[str, object]:
@@ -193,11 +208,7 @@ def _validate_updates(updates: SettingsUpdate) -> dict[str, object]:
             )
         update_data["defaultAgent"] = updates.defaultAgent
 
-    if updates.password is not None:
-        update_data["password"] = updates.password.strip()
-
-    if updates.telemetryConsent is not None:
-        update_data["telemetryConsent"] = updates.telemetryConsent
+    _copy_optional_fields(updates, update_data)
 
     if updates.ai is not None:
         update_data["ai"] = _serialize_ai_update(updates.ai)

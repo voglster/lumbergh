@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { X } from 'lucide-react'
+import CloudSettings from './CloudSettings'
+import SecuritySettings from './SecuritySettings'
 import { getApiBase } from '../config'
 
 interface Props {
@@ -32,7 +34,7 @@ interface OllamaModel {
   parameter_size: string
 }
 
-type TabId = 'general' | 'ai' | 'security'
+type TabId = 'general' | 'ai' | 'cloud' | 'security'
 
 // Provider configuration - data-driven approach
 interface ProviderDef {
@@ -172,7 +174,6 @@ export default function SettingsModal({ onClose }: Props) {
         setPasswordSet(data.passwordSet ?? false)
         setPasswordSource(data.passwordSource ?? null)
         setTelemetryConsent(data.telemetryConsent ?? false)
-
         if (data.ai) {
           setAiProvider(data.ai.provider || 'ollama')
           if (data.ai.providers) {
@@ -332,6 +333,7 @@ export default function SettingsModal({ onClose }: Props) {
   const tabs: { id: TabId; label: string }[] = [
     { id: 'general', label: 'General' },
     { id: 'ai', label: 'AI' },
+    { id: 'cloud', label: 'Cloud' },
     { id: 'security', label: 'Security' },
   ]
 
@@ -467,54 +469,21 @@ export default function SettingsModal({ onClose }: Props) {
               </div>
             )}
 
+            {/* Cloud Tab */}
+            {activeTab === 'cloud' && <CloudSettings />}
+
             {/* Security Tab */}
             {activeTab === 'security' && (
-              <div className="space-y-4">
-                {restartNeeded ? (
-                  <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded text-sm text-yellow-300">
-                    Password updated. Restart Lumbergh for the change to take effect.
-                  </div>
-                ) : passwordSource === 'env' ? (
-                  <div className="p-3 bg-bg-elevated/50 rounded text-sm text-text-muted">
-                    Password is set via the{' '}
-                    <code className="text-text-secondary">LUMBERGH_PASSWORD</code> environment
-                    variable. To manage it here instead, remove the env var and restart.
-                  </div>
-                ) : (
-                  <>
-                    <div>
-                      <label className="block text-sm text-text-tertiary mb-1">Password</label>
-                      <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => {
-                          setPassword(e.target.value)
-                          setPasswordChanged(true)
-                        }}
-                        placeholder={passwordSet ? '(unchanged)' : 'Set a password to enable auth'}
-                        className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-sm"
-                      />
-                      <p className="text-xs text-text-muted mt-1">
-                        {passwordSet
-                          ? 'Enter a new password to change it, or clear it to disable auth.'
-                          : 'Anyone with network access can currently view and control sessions.'}
-                      </p>
-                    </div>
-                    {passwordSet && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPassword('')
-                          setPasswordChanged(true)
-                        }}
-                        className="text-sm text-red-400 hover:text-red-300 transition-colors"
-                      >
-                        Remove password
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
+              <SecuritySettings
+                password={password}
+                onPasswordChange={(value) => {
+                  setPassword(value)
+                  setPasswordChanged(true)
+                }}
+                passwordSet={passwordSet}
+                passwordSource={passwordSource}
+                restartNeeded={restartNeeded}
+              />
             )}
 
             {error && <div className="text-red-400 text-sm">{error}</div>}

@@ -31,7 +31,7 @@ from lumbergh.git_utils import (
     stage_all_and_commit,
 )
 from lumbergh.models import CommitInput, RevertFileInput, SendInput, TmuxCommand
-from lumbergh.routers import ai, notes, sessions, settings, shared, tmux
+from lumbergh.routers import ai, cloud, notes, sessions, settings, shared, tmux
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +53,11 @@ async def lifespan(app: FastAPI):  # noqa: ARG001 - required by FastAPI
     # Start background services
     idle_monitor.start()
     diff_cache.start()
+
+    # Fire startup telemetry (non-blocking)
+    from lumbergh.telemetry import send_startup
+
+    _telemetry_task = asyncio.create_task(send_startup())  # noqa: RUF006
 
     yield
 
@@ -101,6 +106,7 @@ app.include_router(notes.router)
 app.include_router(sessions.router)
 app.include_router(sessions.directories_router)
 app.include_router(settings.router)
+app.include_router(cloud.router)
 app.include_router(shared.router)
 app.include_router(tmux.router)
 
