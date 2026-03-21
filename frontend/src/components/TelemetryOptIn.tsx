@@ -28,7 +28,16 @@ export default function TelemetryOptIn({ onClose }: Props) {
         <h2 className="text-lg font-semibold text-text-primary">Help Improve Lumbergh</h2>
         <p className="text-sm text-text-secondary">
           Send anonymous usage statistics to help us improve Lumbergh. No personal data, session
-          content, or code is ever collected. You can change this at any time in Settings.
+          content, or code is ever collected.{' '}
+          <a
+            href="https://lumbergh.jc.turbo.inc/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300"
+          >
+            See what we collect
+          </a>
+          . You can change this at any time in Settings.
         </p>
         <div className="flex justify-end gap-3 pt-2">
           <button

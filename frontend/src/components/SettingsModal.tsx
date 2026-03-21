@@ -412,7 +412,15 @@ export default function SettingsModal({ onClose }: Props) {
                       Anonymous Usage Statistics
                     </label>
                     <p className="text-xs text-text-muted mt-0.5">
-                      Help improve Lumbergh by sending anonymous usage data
+                      Help improve Lumbergh by sending anonymous usage data.{' '}
+                      <a
+                        href="https://lumbergh.jc.turbo.inc/privacy"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300"
+                      >
+                        What we collect
+                      </a>
                     </p>
                   </div>
                   <button

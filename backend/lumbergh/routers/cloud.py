@@ -3,7 +3,6 @@ Cloud connection router — device code flow for linking to lumbergh-cloud.
 """
 
 import logging
-import webbrowser
 
 import httpx
 from fastapi import APIRouter, HTTPException
@@ -34,15 +33,10 @@ async def connect():
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Could not reach cloud: {e}")
 
-    # Open browser to verification URL
-    verification_url = data.get("verification_url", "")
-    if verification_url:
-        webbrowser.open(verification_url)
-
     return {
         "device_code": data["device_code"],
         "user_code": data["user_code"],
-        "verification_url": verification_url,
+        "verification_url": data.get("verification_url", ""),
     }
 
 

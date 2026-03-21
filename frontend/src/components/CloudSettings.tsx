@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react'
 import { getApiBase } from '../config'
 
+const DEFAULT_CLOUD_URL = 'https://lumbergh.jc.turbo.inc'
+
 export default function CloudSettings() {
-  const [cloudUrl, setCloudUrl] = useState('https://lumbergh.jc.turbo.inc')
+  const [cloudUrl, setCloudUrl] = useState(DEFAULT_CLOUD_URL)
   const [cloudUsername, setCloudUsername] = useState<string | null>(null)
   const [cloudConnecting, setCloudConnecting] = useState(false)
   const [cloudUserCode, setCloudUserCode] = useState<string | null>(null)
+  const [verificationUrl, setVerificationUrl] = useState<string | null>(null)
   const [cloudError, setCloudError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -49,6 +53,7 @@ export default function CloudSettings() {
       }
       const data = await res.json()
       setCloudUserCode(data.user_code)
+      setVerificationUrl(data.verification_url)
 
       const poll = async () => {
         try {
@@ -97,23 +102,17 @@ export default function CloudSettings() {
     return <div className="text-text-muted text-sm py-2">Loading...</div>
   }
 
+  const handleResetUrl = async () => {
+    setCloudUrl(DEFAULT_CLOUD_URL)
+    await fetch(`${getApiBase()}/settings`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cloudUrl: DEFAULT_CLOUD_URL }),
+    })
+  }
+
   return (
     <div className="space-y-4">
-      <div>
-        <label className="block text-sm text-text-tertiary mb-1">Cloud URL</label>
-        <input
-          type="text"
-          value={cloudUrl}
-          onChange={(e) => saveCloudUrl(e.target.value)}
-          onBlur={handleBlurSave}
-          placeholder="https://lumbergh.jc.turbo.inc"
-          className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-sm"
-        />
-        <p className="text-xs text-text-muted mt-1">
-          Lumbergh Cloud instance for telemetry and account linking
-        </p>
-      </div>
-
       {cloudUsername ? (
         <div className="p-3 bg-bg-elevated/50 rounded space-y-3">
           <div className="flex items-center justify-between">
@@ -141,7 +140,15 @@ export default function CloudSettings() {
             </p>
           </div>
           <p className="text-xs text-text-muted">
-            A browser tab has been opened. Sign in and enter this code.
+            <a
+              href={verificationUrl || '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:text-blue-300"
+            >
+              Open this link
+            </a>{' '}
+            to sign in and authorize this device.
           </p>
         </div>
       ) : (
@@ -156,6 +163,37 @@ export default function CloudSettings() {
       )}
 
       {cloudError && <div className="text-red-400 text-sm">{cloudError}</div>}
+
+      <button
+        type="button"
+        onClick={() => setShowAdvanced(!showAdvanced)}
+        className="text-xs text-text-muted hover:text-text-tertiary transition-colors"
+      >
+        {showAdvanced ? 'Hide advanced' : 'Advanced'}
+      </button>
+
+      {showAdvanced && (
+        <div className="space-y-2">
+          <label className="block text-sm text-text-tertiary">Cloud URL</label>
+          <input
+            type="text"
+            value={cloudUrl}
+            onChange={(e) => saveCloudUrl(e.target.value)}
+            onBlur={handleBlurSave}
+            placeholder={DEFAULT_CLOUD_URL}
+            className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-sm"
+          />
+          {cloudUrl !== DEFAULT_CLOUD_URL && (
+            <button
+              type="button"
+              onClick={handleResetUrl}
+              className="text-xs text-text-muted hover:text-text-tertiary transition-colors"
+            >
+              Reset to default
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

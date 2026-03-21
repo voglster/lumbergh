@@ -4,7 +4,9 @@ Startup telemetry — fire-and-forget POST to lumbergh-cloud.
 
 import logging
 import platform
+import subprocess
 import time
+from pathlib import Path
 
 import httpx
 
@@ -15,6 +17,39 @@ logger = logging.getLogger(__name__)
 
 _last_startup_ts: float = 0.0
 _THROTTLE_SECONDS = 24 * 3600  # 24 hours
+_version_cache: str | None = None
+
+
+def _get_version() -> str:
+    """Get version string. In dev mode, use git describe for full detail."""
+    global _version_cache
+    if _version_cache is not None:
+        return _version_cache
+
+    if not __version__.startswith("0.0.0"):
+        _version_cache = __version__
+        return _version_cache
+
+    # Dev mode — try git describe for base tag + commit count
+    try:
+        repo_root = Path(__file__).parent.parent.parent
+        result = subprocess.run(
+            ["git", "describe", "--tags", "--abbrev=8"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            desc = result.stdout.strip().lstrip("v")
+            if desc:
+                _version_cache = desc
+                return _version_cache
+    except Exception:
+        logger.debug("git describe failed for version", exc_info=True)
+
+    _version_cache = __version__
+    return _version_cache
 
 
 async def send_startup() -> None:
@@ -40,7 +75,7 @@ async def send_startup() -> None:
             return
 
         properties = {
-            "version": __version__,
+            "version": _get_version(),
             "os": platform.system(),
             "arch": platform.machine(),
             "default_agent": settings.get("defaultAgent", ""),
