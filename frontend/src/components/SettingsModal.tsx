@@ -23,6 +23,7 @@ interface Settings {
   ai: AISettings
   passwordSet?: boolean
   passwordSource?: string | null
+  telemetryConsent?: boolean | null
 }
 
 interface OllamaModel {
@@ -148,6 +149,7 @@ export default function SettingsModal({ onClose }: Props) {
     })
     return initial
   })
+  const [telemetryConsent, setTelemetryConsent] = useState(false)
   const [password, setPassword] = useState('')
   const [passwordSet, setPasswordSet] = useState(false)
   const [passwordSource, setPasswordSource] = useState<string | null>(null)
@@ -169,6 +171,7 @@ export default function SettingsModal({ onClose }: Props) {
         if (data.gitGraphCommits) setGitGraphCommits(String(data.gitGraphCommits))
         setPasswordSet(data.passwordSet ?? false)
         setPasswordSource(data.passwordSource ?? null)
+        setTelemetryConsent(data.telemetryConsent ?? false)
 
         if (data.ai) {
           setAiProvider(data.ai.provider || 'ollama')
@@ -233,6 +236,7 @@ export default function SettingsModal({ onClose }: Props) {
       }
       const parsedCommits = parseInt(gitGraphCommits) || 100
       payload.gitGraphCommits = Math.min(1000, Math.max(10, parsedCommits))
+      payload.telemetryConsent = telemetryConsent
       payload.ai = {
         provider: aiProvider,
         providers: providerConfigs,
@@ -399,6 +403,31 @@ export default function SettingsModal({ onClose }: Props) {
                   <p className="text-xs text-text-muted mt-1">
                     Number of commits to show in the git graph (10-1000)
                   </p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-sm text-text-tertiary">
+                      Anonymous Usage Statistics
+                    </label>
+                    <p className="text-xs text-text-muted mt-0.5">
+                      Help improve Lumbergh by sending anonymous usage data
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={telemetryConsent}
+                    onClick={() => setTelemetryConsent(!telemetryConsent)}
+                    className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
+                      telemetryConsent ? 'bg-blue-600' : 'bg-control-bg-hover'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform mt-0.5 ${
+                        telemetryConsent ? 'translate-x-5.5' : 'translate-x-0.5'
+                      }`}
+                    />
+                  </button>
                 </div>
               </div>
             )}

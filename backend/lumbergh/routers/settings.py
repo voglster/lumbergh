@@ -78,6 +78,7 @@ class SettingsUpdate(BaseModel):
     ai: AISettings | None = None
     defaultAgent: str | None = None  # noqa: N815 - API field name
     password: str | None = None
+    telemetryConsent: bool | None = None  # noqa: N815 - API field name
 
 
 def deep_merge(base: dict, override: dict) -> dict:
@@ -159,23 +160,22 @@ async def read_settings():
     }
 
 
+def _validate_repo_search_dir(raw: str) -> str:
+    """Validate and resolve a repository search directory path."""
+    path = Path(raw).expanduser().resolve()
+    if not path.exists():
+        raise HTTPException(status_code=400, detail=f"Directory does not exist: {raw}")
+    if not path.is_dir():
+        raise HTTPException(status_code=400, detail=f"Path is not a directory: {raw}")
+    return str(path)
+
+
 def _validate_updates(updates: SettingsUpdate) -> dict[str, object]:
     """Validate and extract update data from a settings update request."""
     update_data: dict[str, object] = {}
 
     if updates.repoSearchDir is not None:
-        path = Path(updates.repoSearchDir).expanduser().resolve()
-        if not path.exists():
-            raise HTTPException(
-                status_code=400,
-                detail=f"Directory does not exist: {updates.repoSearchDir}",
-            )
-        if not path.is_dir():
-            raise HTTPException(
-                status_code=400,
-                detail=f"Path is not a directory: {updates.repoSearchDir}",
-            )
-        update_data["repoSearchDir"] = str(path)
+        update_data["repoSearchDir"] = _validate_repo_search_dir(updates.repoSearchDir)
 
     if updates.gitGraphCommits is not None:
         if updates.gitGraphCommits < 10 or updates.gitGraphCommits > 1000:
@@ -195,6 +195,9 @@ def _validate_updates(updates: SettingsUpdate) -> dict[str, object]:
 
     if updates.password is not None:
         update_data["password"] = updates.password.strip()
+
+    if updates.telemetryConsent is not None:
+        update_data["telemetryConsent"] = updates.telemetryConsent
 
     if updates.ai is not None:
         update_data["ai"] = _serialize_ai_update(updates.ai)

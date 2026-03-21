@@ -10,6 +10,7 @@ import TodoList from '../components/TodoList'
 import Scratchpad from '../components/Scratchpad'
 import PromptTemplates from '../components/PromptTemplates'
 import SharedFiles from '../components/SharedFiles'
+import TelemetryOptIn from '../components/TelemetryOptIn'
 import GitTab from '../components/graph/GitTab'
 import { useIsDesktop } from '../hooks/useMediaQuery'
 
@@ -64,6 +65,7 @@ export default function SessionDetail() {
   const [gitTabResetTrigger, setGitTabResetTrigger] = useState(0)
   const [mobileTab, setMobileTab] = useState<MobileTab>('terminal')
   const [diffData, setDiffData] = useState<DiffData | null>(null)
+  const [showTelemetryOptIn, setShowTelemetryOptIn] = useState(false)
   const focusFnRef = useRef<(() => void) | null>(null)
 
   // Touch session to track last used time + check existence
@@ -76,6 +78,16 @@ export default function SessionDetail() {
         .catch(() => {})
     }
   }, [name])
+
+  // Check if telemetry consent has been given
+  useEffect(() => {
+    fetch(`${getApiBase()}/settings`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.telemetryConsent == null) setShowTelemetryOptIn(true)
+      })
+      .catch(() => {})
+  }, [])
 
   // Auto-redirect countdown when session not found
   useEffect(() => {
@@ -445,6 +457,8 @@ export default function SessionDetail() {
 
   return (
     <div className="h-full flex flex-col bg-bg-sunken text-text-primary">
+      {showTelemetryOptIn && <TelemetryOptIn onClose={() => setShowTelemetryOptIn(false)} />}
+
       {/* Conditionally render only desktop OR mobile layout (not both) */}
       {isDesktop ? (
         <main className="flex-1 min-h-0">
