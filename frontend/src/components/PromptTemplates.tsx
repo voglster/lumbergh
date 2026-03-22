@@ -814,16 +814,60 @@ export default function PromptTemplates({ sessionName, onFocusTerminal }: Prompt
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [dragScope, setDragScope] = useState<'project' | 'global' | null>(null)
 
-  // Cloud / sharing state
+  // Cloud / sharing state — persist community cache and UI state across navigations
   const [cloudConnected, setCloudConnected] = useState(false)
   const [sharingId, setSharingId] = useState<string | null>(null)
-  const [communityPrompts, setCommunityPrompts] = useState<CommunityPrompt[]>([])
+  const [communityPrompts, setCommunityPromptsRaw] = useState<CommunityPrompt[]>(() => {
+    try {
+      const cached = sessionStorage.getItem('lb:community-prompts')
+      return cached ? JSON.parse(cached) : []
+    } catch {
+      return []
+    }
+  })
+  const setCommunityPrompts = useCallback((prompts: CommunityPrompt[]) => {
+    setCommunityPromptsRaw(prompts)
+    try {
+      sessionStorage.setItem('lb:community-prompts', JSON.stringify(prompts))
+    } catch {
+      // quota exceeded — ignore
+    }
+  }, [])
   const [communityLoading, setCommunityLoading] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchQuery, setSearchQuery] = useState(
+    () => sessionStorage.getItem('lb:community-search') || ''
+  )
   const [importCode, setImportCode] = useState('')
   const [importPreview, setImportPreview] = useState<CommunityPrompt | null>(null)
   const [importLoading, setImportLoading] = useState(false)
-  const [availableUpdates, setAvailableUpdates] = useState<Record<string, CommunityPrompt>>({})
+  const [availableUpdates, setAvailableUpdatesRaw] = useState<Record<string, CommunityPrompt>>(
+    () => {
+      try {
+        const cached = sessionStorage.getItem('lb:available-updates')
+        return cached ? JSON.parse(cached) : {}
+      } catch {
+        return {}
+      }
+    }
+  )
+  const setAvailableUpdates = useCallback(
+    (
+      updater:
+        | Record<string, CommunityPrompt>
+        | ((prev: Record<string, CommunityPrompt>) => Record<string, CommunityPrompt>)
+    ) => {
+      setAvailableUpdatesRaw((prev) => {
+        const next = typeof updater === 'function' ? updater(prev) : updater
+        try {
+          sessionStorage.setItem('lb:available-updates', JSON.stringify(next))
+        } catch {
+          // quota exceeded — ignore
+        }
+        return next
+      })
+    },
+    []
+  )
   const [updatePreview, setUpdatePreview] = useState<{
     template: PromptTemplate
     latest: CommunityPrompt
@@ -834,8 +878,14 @@ export default function PromptTemplates({ sessionName, onFocusTerminal }: Prompt
   } | null>(null)
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>(null)
 
-  // Tab state
-  const [activeTab, setActiveTab] = useState<'my' | 'community'>('my')
+  // Tab state — persist across navigations
+  const [activeTab, setActiveTabRaw] = useState<'my' | 'community'>(
+    () => (sessionStorage.getItem('lb:prompt-tab') as 'my' | 'community') || 'my'
+  )
+  const setActiveTab = useCallback((tab: 'my' | 'community') => {
+    setActiveTabRaw(tab)
+    sessionStorage.setItem('lb:prompt-tab', tab)
+  }, [])
 
   // Check cloud connection on mount
   useEffect(() => {
@@ -882,15 +932,16 @@ export default function PromptTemplates({ sessionName, onFocusTerminal }: Prompt
       }
       setCommunityLoading(false)
     },
-    [cloudConnected]
+    [cloudConnected, setCommunityPrompts]
   )
 
   useEffect(() => {
     fetchCommunity()
   }, [fetchCommunity])
 
-  // Debounced search
+  // Debounced search — also persist query to sessionStorage
   useEffect(() => {
+    sessionStorage.setItem('lb:community-search', searchQuery)
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
     searchDebounceRef.current = setTimeout(() => {
       fetchCommunity(searchQuery)

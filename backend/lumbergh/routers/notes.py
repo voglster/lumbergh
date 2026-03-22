@@ -36,9 +36,7 @@ async def get_global_prompts():
 async def save_global_prompts(template_list: PromptTemplateList):
     """Save global prompt templates (for reorder/bulk update)."""
     try:
-        templates = [
-            {"id": t.id, "name": t.name, "prompt": t.prompt} for t in template_list.templates
-        ]
+        templates = [t.model_dump(exclude_none=True) for t in template_list.templates]
         save_single_document_items(global_prompts_table, templates)
         return {"templates": templates}
     except Exception as e:

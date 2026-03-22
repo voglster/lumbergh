@@ -1328,7 +1328,7 @@ async def save_session_prompts(name: str, template_list: PromptTemplateList):
     workdir = get_session_workdir(name)
     db = get_project_db(workdir)
     prompts_table = db.table("prompts")
-    templates = [{"id": t.id, "name": t.name, "prompt": t.prompt} for t in template_list.templates]
+    templates = [t.model_dump(exclude_none=True) for t in template_list.templates]
     save_single_document_items(prompts_table, templates)
     return {"templates": templates}
 
@@ -1358,11 +1358,8 @@ async def copy_session_prompt_to_global(name: str, template_id: str):
         raise HTTPException(status_code=404, detail="Template not found")
 
     global_templates = get_single_document_items(global_prompts_table)
-    new_template = {
-        "id": str(uuid.uuid4()),
-        "name": template_to_copy["name"],
-        "prompt": template_to_copy["prompt"],
-    }
+    new_template = {k: v for k, v in template_to_copy.items() if k != "id" and v is not None}
+    new_template["id"] = str(uuid.uuid4())
     global_templates.append(new_template)
 
     save_single_document_items(global_prompts_table, global_templates)
@@ -1394,11 +1391,8 @@ async def copy_global_prompt_to_session(name: str, template_id: str):
         raise HTTPException(status_code=404, detail="Template not found")
 
     project_templates = get_single_document_items(prompts_table)
-    new_template = {
-        "id": str(uuid.uuid4()),
-        "name": template_to_copy["name"],
-        "prompt": template_to_copy["prompt"],
-    }
+    new_template = {k: v for k, v in template_to_copy.items() if k != "id" and v is not None}
+    new_template["id"] = str(uuid.uuid4())
     project_templates.append(new_template)
 
     save_single_document_items(prompts_table, project_templates)

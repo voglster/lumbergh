@@ -100,6 +100,9 @@ class PromptTemplate(BaseModel):
     id: str
     name: str  # Short name for button
     prompt: str  # Full prompt text
+    source_code: str | None = None  # Cloud share code (if linked)
+    source_version: int | None = None  # Version from cloud
+    auto_update: bool | None = None  # Auto-update from cloud
 
 
 class PromptTemplateList(BaseModel):
