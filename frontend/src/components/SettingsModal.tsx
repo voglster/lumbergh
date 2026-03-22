@@ -26,12 +26,17 @@ interface Settings {
   passwordSet?: boolean
   passwordSource?: string | null
   telemetryConsent?: boolean | null
+  cloudUsername?: string
 }
 
 interface OllamaModel {
   name: string
   size: number
   parameter_size: string
+}
+
+interface CloudModel {
+  name: string
 }
 
 type TabId = 'general' | 'ai' | 'cloud' | 'security'
@@ -133,6 +138,12 @@ const PROVIDERS: ProviderDef[] = [
       { key: 'model', label: 'Model', type: 'text', placeholder: 'model-name' },
     ],
   },
+  {
+    id: 'lumbergh_cloud',
+    label: 'Lumbergh Cloud (Free)',
+    defaultModel: '',
+    fields: [{ key: 'model', label: 'Model', type: 'text', placeholder: 'llama3.2' }],
+  },
 ]
 
 export default function SettingsModal({ onClose }: Props) {
@@ -161,7 +172,9 @@ export default function SettingsModal({ onClose }: Props) {
     speaker: string
     isMilton: boolean
   } | null>(null)
+  const [cloudUsername, setCloudUsername] = useState<string | null>(null)
   const [ollamaModels, setOllamaModels] = useState<OllamaModel[]>([])
+  const [cloudModels, setCloudModels] = useState<CloudModel[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -179,6 +192,7 @@ export default function SettingsModal({ onClose }: Props) {
         setPasswordSet(data.passwordSet ?? false)
         setPasswordSource(data.passwordSource ?? null)
         setTelemetryConsent(data.telemetryConsent ?? false)
+        setCloudUsername(data.cloudUsername ?? null)
         if (data.ai) {
           setAiProvider(data.ai.provider || 'ollama')
           if (data.ai.providers) {
@@ -217,11 +231,24 @@ export default function SettingsModal({ onClose }: Props) {
     }
   }, [])
 
+  const fetchCloudModels = useCallback(async () => {
+    try {
+      const res = await fetch(`${getApiBase()}/ai/cloud/models`)
+      if (res.ok) {
+        const models = await res.json()
+        setCloudModels(models)
+      }
+    } catch {
+      // Cloud might not be connected, that's fine
+    }
+  }, [])
+
   useEffect(() => {
     if (activeTab === 'ai') {
       fetchOllamaModels()
+      if (cloudUsername) fetchCloudModels()
     }
-  }, [activeTab, fetchOllamaModels])
+  }, [activeTab, fetchOllamaModels, fetchCloudModels, cloudUsername])
 
   const updateProviderConfig = (providerId: string, key: string, value: string) => {
     setProviderConfigs((prev) => ({
@@ -283,6 +310,27 @@ export default function SettingsModal({ onClose }: Props) {
   const renderField = (providerId: string, field: FieldDef) => {
     const config = providerConfigs[providerId]
     const value = config?.[field.key] || ''
+
+    // Special handling for Lumbergh Cloud model field with dynamic model list
+    if (providerId === 'lumbergh_cloud' && field.key === 'model') {
+      if (cloudModels.length > 0) {
+        return (
+          <select
+            value={value}
+            onChange={(e) => updateProviderConfig(providerId, field.key, e.target.value)}
+            className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 text-sm"
+          >
+            <option value="">Select a model</option>
+            {cloudModels.map((model) => (
+              <option key={model.name} value={model.name}>
+                {model.name}
+              </option>
+            ))}
+          </select>
+        )
+      }
+      // Fall through to text input if no models
+    }
 
     // Special handling for Ollama model field with dynamic model list
     if (providerId === 'ollama' && field.key === 'model') {
@@ -553,11 +601,13 @@ export default function SettingsModal({ onClose }: Props) {
                     onChange={(e) => setAiProvider(e.target.value)}
                     className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 text-sm"
                   >
-                    {PROVIDERS.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.label}
-                      </option>
-                    ))}
+                    {PROVIDERS.filter((p) => p.id !== 'lumbergh_cloud' || cloudUsername).map(
+                      (p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.label}
+                        </option>
+                      )
+                    )}
                   </select>
                 </div>
 

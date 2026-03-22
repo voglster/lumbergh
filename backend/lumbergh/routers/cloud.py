@@ -8,7 +8,7 @@ import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from lumbergh.routers.settings import deep_merge, get_settings, settings_table
+from lumbergh.routers.settings import _is_ai_configured, deep_merge, get_settings, settings_table
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +67,10 @@ async def poll(body: PollRequest):
                 "cloudUsername": data["username"],
             },
         )
+        # Auto-select Lumbergh Cloud AI if no provider is configured yet
+        if not _is_ai_configured(merged):
+            merged["ai"] = {**merged.get("ai", {}), "provider": "lumbergh_cloud"}
+
         settings_table.truncate()
         settings_table.insert(merged)
 

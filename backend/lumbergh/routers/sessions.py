@@ -1529,7 +1529,7 @@ async def session_generate_commit_message(name: str):
         # Get AI provider and generate
         settings = get_settings()
         ai_settings = settings.get("ai", {})
-        provider = get_provider(ai_settings)
+        provider = get_provider(ai_settings, settings)
 
         message = await provider.complete(prompt)
         message = parse_commit_response(message)
@@ -1555,7 +1555,7 @@ async def session_status_summary(name: str, body: StatusSummaryInput):
         # Get AI provider and generate summary
         settings = get_settings()
         ai_settings = settings.get("ai", {})
-        provider = get_provider(ai_settings)
+        provider = get_provider(ai_settings, settings)
 
         prompt = STATUS_SUMMARY_PROMPT.format(text=body.text)
         summary = await provider.complete(prompt)

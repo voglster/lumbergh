@@ -164,6 +164,56 @@ class GoogleAIProvider(AIProvider):
         return bool(self.api_key)
 
 
+class LumberghCloudProvider(AIProvider):
+    """Lumbergh Cloud AI provider — proxies through lumbergh-cloud to LiteLLM."""
+
+    def __init__(self, cloud_url: str, cloud_token: str, model: str = "llama3.2"):
+        self.cloud_url = cloud_url.rstrip("/")
+        self.cloud_token = cloud_token
+        self.model = model
+
+    def _headers(self) -> dict[str, str]:
+        return {
+            "Authorization": f"Bearer {self.cloud_token}",
+            "Content-Type": "application/json",
+        }
+
+    async def complete(self, prompt: str) -> str:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            response = await client.post(
+                f"{self.cloud_url}/api/ai/v1/chat/completions",
+                headers=self._headers(),
+                json={
+                    "model": self.model,
+                    "messages": [{"role": "user", "content": prompt}],
+                },
+            )
+            response.raise_for_status()
+            return response.json()["choices"][0]["message"]["content"]
+
+    async def health_check(self) -> bool:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(
+                    f"{self.cloud_url}/api/ai/v1/models",
+                    headers=self._headers(),
+                )
+                return response.status_code == 200
+        except Exception:
+            return False
+
+    async def list_models(self) -> list[dict[str, Any]]:
+        """List available models from Lumbergh Cloud."""
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{self.cloud_url}/api/ai/v1/models",
+                headers=self._headers(),
+            )
+            response.raise_for_status()
+            data = response.json()
+            return [{"name": m["id"]} for m in data.get("data", [])]
+
+
 class OpenAICompatibleProvider(AIProvider):
     """OpenAI-compatible API provider (e.g., local vLLM, text-generation-inference)."""
 
@@ -201,14 +251,15 @@ class OpenAICompatibleProvider(AIProvider):
             return False
 
 
-def get_provider(ai_settings: dict) -> AIProvider:
+def get_provider(ai_settings: dict, settings: dict | None = None) -> AIProvider:
     """
     Factory function to get the appropriate AI provider based on settings.
 
     Args:
         ai_settings: The 'ai' section of the settings dict, containing:
-            - provider: str (ollama, openai, anthropic, openai_compatible)
+            - provider: str (ollama, openai, anthropic, openai_compatible, lumbergh_cloud)
             - providers: dict with provider-specific settings
+        settings: The full settings dict (needed for cloudUrl/cloudToken).
 
     Returns:
         An AIProvider instance
@@ -242,5 +293,12 @@ def get_provider(ai_settings: dict) -> AIProvider:
             base_url=config.get("baseUrl", ""),
             api_key=config.get("apiKey", ""),
             model=config.get("model", "default"),
+        )
+    if provider_name == "lumbergh_cloud":
+        s = settings or {}
+        return LumberghCloudProvider(
+            cloud_url=s.get("cloudUrl") or "https://lumbergh.jc.turbo.inc",
+            cloud_token=s.get("cloudToken", ""),
+            model=config.get("model") or "llama3.2",
         )
     raise ValueError(f"Unknown AI provider: {provider_name}")

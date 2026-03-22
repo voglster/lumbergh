@@ -57,6 +57,9 @@ def _get_defaults() -> dict:
                     "apiKey": "",
                     "model": "",
                 },
+                "lumbergh_cloud": {
+                    "model": "",
+                },
             },
         },
     }
@@ -140,6 +143,8 @@ def _is_ai_configured(settings: dict) -> bool:
         return bool(config.get("baseUrl"))
     if provider == "openai_compatible":
         return bool(config.get("baseUrl")) and bool(config.get("model"))
+    if provider == "lumbergh_cloud":
+        return bool(settings.get("cloudToken"))
     # Cloud providers need an API key
     return bool(config.get("apiKey"))
 

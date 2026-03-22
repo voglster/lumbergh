@@ -22,7 +22,7 @@ from lumbergh.ai.prompts import (
     save_global_ai_prompts,
     save_project_ai_prompts,
 )
-from lumbergh.ai.providers import OllamaProvider, get_provider
+from lumbergh.ai.providers import LumberghCloudProvider, OllamaProvider, get_provider
 from lumbergh.routers.settings import get_settings
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
@@ -79,7 +79,7 @@ async def get_ai_status() -> ProviderStatus:
     providers_config = ai_settings.get("providers", {})
     config = providers_config.get(provider_name, {})
 
-    provider = get_provider(ai_settings)
+    provider = get_provider(ai_settings, settings)
     available = await provider.health_check()
 
     result = ProviderStatus(
@@ -91,6 +91,17 @@ async def get_ai_status() -> ProviderStatus:
 
     # For Ollama, also fetch available models
     if provider_name == "ollama" and available and isinstance(provider, OllamaProvider):
+        try:
+            result.models = await provider.list_models()
+        except Exception:  # noqa: S110 - model listing is optional
+            pass
+
+    # For Lumbergh Cloud, also fetch available models
+    if (
+        provider_name == "lumbergh_cloud"
+        and available
+        and isinstance(provider, LumberghCloudProvider)
+    ):
         try:
             result.models = await provider.list_models()
         except Exception:  # noqa: S110 - model listing is optional
@@ -114,6 +125,23 @@ async def list_ollama_models() -> list[dict[str, Any]]:
         return await provider.list_models()
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Failed to connect to Ollama: {e}")
+
+
+@router.get("/cloud/models")
+async def list_cloud_models() -> list[dict[str, Any]]:
+    """List available models from Lumbergh Cloud."""
+    settings = get_settings()
+    cloud_url = settings.get("cloudUrl", "")
+    cloud_token = settings.get("cloudToken", "")
+
+    if not cloud_url or not cloud_token:
+        raise HTTPException(status_code=400, detail="Not connected to Lumbergh Cloud")
+
+    provider = LumberghCloudProvider(cloud_url=cloud_url, cloud_token=cloud_token)
+    try:
+        return await provider.list_models()
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Failed to fetch cloud models: {e}")
 
 
 @router.post("/generate/commit-message")
@@ -151,7 +179,7 @@ async def generate_commit_message(
 
     # Get the AI provider and generate
     try:
-        provider = get_provider(ai_settings)
+        provider = get_provider(ai_settings, settings)
         message = await provider.complete(prompt)
         message = parse_commit_response(message)
         return GenerateCommitMessageResponse(message=message)
@@ -175,7 +203,7 @@ async def generate_prompt_name(
     )
 
     try:
-        provider = get_provider(ai_settings)
+        provider = get_provider(ai_settings, settings)
         name = await provider.complete(prompt)
         # Sanitize: strip, lowercase, replace spaces/hyphens with _, remove non-alphanumeric
         name = name.strip().strip("`").lower()

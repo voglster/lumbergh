@@ -148,12 +148,16 @@ function AIGenerateButton({
   onGenerate: () => void
 }) {
   const [aiConfigured, setAiConfigured] = useState<boolean | null>(null)
+  const [cloudConnected, setCloudConnected] = useState(false)
 
   useEffect(() => {
     if (!generateUrl) return
     fetch(`${getApiBase()}/settings`)
       .then((res) => res.json())
-      .then((data) => setAiConfigured(data.aiConfigured ?? false))
+      .then((data) => {
+        setAiConfigured(data.aiConfigured ?? false)
+        setCloudConnected(!!data.cloudUsername)
+      })
       .catch(() => setAiConfigured(false))
   }, [generateUrl])
 
@@ -171,7 +175,9 @@ function AIGenerateButton({
       title={
         aiConfigured
           ? 'Generate commit message with AI'
-          : 'Configure an AI provider in Settings to enable this'
+          : cloudConnected
+            ? 'Enable free AI in Settings → AI → Lumbergh Cloud'
+            : 'Configure an AI provider in Settings to enable this'
       }
     >
       {isGenerating ? '...' : 'AI'}
