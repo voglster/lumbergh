@@ -83,8 +83,6 @@ def _parse_yaml_response(text: str) -> str:
     t = fields["type"]
     scope = fields.get("scope", "")
     desc = fields["description"].rstrip(".")
-    if len(desc) > 50:
-        desc = desc[:47] + "..."
     header = f"{t}({scope}): {desc}" if scope else f"{t}: {desc}"
     body = fields.get("body", "")
     if body and body.lower() not in ("", "none", "n/a", "omit"):

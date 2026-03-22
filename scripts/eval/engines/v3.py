@@ -72,8 +72,6 @@ def _assemble_message(data: dict) -> str:
 
     # Clean up description
     desc = desc.strip().rstrip(".")
-    if len(desc) > 50:
-        desc = desc[:47] + "..."
 
     header = f"{t}({scope}): {desc}" if scope else f"{t}: {desc}"
 
