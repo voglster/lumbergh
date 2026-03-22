@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
 
+from lumbergh import cloud_client
 from lumbergh.backup import (
     apply_backup_data,
     collect_backup_data,
@@ -26,23 +27,19 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/backup", tags=["backup"])
 
 
-def _get_cloud_config() -> tuple[str, str, str]:
-    """Get cloud URL, token, and installation ID. Raises 400 if not configured."""
+def _require_install_id() -> str:
+    """Return the installation ID from settings. Raises 400 if missing."""
     settings = get_settings()
-    cloud_url = settings.get("cloudUrl")
-    cloud_token = settings.get("cloudToken")
     install_id = settings.get("installationId")
-    if not cloud_url or not cloud_token:
-        raise HTTPException(status_code=400, detail="Not connected to cloud")
     if not install_id:
         raise HTTPException(status_code=400, detail="No installation ID")
-    return cloud_url, cloud_token, install_id
+    return install_id
 
 
 @router.post("/push")
 async def push_backup():
     """Collect local data and push to cloud."""
-    cloud_url, cloud_token, install_id = _get_cloud_config()
+    install_id = _require_install_id()
     settings = get_settings()
 
     include_api_keys = settings.get("backupIncludeApiKeys", False)
@@ -63,18 +60,13 @@ async def push_backup():
     meta = get_backup_meta(data)
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.put(
-                f"{cloud_url}/api/backup/{install_id}",
-                json={
-                    "data": upload_data,
-                    "encrypted": encrypted,
-                    "meta": meta,
-                    "version": 1,
-                },
-                headers={"Authorization": f"Bearer {cloud_token}"},
-            )
-            resp.raise_for_status()
+        resp = await cloud_client.request(
+            "PUT",
+            f"/api/backup/{install_id}",
+            json={"data": upload_data, "encrypted": encrypted, "meta": meta, "version": 1},
+            timeout=30.0,
+        )
+        resp.raise_for_status()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Cloud backup failed: {e}")
 
@@ -98,16 +90,12 @@ class RestoreRequest(BaseModel):
 @router.post("/restore")
 async def restore_backup(body: RestoreRequest | None = None):
     """Pull backup from cloud and overwrite local files."""
-    cloud_url, cloud_token, install_id = _get_cloud_config()
+    install_id = _require_install_id()
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.get(
-                f"{cloud_url}/api/backup/{install_id}",
-                headers={"Authorization": f"Bearer {cloud_token}"},
-            )
-            resp.raise_for_status()
-            backup = resp.json()
+        resp = await cloud_client.request("GET", f"/api/backup/{install_id}", timeout=30.0)
+        resp.raise_for_status()
+        backup = resp.json()
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
             raise HTTPException(status_code=404, detail="No backup found")
@@ -160,15 +148,11 @@ async def toggle_backup(body: ToggleRequest):
 @router.delete("")
 async def delete_backup():
     """Delete the cloud backup for this installation."""
-    cloud_url, cloud_token, install_id = _get_cloud_config()
+    install_id = _require_install_id()
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.delete(
-                f"{cloud_url}/api/backup/{install_id}",
-                headers={"Authorization": f"Bearer {cloud_token}"},
-            )
-            resp.raise_for_status()
+        resp = await cloud_client.request("DELETE", f"/api/backup/{install_id}", timeout=10.0)
+        resp.raise_for_status()
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
             raise HTTPException(status_code=404, detail="No backup found")
@@ -205,16 +189,12 @@ async def download_local_backup():
 @router.get("/download")
 async def download_backup():
     """Download the last cloud backup as a JSON file."""
-    cloud_url, cloud_token, install_id = _get_cloud_config()
+    install_id = _require_install_id()
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.get(
-                f"{cloud_url}/api/backup/{install_id}",
-                headers={"Authorization": f"Bearer {cloud_token}"},
-            )
-            resp.raise_for_status()
-            backup = resp.json()
+        resp = await cloud_client.request("GET", f"/api/backup/{install_id}", timeout=30.0)
+        resp.raise_for_status()
+        backup = resp.json()
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
             raise HTTPException(status_code=404, detail="No backup found")

@@ -9,8 +9,7 @@ import asyncio
 import logging
 from datetime import UTC, datetime
 
-import httpx
-
+from lumbergh import cloud_client
 from lumbergh.backup import collect_backup_data, compute_data_hash, encrypt_data, get_backup_meta
 
 logger = logging.getLogger(__name__)
@@ -90,18 +89,13 @@ class BackupScheduler:
         meta = get_backup_meta(data)
 
         # Push to cloud
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.put(
-                f"{cloud_url}/api/backup/{install_id}",
-                json={
-                    "data": upload_data,
-                    "encrypted": encrypted,
-                    "meta": meta,
-                    "version": 1,
-                },
-                headers={"Authorization": f"Bearer {cloud_token}"},
-            )
-            resp.raise_for_status()
+        resp = await cloud_client.request(
+            "PUT",
+            f"/api/backup/{install_id}",
+            json={"data": upload_data, "encrypted": encrypted, "meta": meta, "version": 1},
+            timeout=30.0,
+        )
+        resp.raise_for_status()
 
         # Update settings with backup status
         now = datetime.now(UTC).isoformat()

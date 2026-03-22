@@ -8,6 +8,7 @@ import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from lumbergh import cloud_client
 from lumbergh.routers.settings import _is_ai_configured, deep_merge, get_settings, settings_table
 
 logger = logging.getLogger(__name__)
@@ -22,14 +23,12 @@ class PollRequest(BaseModel):
 @router.post("/connect")
 async def connect():
     """Start device code flow: call cloud's /api/auth/device/start, open browser."""
-    settings = get_settings()
-    cloud_url = settings.get("cloudUrl", "https://lumbergh.jc.turbo.inc")
-
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(f"{cloud_url}/api/auth/device/start")
-            resp.raise_for_status()
-            data = resp.json()
+        resp = await cloud_client.request(
+            "POST", "/api/auth/device/start", require_token=False, timeout=10.0
+        )
+        resp.raise_for_status()
+        data = resp.json()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Could not reach cloud: {e}")
 
@@ -43,17 +42,16 @@ async def connect():
 @router.post("/poll")
 async def poll(body: PollRequest):
     """Poll cloud for device authorization status."""
-    settings = get_settings()
-    cloud_url = settings.get("cloudUrl", "https://lumbergh.jc.turbo.inc")
-
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(
-                f"{cloud_url}/api/auth/device/poll",
-                json={"device_code": body.device_code},
-            )
-            resp.raise_for_status()
-            data = resp.json()
+        resp = await cloud_client.request(
+            "POST",
+            "/api/auth/device/poll",
+            json={"device_code": body.device_code},
+            require_token=False,
+            timeout=10.0,
+        )
+        resp.raise_for_status()
+        data = resp.json()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Could not reach cloud: {e}")
 
@@ -75,12 +73,12 @@ async def poll(body: PollRequest):
         settings_table.insert(merged)
 
         # Send cloud_linked telemetry event (fire-and-forget)
-        _send_cloud_linked_event(cloud_url, current)
+        _send_cloud_linked_event(current)
 
     return data
 
 
-def _send_cloud_linked_event(cloud_url: str, settings: dict) -> None:
+def _send_cloud_linked_event(settings: dict) -> None:
     """Fire-and-forget cloud_linked telemetry event."""
     import asyncio
 
@@ -89,21 +87,24 @@ def _send_cloud_linked_event(cloud_url: str, settings: dict) -> None:
             install_id = settings.get("installationId", "")
             if not install_id or not settings.get("telemetryConsent"):
                 return
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                await client.post(
-                    f"{cloud_url}/api/telemetry/events",
-                    json={
-                        "install_id": install_id,
-                        "events": [
-                            {
-                                "event": "cloud_linked",
-                                "properties": {
-                                    "cloud_account_id": settings.get("cloudUsername", ""),
-                                },
-                            }
-                        ],
-                    },
-                )
+            resp = await cloud_client.request(
+                "POST",
+                "/api/telemetry/events",
+                json={
+                    "install_id": install_id,
+                    "events": [
+                        {
+                            "event": "cloud_linked",
+                            "properties": {
+                                "cloud_account_id": settings.get("cloudUsername", ""),
+                            },
+                        }
+                    ],
+                },
+                require_token=False,
+                timeout=5.0,
+            )
+            resp.raise_for_status()
         except Exception:
             logger.debug("cloud_linked telemetry failed", exc_info=True)
 
@@ -112,31 +113,15 @@ def _send_cloud_linked_event(cloud_url: str, settings: dict) -> None:
 
 # --- Shared prompts proxy ---
 
-_CLOUD_TIMEOUT = 15.0
 
-
-def _cloud_headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-
-
-async def _cloud_request(method: str, path: str, **kwargs):
-    """Forward a request to lumbergh-cloud with the stored cloud token."""
-    settings = get_settings()
-    cloud_url = settings.get("cloudUrl", "https://lumbergh.jc.turbo.inc")
-    token = settings.get("cloudToken")
-    if not token:
-        raise HTTPException(status_code=401, detail="Not connected to cloud")
-
+async def _cloud_json(method: str, path: str, **kwargs):
+    """Forward a request to cloud, return parsed JSON. Raises HTTPException on failure."""
     try:
-        async with httpx.AsyncClient(timeout=_CLOUD_TIMEOUT) as client:
-            resp = await client.request(
-                method,
-                f"{cloud_url}{path}",
-                headers=_cloud_headers(token),
-                **kwargs,
-            )
-            resp.raise_for_status()
-            return resp.json()
+        resp = await cloud_client.request(method, path, **kwargs)
+        resp.raise_for_status()
+        return resp.json()
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
     except Exception as e:
@@ -151,32 +136,32 @@ class SharePromptRequest(BaseModel):
 @router.post("/prompts/share")
 async def proxy_share_prompt(body: SharePromptRequest):
     """Forward share/update request to cloud."""
-    return await _cloud_request("POST", "/api/prompts/share", json=body.model_dump())
+    return await _cloud_json("POST", "/api/prompts/share", json=body.model_dump())
 
 
 @router.get("/prompts/shared/{code}")
 async def proxy_get_shared(code: str):
     """Forward prompt lookup to cloud."""
-    return await _cloud_request("GET", f"/api/prompts/shared/{code}")
+    return await _cloud_json("GET", f"/api/prompts/shared/{code}")
 
 
 @router.get("/prompts/shared/{code}/versions")
 async def proxy_get_versions(code: str):
     """Forward version history lookup to cloud."""
-    return await _cloud_request("GET", f"/api/prompts/shared/{code}/versions")
+    return await _cloud_json("GET", f"/api/prompts/shared/{code}/versions")
 
 
 @router.get("/prompts/community")
 async def proxy_community(q: str = ""):
     """Forward community browse to cloud."""
     params = f"?q={q}" if q else ""
-    return await _cloud_request("GET", f"/api/prompts/community{params}")
+    return await _cloud_json("GET", f"/api/prompts/community{params}")
 
 
 @router.post("/prompts/{code}/install")
 async def proxy_install(code: str):
     """Forward install tracking to cloud."""
-    return await _cloud_request("POST", f"/api/prompts/{code}/install")
+    return await _cloud_json("POST", f"/api/prompts/{code}/install")
 
 
 @router.post("/disconnect")
