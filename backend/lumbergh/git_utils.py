@@ -1692,9 +1692,9 @@ def create_branch_at(cwd: Path, branch_name: str, start_point: str | None = None
 
     try:
         if start_point:
-            repo.git.branch(branch_name, start_point)
+            repo.git.checkout("-b", branch_name, start_point)
         else:
-            repo.git.branch(branch_name)
+            repo.git.checkout("-b", branch_name)
 
         # Resolve the hash the branch points to
         commit = repo.commit(start_point) if start_point else repo.head.commit
