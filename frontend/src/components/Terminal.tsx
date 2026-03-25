@@ -59,10 +59,15 @@ export default memo(function Terminal({
   const [hasFocus, setHasFocus] = useState(false)
 
   // Detect touch device (hide scroll controls on desktop)
-  const [isTouchDevice] = useState(
-    () =>
-      typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
-  )
+  const [isTouchDevice] = useState(() => {
+    if (typeof window === 'undefined') return false
+    // pointer:coarse = primary input is touch (phone/tablet)
+    // pointer:fine = primary input is mouse/trackpad (desktop, even with touch hardware)
+    if (window.matchMedia) {
+      return window.matchMedia('(pointer: coarse)').matches
+    }
+    return 'ontouchstart' in window || navigator.maxTouchPoints > 0
+  })
 
   // Send text via backend API (uses tmux send-keys which works better with Claude Code)
   const sendViaApi = useCallback(
@@ -321,7 +326,9 @@ export default memo(function Terminal({
     // bypasses mouse reporting (to tmux) and handles text selection / context
     // menu natively. Single clicks are replayed without shiftKey so they
     // still reach tmux (e.g. clicking tmux tabs).
-    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    const isTouch = window.matchMedia
+      ? window.matchMedia('(pointer: coarse)').matches
+      : 'ontouchstart' in window || navigator.maxTouchPoints > 0
     let bypass = false
     let clickStartX = 0
     let clickStartY = 0
