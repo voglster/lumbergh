@@ -326,50 +326,32 @@ export default memo(function Terminal({
     let clickStartY = 0
     let isClick = false
 
-    const fakeShift = (e: MouseEvent) => {
-      // Object.defineProperty fails on Safari/WebKit where shiftKey is
-      // non-configurable on the prototype. Instead, stop the original
-      // event and re-dispatch a new one with shiftKey baked in.
-      e.stopImmediatePropagation()
-      e.preventDefault()
-      const clone = new MouseEvent(e.type, {
-        bubbles: e.bubbles,
-        cancelable: e.cancelable,
-        view: e.view,
-        detail: e.detail,
-        screenX: e.screenX,
-        screenY: e.screenY,
-        clientX: e.clientX,
-        clientY: e.clientY,
-        button: e.button,
-        buttons: e.buttons,
-        relatedTarget: e.relatedTarget,
-        ctrlKey: e.ctrlKey,
-        altKey: e.altKey,
-        shiftKey: true,
-        metaKey: e.metaKey,
-      })
-      bypass = true
-      ;(e.target as Element).dispatchEvent(clone)
-      bypass = false
+    const fakeShift = (e: MouseEvent | PointerEvent) => {
+      Object.defineProperty(e, 'shiftKey', { get: () => true })
     }
 
-    const onMouseEvent = (e: MouseEvent) => {
+    // Unified handler for both mouse and pointer events.
+    // xterm.js 5.x uses PointerEvents when available (Mac Chrome/Safari),
+    // so we must intercept those to fake shiftKey before xterm.js processes them.
+    const isDown = (t: string) => t === 'mousedown' || t === 'pointerdown'
+    const isMove = (t: string) => t === 'mousemove' || t === 'pointermove'
+    const isUp = (t: string) => t === 'mouseup' || t === 'pointerup'
+
+    const onMouseEvent = (e: MouseEvent | PointerEvent) => {
       if (isTouch || bypass) return
       if (e.button === 0) {
-        if (e.type === 'mousedown') {
+        if (isDown(e.type)) {
           clickStartX = e.clientX
           clickStartY = e.clientY
           isClick = true
-        } else if (e.type === 'mousemove' && isClick) {
+        } else if (isMove(e.type) && isClick) {
           const dx = e.clientX - clickStartX
           const dy = e.clientY - clickStartY
           if (dx * dx + dy * dy > 25) isClick = false
-        } else if (e.type === 'mouseup' && isClick) {
+        } else if (isUp(e.type) && isClick) {
           isClick = false
-          // Stop the original mouseup and replay unmodified click so tmux sees it
-          e.stopImmediatePropagation()
-          e.preventDefault()
+          fakeShift(e)
+          // Replay unmodified click so tmux sees it (e.g. tab switching)
           bypass = true
           const target = e.target as Element
           target.dispatchEvent(
@@ -410,9 +392,18 @@ export default memo(function Terminal({
     }
 
     const el = term.element
-    const mouseEvents = ['mousedown', 'mousemove', 'mouseup', 'contextmenu'] as const
+    // Intercept both pointer events (used by xterm.js 5.x) and mouse events (fallback)
+    const interceptEvents = [
+      'pointerdown',
+      'pointermove',
+      'pointerup',
+      'mousedown',
+      'mousemove',
+      'mouseup',
+      'contextmenu',
+    ] as const
     if (el && !isTouch) {
-      for (const evt of mouseEvents) el.addEventListener(evt, onMouseEvent, true)
+      for (const evt of interceptEvents) el.addEventListener(evt, onMouseEvent, true)
     }
     // Wheel listener for all devices (copy-mode detection)
     el?.addEventListener('wheel', onWheel, true)
@@ -422,7 +413,7 @@ export default memo(function Terminal({
       term.element?.removeEventListener('focusin', handleFocus)
       term.element?.removeEventListener('focusout', handleBlur)
       if (el && !isTouch) {
-        for (const evt of mouseEvents) el.removeEventListener(evt, onMouseEvent, true)
+        for (const evt of interceptEvents) el.removeEventListener(evt, onMouseEvent, true)
       }
       el?.removeEventListener('wheel', onWheel, true)
       term.dispose()
