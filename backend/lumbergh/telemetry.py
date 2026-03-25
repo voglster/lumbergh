@@ -20,7 +20,7 @@ _version_cache: str | None = None
 _STAMP_FILE = Path("~/.local/state/lumbergh/last_startup_telemetry").expanduser()
 
 
-def _get_version() -> str:
+def get_version() -> str:
     """Get version string. In dev mode, use git describe for full detail."""
     global _version_cache
     if _version_cache is not None:
@@ -93,7 +93,7 @@ async def send_startup() -> None:
             return
 
         properties = {
-            "version": _get_version(),
+            "version": get_version(),
             "os": platform.system(),
             "arch": platform.machine(),
             "default_agent": settings.get("defaultAgent", ""),
@@ -109,6 +109,7 @@ async def send_startup() -> None:
                 f"{cloud_url}/api/telemetry/events",
                 json={
                     "install_id": install_id,
+                    "version": get_version(),
                     "events": [{"event": "startup", "properties": properties}],
                 },
             )

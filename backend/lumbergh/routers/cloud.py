@@ -82,6 +82,8 @@ def _send_cloud_linked_event(settings: dict) -> None:
     """Fire-and-forget cloud_linked telemetry event."""
     import asyncio
 
+    from lumbergh.telemetry import get_version
+
     async def _send():
         try:
             install_id = settings.get("installationId", "")
@@ -92,6 +94,7 @@ def _send_cloud_linked_event(settings: dict) -> None:
                 "/api/telemetry/events",
                 json={
                     "install_id": install_id,
+                    "version": get_version(),
                     "events": [
                         {
                             "event": "cloud_linked",
