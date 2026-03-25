@@ -18,23 +18,20 @@ import CreateSessionModal from '../components/CreateSessionModal'
 import SettingsModal from '../components/SettingsModal'
 import { useTheme } from '../hooks/useTheme'
 
-interface Session {
-  name: string
+import type { SessionBase } from '../utils/sessionStatus'
+
+interface Session extends SessionBase {
   workdir: string | null
   description: string | null
-  displayName: string | null
-  alive: boolean
   attached: boolean
   windows: number
   status?: string | null
   statusUpdatedAt?: string | null
-  idleState?: 'unknown' | 'idle' | 'working' | 'error' | 'stalled' | null
   idleStateUpdatedAt?: string | null
   type?: 'direct' | 'worktree'
   worktreeParentRepo?: string | null
   worktreeBranch?: string | null
   lastUsedAt?: string | null
-  paused?: boolean
   agentProvider?: string | null
   tabVisibility?: Record<string, boolean> | null
 }

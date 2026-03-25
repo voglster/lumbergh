@@ -7,6 +7,7 @@ import {
   MoreHorizontal,
   Eraser,
 } from 'lucide-react'
+import SessionNavigatorDots from './SessionNavigatorDots'
 
 interface Props {
   sessionName: string
@@ -65,7 +66,7 @@ export default function TerminalHeader({
         </div>
         <span
           onClick={onCycleSession ? (e) => onCycleSession(e.shiftKey ? 'prev' : 'next') : undefined}
-          className={`flex-1 min-w-0 flex items-center gap-1 text-sm font-semibold text-text-secondary ${onCycleSession ? 'cursor-pointer group hover:text-text-primary transition-colors' : 'pointer-events-none'}`}
+          className={`shrink-0 flex items-center gap-1 text-sm font-semibold text-text-secondary ${onCycleSession ? 'cursor-pointer group hover:text-text-primary transition-colors' : 'pointer-events-none'}`}
           title={onCycleSession ? 'Click: next session · Shift+click: previous' : undefined}
         >
           {onCycleSession && (
@@ -80,6 +81,7 @@ export default function TerminalHeader({
             </span>
           )}
         </span>
+        <SessionNavigatorDots currentSessionName={sessionName} />
         <div className="flex items-center gap-2 shrink-0">
           {isTouchDevice && (
             <button
