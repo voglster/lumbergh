@@ -4,9 +4,14 @@
 
 A self-hosted web dashboard for supervising multiple Claude Code sessions running in tmux. Watch diffs roll in, fire off prompts, check todos, and keep your AI workers on task -- all from your browser (or your phone).
 
-![Lumbergh Dashboard](docs/screenshots/dashboard.png)
+[![PyPI version](https://img.shields.io/pypi/v/pylumbergh?label=pylumbergh&color=blue)](https://pypi.org/project/pylumbergh/)
+[![Python versions](https://img.shields.io/pypi/pyversions/pylumbergh)](https://pypi.org/project/pylumbergh/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Downloads](https://img.shields.io/pypi/dm/pylumbergh?color=brightgreen)](https://pypi.org/project/pylumbergh/)
 
 **[Read the full documentation](https://voglster.github.io/lumbergh/)** -- guides, configuration, mobile/PWA setup, screenshots, and more.
+
+![Lumbergh Dashboard](docs/screenshots/dashboard.png)
 
 ## Install in 30 seconds
 
@@ -67,7 +72,6 @@ Run `./lint.sh` before submitting PRs -- it handles formatting and catches error
 
 ## Links
 
-- [PyPI package](https://pypi.org/project/pylumbergh/)
 - [Issues](https://github.com/voglster/lumbergh/issues)
 - [Changelog](https://github.com/voglster/lumbergh/releases)
 
