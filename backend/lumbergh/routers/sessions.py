@@ -315,6 +315,7 @@ async def list_sessions():
                 "lastUsedAt": meta.get("lastUsedAt"),
                 "paused": meta.get("paused", False),
                 "agentProvider": meta.get("agent_provider"),
+                "tabVisibility": meta.get("tab_visibility"),
             }
         )
 
@@ -341,6 +342,7 @@ async def list_sessions():
                     "lastUsedAt": None,
                     "paused": False,
                     "agentProvider": None,
+                    "tabVisibility": None,
                 }
             )
 
@@ -393,6 +395,8 @@ async def update_session(name: str, body: SessionUpdate):
         record["paused"] = body.paused
     if body.agentProvider is not None:
         record["agent_provider"] = body.agentProvider
+    if body.tabVisibility is not None:
+        record["tab_visibility"] = body.tabVisibility
 
     sessions_table.upsert(record, session_q.name == name)
 
@@ -552,6 +556,7 @@ async def create_session(body: CreateSessionRequest):
         "description": body.description,
         "type": session_type,
         "agent_provider": body.agent_provider,
+        "tab_visibility": body.tab_visibility,
     }
     if worktree_parent_repo:
         session_data["worktree_parent_repo"] = worktree_parent_repo

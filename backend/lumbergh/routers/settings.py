@@ -32,6 +32,13 @@ def _get_defaults() -> dict:
         "repoSearchDir": repo_search_dir,
         "gitGraphCommits": 100,
         "defaultAgent": DEFAULT_PROVIDER,
+        "tabVisibility": {
+            "git": True,
+            "files": True,
+            "todos": True,
+            "prompts": True,
+            "shared": True,
+        },
         "cloudUrl": "https://lumbergh.jc.turbo.inc",
         "ai": {
             "provider": "ollama",
@@ -65,6 +72,14 @@ def _get_defaults() -> dict:
     }
 
 
+class TabVisibility(BaseModel):
+    git: bool | None = None
+    files: bool | None = None
+    todos: bool | None = None
+    prompts: bool | None = None
+    shared: bool | None = None
+
+
 class AIProviderConfig(BaseModel):
     baseUrl: str | None = None  # noqa: N815 - API field name
     apiKey: str | None = None  # noqa: N815 - API field name
@@ -81,6 +96,7 @@ class SettingsUpdate(BaseModel):
     gitGraphCommits: int | None = None  # noqa: N815 - API field name
     ai: AISettings | None = None
     defaultAgent: str | None = None  # noqa: N815 - API field name
+    tabVisibility: TabVisibility | None = None  # noqa: N815 - API field name
     password: str | None = None
     telemetryConsent: bool | None = None  # noqa: N815 - API field name
     cloudUrl: str | None = None  # noqa: N815 - API field name
@@ -226,6 +242,18 @@ def _validate_updates(updates: SettingsUpdate) -> dict[str, object]:
                 detail=f"Unknown agent provider: {updates.defaultAgent}",
             )
         update_data["defaultAgent"] = updates.defaultAgent
+
+    if updates.tabVisibility is not None:
+        tv = updates.tabVisibility.model_dump(exclude_none=True)
+        # Merge with current to check at least one tab stays visible
+        current_tv = get_settings().get("tabVisibility", {})
+        merged_tv = {**current_tv, **tv}
+        if not any(merged_tv.values()):
+            raise HTTPException(
+                status_code=400,
+                detail="At least one tab must remain visible",
+            )
+        update_data["tabVisibility"] = tv
 
     _copy_optional_fields(updates, update_data)
 

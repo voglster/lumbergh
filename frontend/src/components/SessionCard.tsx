@@ -23,6 +23,7 @@ interface Session {
   worktreeBranch?: string | null
   paused?: boolean
   agentProvider?: string | null
+  tabVisibility?: Record<string, boolean> | null
 }
 
 function getSessionStatus(session: Session) {
@@ -137,6 +138,7 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
         displayName={session.displayName}
         description={session.description}
         agentProvider={session.agentProvider ?? null}
+        tabVisibility={session.tabVisibility ?? null}
         onSave={onUpdate}
         onCancel={() => setIsEditing(false)}
       />

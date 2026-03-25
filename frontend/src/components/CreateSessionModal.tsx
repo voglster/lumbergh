@@ -69,6 +69,23 @@ export default function CreateSessionModal({ onClose, onCreated }: Props) {
   const [agentProviders, setAgentProviders] = useState<Record<string, { label: string }>>({})
   const [defaultAgent, setDefaultAgent] = useState<string>('')
 
+  // Tab visibility state
+  const [customizeTabs, setCustomizeTabs] = useState(false)
+  const [globalTabVisibility, setGlobalTabVisibility] = useState<Record<string, boolean>>({
+    git: true,
+    files: true,
+    todos: true,
+    prompts: true,
+    shared: true,
+  })
+  const [tabVisibility, setTabVisibility] = useState<Record<string, boolean>>({
+    git: true,
+    files: true,
+    todos: true,
+    prompts: true,
+    shared: true,
+  })
+
   // Fetch settings (repoSearchDir + agent providers)
   useEffect(() => {
     fetch(`${getApiBase()}/settings`)
@@ -77,6 +94,10 @@ export default function CreateSessionModal({ onClose, onCreated }: Props) {
         if (data.repoSearchDir) setParentDir(data.repoSearchDir)
         if (data.agentProviders) setAgentProviders(data.agentProviders)
         if (data.defaultAgent) setDefaultAgent(data.defaultAgent)
+        if (data.tabVisibility) {
+          setGlobalTabVisibility(data.tabVisibility)
+          setTabVisibility(data.tabVisibility)
+        }
       })
       .catch(() => {})
   }, [])
@@ -138,6 +159,9 @@ export default function CreateSessionModal({ onClose, onCreated }: Props) {
 
       if (agentProvider && agentProvider !== defaultAgent) {
         body.agent_provider = agentProvider
+      }
+      if (customizeTabs) {
+        body.tab_visibility = tabVisibility
       }
 
       if (mode === 'existing') {
@@ -279,6 +303,72 @@ export default function CreateSessionModal({ onClose, onCreated }: Props) {
             defaultAgent={defaultAgent}
             onAgentProviderChange={setAgentProvider}
           />
+
+          {/* Tab Visibility */}
+          <div>
+            <label className="flex items-center gap-2 text-sm text-text-tertiary">
+              <input
+                type="checkbox"
+                checked={customizeTabs}
+                onChange={() => {
+                  if (customizeTabs) {
+                    setTabVisibility(globalTabVisibility)
+                  }
+                  setCustomizeTabs(!customizeTabs)
+                }}
+                className="rounded border-input-border bg-input-bg"
+              />
+              Customize visible tabs
+            </label>
+            {customizeTabs && (
+              <div className="mt-2 ml-6 space-y-2">
+                <label className="flex items-center gap-1.5 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={Object.values(tabVisibility).every((v) => !v)}
+                    onChange={() => {
+                      const allOff = Object.values(tabVisibility).every((v) => !v)
+                      if (allOff) {
+                        setTabVisibility(globalTabVisibility)
+                      } else {
+                        setTabVisibility(
+                          Object.fromEntries(Object.keys(tabVisibility).map((k) => [k, false]))
+                        )
+                      }
+                    }}
+                    className="rounded border-input-border bg-input-bg"
+                  />
+                  <span className="text-text-secondary font-medium">Terminal only</span>
+                </label>
+                <div className="flex flex-wrap gap-3">
+                  {(
+                    [
+                      ['git', 'Git'],
+                      ['files', 'Files'],
+                      ['todos', 'Todos'],
+                      ['prompts', 'Prompts'],
+                      ['shared', 'Shared'],
+                    ] as const
+                  ).map(([key, label]) => {
+                    const isEnabled = tabVisibility[key] !== false
+                    return (
+                      <label key={key} className="flex items-center gap-1.5 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={isEnabled}
+                          onChange={() =>
+                            setTabVisibility((prev) => ({ ...prev, [key]: !prev[key] }))
+                          }
+                          className="rounded border-input-border bg-input-bg"
+                        />
+                        <span className="text-text-secondary">{label}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
 
           {error && <div className="text-red-400 text-sm">{error}</div>}
 

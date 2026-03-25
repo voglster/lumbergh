@@ -6,6 +6,7 @@ interface SessionUpdate {
   displayName?: string
   description?: string
   agentProvider?: string
+  tabVisibility?: Record<string, boolean>
 }
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
   displayName: string | null
   description: string | null
   agentProvider: string | null
+  tabVisibility: Record<string, boolean> | null
   onSave: (name: string, updates: SessionUpdate) => void
   onCancel: () => void
 }
@@ -22,6 +24,7 @@ export default function SessionCardEditForm({
   displayName,
   description,
   agentProvider: currentAgentProvider,
+  tabVisibility: currentTabVisibility,
   onSave,
   onCancel,
 }: Props) {
@@ -30,6 +33,17 @@ export default function SessionCardEditForm({
   const [editAgentProvider, setEditAgentProvider] = useState(currentAgentProvider || '')
   const [agentProviders, setAgentProviders] = useState<Record<string, { label: string }>>({})
   const [defaultAgent, setDefaultAgent] = useState('')
+  const [customizeTabs, setCustomizeTabs] = useState(!!currentTabVisibility)
+  const [globalTabVisibility, setGlobalTabVisibility] = useState<Record<string, boolean>>({
+    git: true,
+    files: true,
+    todos: true,
+    prompts: true,
+    shared: true,
+  })
+  const [editTabVisibility, setEditTabVisibility] = useState<Record<string, boolean>>(
+    currentTabVisibility || { git: true, files: true, todos: true, prompts: true, shared: true }
+  )
 
   useEffect(() => {
     fetch(`${getApiBase()}/settings`)
@@ -37,9 +51,13 @@ export default function SessionCardEditForm({
       .then((data) => {
         if (data.agentProviders) setAgentProviders(data.agentProviders)
         if (data.defaultAgent) setDefaultAgent(data.defaultAgent)
+        if (data.tabVisibility) {
+          setGlobalTabVisibility(data.tabVisibility)
+          if (!currentTabVisibility) setEditTabVisibility(data.tabVisibility)
+        }
       })
       .catch(() => {})
-  }, [])
+  }, [currentTabVisibility])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -58,6 +76,12 @@ export default function SessionCardEditForm({
     const effectiveCurrentAgent = currentAgentProvider || defaultAgent
     if (editAgentProvider && editAgentProvider !== effectiveCurrentAgent) {
       updates.agentProvider = editAgentProvider
+    }
+    if (customizeTabs) {
+      updates.tabVisibility = editTabVisibility
+    } else if (currentTabVisibility) {
+      // Was custom, now reset to default — send global defaults to clear override
+      updates.tabVisibility = globalTabVisibility
     }
 
     if (Object.keys(updates).length > 0) {
@@ -107,6 +131,70 @@ export default function SessionCardEditForm({
           defaultAgent={defaultAgent}
           onAgentProviderChange={setEditAgentProvider}
         />
+        <div>
+          <label className="flex items-center gap-2 text-xs text-text-tertiary">
+            <input
+              type="checkbox"
+              checked={customizeTabs}
+              onChange={() => {
+                if (customizeTabs) {
+                  setEditTabVisibility(globalTabVisibility)
+                }
+                setCustomizeTabs(!customizeTabs)
+              }}
+              className="rounded border-input-border bg-input-bg"
+            />
+            Custom tab visibility
+          </label>
+          {customizeTabs && (
+            <div className="mt-1.5 ml-5 space-y-1.5">
+              <label className="flex items-center gap-1 text-xs">
+                <input
+                  type="checkbox"
+                  checked={Object.values(editTabVisibility).every((v) => !v)}
+                  onChange={() => {
+                    const allOff = Object.values(editTabVisibility).every((v) => !v)
+                    if (allOff) {
+                      setEditTabVisibility(globalTabVisibility)
+                    } else {
+                      setEditTabVisibility(
+                        Object.fromEntries(Object.keys(editTabVisibility).map((k) => [k, false]))
+                      )
+                    }
+                  }}
+                  className="rounded border-input-border bg-input-bg"
+                />
+                <span className="text-text-secondary font-medium">Terminal only</span>
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    ['git', 'Git'],
+                    ['files', 'Files'],
+                    ['todos', 'Todos'],
+                    ['prompts', 'Prompts'],
+                    ['shared', 'Shared'],
+                  ] as const
+                ).map(([key, label]) => {
+                  const isEnabled = editTabVisibility[key] !== false
+                  return (
+                    <label key={key} className="flex items-center gap-1 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={isEnabled}
+                        onChange={() =>
+                          setEditTabVisibility((prev) => ({ ...prev, [key]: !prev[key] }))
+                        }
+                        className="rounded border-input-border bg-input-bg"
+                      />
+                      <span className="text-text-secondary">{label}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
         <div className="flex justify-end gap-2">
           <button
             type="button"

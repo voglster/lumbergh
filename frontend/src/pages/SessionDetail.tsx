@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Settings } from 'lucide-react'
 import { getApiBase } from '../config'
 import Terminal from '../components/Terminal'
 import FileBrowser from '../components/FileBrowser'
@@ -20,6 +20,24 @@ type MobileTab = 'terminal' | 'git' | 'files' | 'todos' | 'prompts' | 'shared'
 type DiffData = {
   files: Array<{ path: string; diff: string }>
   stats: { additions: number; deletions: number }
+}
+
+type TabVisibility = Record<string, boolean>
+
+const ALL_TABS: { id: RightPanel; label: string }[] = [
+  { id: 'git', label: 'Git' },
+  { id: 'files', label: 'Files' },
+  { id: 'todos', label: 'Todo' },
+  { id: 'prompts', label: 'Prompts' },
+  { id: 'shared', label: 'Shared' },
+]
+
+const DEFAULT_TAB_VISIBILITY: TabVisibility = {
+  git: true,
+  files: true,
+  todos: true,
+  prompts: true,
+  shared: true,
 }
 
 // Compare diff data to avoid unnecessary re-renders
@@ -66,6 +84,11 @@ export default function SessionDetail() {
   const [mobileTab, setMobileTab] = useState<MobileTab>('terminal')
   const [diffData, setDiffData] = useState<DiffData | null>(null)
   const [showTelemetryOptIn, setShowTelemetryOptIn] = useState(false)
+  const [globalTabVisibility, setGlobalTabVisibility] =
+    useState<TabVisibility>(DEFAULT_TAB_VISIBILITY)
+  const [sessionTabVisibility, setSessionTabVisibility] = useState<TabVisibility | null>(null)
+  const [showTabSettings, setShowTabSettings] = useState(false)
+  const tabSettingsRef = useRef<HTMLDivElement>(null)
   const focusFnRef = useRef<(() => void) | null>(null)
 
   // Touch session to track last used time + check existence
@@ -79,15 +102,30 @@ export default function SessionDetail() {
     }
   }, [name])
 
-  // Check if telemetry consent has been given
+  // Fetch settings (telemetry consent + tab visibility)
   useEffect(() => {
     fetch(`${getApiBase()}/settings`)
       .then((res) => res.json())
       .then((data) => {
         if (data.telemetryConsent == null) setShowTelemetryOptIn(true)
+        if (data.tabVisibility) setGlobalTabVisibility(data.tabVisibility)
       })
       .catch(() => {})
   }, [])
+
+  // Fetch session metadata for per-session tab visibility
+  useEffect(() => {
+    if (!name) return
+    fetch(`${getApiBase()}/sessions`)
+      .then((res) => res.json())
+      .then((data) => {
+        const session = (data.sessions || []).find((s: { name: string }) => s.name === name)
+        if (session?.tabVisibility) {
+          setSessionTabVisibility(session.tabVisibility)
+        }
+      })
+      .catch(() => {})
+  }, [name])
 
   // Auto-redirect countdown when session not found
   useEffect(() => {
@@ -105,6 +143,73 @@ export default function SessionDetail() {
     localStorage.setItem('lumbergh:rightPanel', rightPanel)
   }, [rightPanel])
 
+  // Compute effective tab visibility (session overrides global)
+  const effectiveTabVisibility = useMemo<TabVisibility>(
+    () =>
+      sessionTabVisibility
+        ? { ...globalTabVisibility, ...sessionTabVisibility }
+        : globalTabVisibility,
+    [globalTabVisibility, sessionTabVisibility]
+  )
+
+  const visibleTabs = useMemo(
+    () => ALL_TABS.filter((t) => effectiveTabVisibility[t.id] !== false),
+    [effectiveTabVisibility]
+  )
+
+  const visibleMobileTabs = useMemo(
+    () =>
+      [{ id: 'terminal' as MobileTab, label: 'Terminal' }].concat(
+        ALL_TABS.filter((t) => effectiveTabVisibility[t.id] !== false)
+      ),
+    [effectiveTabVisibility]
+  )
+
+  const isTerminalOnly = visibleTabs.length === 0
+
+  // Auto-select first visible tab if current is hidden
+  useEffect(() => {
+    if (visibleTabs.length > 0 && effectiveTabVisibility[rightPanel] === false) {
+      setRightPanel(visibleTabs[0].id)
+    }
+  }, [effectiveTabVisibility, rightPanel, visibleTabs])
+
+  useEffect(() => {
+    if (mobileTab !== 'terminal' && effectiveTabVisibility[mobileTab] === false) {
+      setMobileTab('terminal')
+    }
+  }, [effectiveTabVisibility, mobileTab])
+
+  // Close tab settings popover on outside click
+  useEffect(() => {
+    if (!showTabSettings) return
+    const handleClick = (e: MouseEvent) => {
+      if (tabSettingsRef.current && !tabSettingsRef.current.contains(e.target as Node)) {
+        setShowTabSettings(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [showTabSettings])
+
+  // Save per-session tab visibility
+  const saveSessionTabVisibility = useCallback(
+    async (tv: TabVisibility) => {
+      if (!name) return
+      setSessionTabVisibility(tv)
+      try {
+        await fetch(`${getApiBase()}/sessions/${name}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tabVisibility: tv }),
+        })
+      } catch (err) {
+        console.error('Failed to save tab visibility:', err)
+      }
+    },
+    [name]
+  )
+
   const handleFocusReady = useCallback((fn: () => void) => {
     focusFnRef.current = fn
   }, [])
@@ -119,9 +224,10 @@ export default function SessionDetail() {
   }, [])
 
   const handleJumpToTodos = useCallback(() => {
+    if (effectiveTabVisibility['todos'] === false) return
     setRightPanel('todos')
     setMobileTab('todos')
-  }, [])
+  }, [effectiveTabVisibility])
 
   const handleTodoSent = useCallback(
     async (text: string) => {
@@ -297,14 +403,7 @@ export default function SessionDetail() {
     return () => document.removeEventListener('paste', handlePaste)
   }, [])
 
-  const mobileTabs: { id: MobileTab; label: string }[] = [
-    { id: 'terminal', label: 'Terminal' },
-    { id: 'git', label: 'Git' },
-    { id: 'files', label: 'Files' },
-    { id: 'todos', label: 'Todo' },
-    { id: 'prompts', label: 'Prompts' },
-    { id: 'shared', label: 'Shared' },
-  ]
+  // mobileTabs is now computed as visibleMobileTabs above
 
   const renderTerminal = () => (
     <div className="h-full" data-testid="terminal-container">
@@ -329,70 +428,84 @@ export default function SessionDetail() {
     <div className="h-full flex flex-col">
       {/* Panel switcher */}
       <div className="flex gap-1 p-2 bg-bg-surface border-b border-border-default">
-        <button
-          data-testid="tab-git"
-          onClick={() => {
-            setRightPanel('git')
-            setGitTabResetTrigger((n) => n + 1)
-          }}
-          className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-            rightPanel === 'git'
-              ? 'bg-control-bg-hover text-text-primary'
-              : 'bg-control-bg text-text-tertiary hover:bg-control-bg-hover hover:text-text-secondary'
-          }`}
-        >
-          Git
-          {diffStats && diffStats.files > 0 && (
-            <span className="ml-2 text-xs">
-              ({diffStats.files})<span className="text-green-400 ml-1">+{diffStats.additions}</span>
-              <span className="text-red-400 ml-1">-{diffStats.deletions}</span>
-            </span>
+        {visibleTabs.map((tab) => (
+          <button
+            key={tab.id}
+            data-testid={`tab-${tab.id === 'todos' ? 'todo' : tab.id}`}
+            onClick={() => {
+              setRightPanel(tab.id)
+              if (tab.id === 'git') setGitTabResetTrigger((n) => n + 1)
+            }}
+            className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+              rightPanel === tab.id
+                ? 'bg-control-bg-hover text-text-primary'
+                : 'bg-control-bg text-text-tertiary hover:bg-control-bg-hover hover:text-text-secondary'
+            }`}
+          >
+            {tab.label}
+            {tab.id === 'git' && diffStats && diffStats.files > 0 && (
+              <span className="ml-2 text-xs">
+                ({diffStats.files})
+                <span className="text-green-400 ml-1">+{diffStats.additions}</span>
+                <span className="text-red-400 ml-1">-{diffStats.deletions}</span>
+              </span>
+            )}
+          </button>
+        ))}
+        {/* Gear icon for tab visibility settings */}
+        <div className="relative ml-auto" ref={tabSettingsRef}>
+          <button
+            onClick={() => setShowTabSettings((v) => !v)}
+            className="px-2 py-1 rounded text-text-tertiary hover:text-text-secondary hover:bg-control-bg-hover transition-colors"
+            title="Configure visible tabs"
+          >
+            <Settings size={14} />
+          </button>
+          {showTabSettings && (
+            <div className="absolute right-0 top-full mt-1 bg-bg-surface border border-border-default rounded-lg shadow-lg p-3 z-50 min-w-[160px]">
+              <p className="text-xs text-text-tertiary mb-2 font-medium">Visible Tabs</p>
+              <label className="flex items-center gap-2 py-1 text-sm border-b border-border-default mb-1 pb-2">
+                <input
+                  type="checkbox"
+                  checked={isTerminalOnly}
+                  onChange={() => {
+                    const currentVis = sessionTabVisibility || globalTabVisibility
+                    if (isTerminalOnly) {
+                      // Restore: use global defaults
+                      saveSessionTabVisibility({ ...globalTabVisibility })
+                    } else {
+                      // Set all to false
+                      const allOff = Object.fromEntries(
+                        Object.keys(currentVis).map((k) => [k, false])
+                      )
+                      saveSessionTabVisibility(allOff)
+                    }
+                  }}
+                  className="rounded border-input-border bg-input-bg"
+                />
+                <span className="text-text-secondary font-medium">Terminal Only</span>
+              </label>
+              {ALL_TABS.map((tab) => {
+                const currentVis = sessionTabVisibility || globalTabVisibility
+                const isEnabled = currentVis[tab.id] !== false
+                return (
+                  <label key={tab.id} className="flex items-center gap-2 py-1 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={isEnabled}
+                      onChange={() => {
+                        const updated = { ...currentVis, [tab.id]: !isEnabled }
+                        saveSessionTabVisibility(updated)
+                      }}
+                      className="rounded border-input-border bg-input-bg"
+                    />
+                    <span className="text-text-secondary">{tab.label}</span>
+                  </label>
+                )
+              })}
+            </div>
           )}
-        </button>
-        <button
-          data-testid="tab-files"
-          onClick={() => setRightPanel('files')}
-          className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-            rightPanel === 'files'
-              ? 'bg-control-bg-hover text-text-primary'
-              : 'bg-control-bg text-text-tertiary hover:bg-control-bg-hover hover:text-text-secondary'
-          }`}
-        >
-          Files
-        </button>
-        <button
-          data-testid="tab-todo"
-          onClick={() => setRightPanel('todos')}
-          className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-            rightPanel === 'todos'
-              ? 'bg-control-bg-hover text-text-primary'
-              : 'bg-control-bg text-text-tertiary hover:bg-control-bg-hover hover:text-text-secondary'
-          }`}
-        >
-          Todo
-        </button>
-        <button
-          data-testid="tab-prompts"
-          onClick={() => setRightPanel('prompts')}
-          className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-            rightPanel === 'prompts'
-              ? 'bg-control-bg-hover text-text-primary'
-              : 'bg-control-bg text-text-tertiary hover:bg-control-bg-hover hover:text-text-secondary'
-          }`}
-        >
-          Prompts
-        </button>
-        <button
-          data-testid="tab-shared"
-          onClick={() => setRightPanel('shared')}
-          className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-            rightPanel === 'shared'
-              ? 'bg-control-bg-hover text-text-primary'
-              : 'bg-control-bg text-text-tertiary hover:bg-control-bg-hover hover:text-text-secondary'
-          }`}
-        >
-          Shared
-        </button>
+        </div>
       </div>
       {/* Panel content */}
       <div className="flex-1 min-h-0 overflow-hidden">
@@ -467,14 +580,27 @@ export default function SessionDetail() {
       {/* Conditionally render only desktop OR mobile layout (not both) */}
       {isDesktop ? (
         <main className="flex-1 min-h-0">
-          <ResizablePanes
-            left={renderTerminal()}
-            right={renderRightPanel()}
-            defaultLeftWidth={50}
-            minLeftWidth={25}
-            maxLeftWidth={75}
-            storageKey="lumbergh:mainSplitWidth"
-          />
+          {isTerminalOnly ? (
+            <div className="h-full relative">
+              {renderTerminal()}
+              <button
+                onClick={() => saveSessionTabVisibility({ ...globalTabVisibility })}
+                className="absolute top-2 right-2 px-2 py-1 rounded bg-bg-surface/80 border border-border-default text-text-tertiary hover:text-text-primary text-xs transition-colors backdrop-blur-sm"
+                title="Show side panels"
+              >
+                Tabs
+              </button>
+            </div>
+          ) : (
+            <ResizablePanes
+              left={renderTerminal()}
+              right={renderRightPanel()}
+              defaultLeftWidth={50}
+              minLeftWidth={25}
+              maxLeftWidth={75}
+              storageKey="lumbergh:mainSplitWidth"
+            />
+          )}
         </main>
       ) : (
         <div className="flex-1 min-h-0 flex flex-col">
@@ -490,7 +616,7 @@ export default function SessionDetail() {
             </button>
             {/* Separator */}
             <div className="w-px shrink-0 bg-border-default my-1" />
-            {mobileTabs.map((tab) => (
+            {visibleMobileTabs.map((tab) => (
               <button
                 key={tab.id}
                 data-testid={`tab-${tab.id === 'todos' ? 'todo' : tab.id}`}

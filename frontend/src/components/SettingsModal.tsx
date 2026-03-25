@@ -29,6 +29,7 @@ interface Settings {
   passwordSource?: string | null
   telemetryConsent?: boolean | null
   cloudUsername?: string
+  tabVisibility?: Record<string, boolean>
 }
 
 interface OllamaModel {
@@ -176,6 +177,13 @@ export default function SettingsModal({ onClose }: Props) {
   } | null>(null)
   const [defaultAgent, setDefaultAgent] = useState('claude-code')
   const [agentProviders, setAgentProviders] = useState<Record<string, { label: string }>>({})
+  const [tabVisibility, setTabVisibility] = useState<Record<string, boolean>>({
+    git: true,
+    files: true,
+    todos: true,
+    prompts: true,
+    shared: true,
+  })
   const [cloudUsername, setCloudUsername] = useState<string | null>(null)
   const [ollamaModels, setOllamaModels] = useState<OllamaModel[]>([])
   const [cloudModels, setCloudModels] = useState<CloudModel[]>([])
@@ -184,6 +192,21 @@ export default function SettingsModal({ onClose }: Props) {
   const [isLoading, setIsLoading] = useState(true)
   const [restartNeeded, setRestartNeeded] = useState(false)
   const [isLoadingModels, setIsLoadingModels] = useState(false)
+
+  const applyAiSettings = useCallback((ai: AISettings) => {
+    setAiProvider(ai.provider || 'ollama')
+    if (ai.providers) {
+      setProviderConfigs((prev) => {
+        const updated = { ...prev }
+        Object.entries(ai.providers).forEach(([id, config]) => {
+          if (updated[id]) {
+            updated[id] = { ...updated[id], ...config }
+          }
+        })
+        return updated
+      })
+    }
+  }, [])
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -198,26 +221,14 @@ export default function SettingsModal({ onClose }: Props) {
       setCloudUsername(data.cloudUsername ?? null)
       if (data.defaultAgent) setDefaultAgent(data.defaultAgent)
       if (data.agentProviders) setAgentProviders(data.agentProviders)
-      if (data.ai) {
-        setAiProvider(data.ai.provider || 'ollama')
-        if (data.ai.providers) {
-          setProviderConfigs((prev) => {
-            const updated = { ...prev }
-            Object.entries(data.ai.providers).forEach(([id, config]) => {
-              if (updated[id]) {
-                updated[id] = { ...updated[id], ...config }
-              }
-            })
-            return updated
-          })
-        }
-      }
+      if (data.tabVisibility) setTabVisibility(data.tabVisibility)
+      if (data.ai) applyAiSettings(data.ai)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load settings')
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [applyAiSettings])
 
   useEffect(() => {
     fetchSettings()
@@ -278,6 +289,7 @@ export default function SettingsModal({ onClose }: Props) {
       payload.gitGraphCommits = Math.min(1000, Math.max(10, parsedCommits))
       payload.telemetryConsent = telemetryConsent
       payload.defaultAgent = defaultAgent
+      payload.tabVisibility = tabVisibility
       payload.ai = {
         provider: aiProvider,
         providers: providerConfigs,
@@ -524,6 +536,46 @@ export default function SettingsModal({ onClose }: Props) {
                     </p>
                   </div>
                 )}
+                <div>
+                  <label className="block text-sm text-text-tertiary mb-2">
+                    Default Tab Visibility
+                  </label>
+                  <div className="flex flex-wrap gap-3">
+                    {(
+                      [
+                        ['git', 'Git'],
+                        ['files', 'Files'],
+                        ['todos', 'Todos'],
+                        ['prompts', 'Prompts'],
+                        ['shared', 'Shared'],
+                      ] as const
+                    ).map(([key, label]) => {
+                      const isEnabled = tabVisibility[key] !== false
+                      const enabledCount = Object.values(tabVisibility).filter(Boolean).length
+                      const isLastEnabled = isEnabled && enabledCount <= 1
+                      return (
+                        <label
+                          key={key}
+                          className={`flex items-center gap-1.5 text-sm ${isLastEnabled ? 'opacity-50' : ''}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isEnabled}
+                            disabled={isLastEnabled}
+                            onChange={() =>
+                              setTabVisibility((prev) => ({ ...prev, [key]: !prev[key] }))
+                            }
+                            className="rounded border-input-border bg-input-bg"
+                          />
+                          <span className="text-text-secondary">{label}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                  <p className="text-xs text-text-muted mt-1">
+                    Tabs shown in the session detail view by default
+                  </p>
+                </div>
                 <div className="flex items-center justify-between">
                   <div>
                     <label className="block text-sm text-text-tertiary">

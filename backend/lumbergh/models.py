@@ -131,6 +131,7 @@ class CreateSessionRequest(BaseModel):
     worktree: WorktreeConfig | None = None
     init_repo: bool = False  # Create dir + git init if it doesn't exist
     agent_provider: str | None = None  # Override global default agent provider
+    tab_visibility: dict[str, bool] | None = None  # Override global tab visibility
 
 
 class SessionUpdate(BaseModel):
@@ -140,6 +141,7 @@ class SessionUpdate(BaseModel):
     description: str | None = None
     paused: bool | None = None
     agentProvider: str | None = None  # noqa: N815 - API field name
+    tabVisibility: dict[str, bool] | None = None  # noqa: N815 - API field name
 
 
 class TodoMoveRequest(BaseModel):

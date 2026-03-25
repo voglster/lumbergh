@@ -36,6 +36,7 @@ interface Session {
   lastUsedAt?: string | null
   paused?: boolean
   agentProvider?: string | null
+  tabVisibility?: Record<string, boolean> | null
 }
 
 function DashboardBanners({
@@ -353,6 +354,7 @@ export default function Dashboard() {
       description?: string
       paused?: boolean
       agentProvider?: string
+      tabVisibility?: Record<string, boolean>
     }
   ) => {
     try {
