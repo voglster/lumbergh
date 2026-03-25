@@ -327,7 +327,31 @@ export default memo(function Terminal({
     let isClick = false
 
     const fakeShift = (e: MouseEvent) => {
-      Object.defineProperty(e, 'shiftKey', { get: () => true })
+      // Object.defineProperty fails on Safari/WebKit where shiftKey is
+      // non-configurable on the prototype. Instead, stop the original
+      // event and re-dispatch a new one with shiftKey baked in.
+      e.stopImmediatePropagation()
+      e.preventDefault()
+      const clone = new MouseEvent(e.type, {
+        bubbles: e.bubbles,
+        cancelable: e.cancelable,
+        view: e.view,
+        detail: e.detail,
+        screenX: e.screenX,
+        screenY: e.screenY,
+        clientX: e.clientX,
+        clientY: e.clientY,
+        button: e.button,
+        buttons: e.buttons,
+        relatedTarget: e.relatedTarget,
+        ctrlKey: e.ctrlKey,
+        altKey: e.altKey,
+        shiftKey: true,
+        metaKey: e.metaKey,
+      })
+      bypass = true
+      ;(e.target as Element).dispatchEvent(clone)
+      bypass = false
     }
 
     const onMouseEvent = (e: MouseEvent) => {
@@ -343,8 +367,9 @@ export default memo(function Terminal({
           if (dx * dx + dy * dy > 25) isClick = false
         } else if (e.type === 'mouseup' && isClick) {
           isClick = false
-          fakeShift(e)
-          // Replay unmodified click so tmux sees it (e.g. tab switching)
+          // Stop the original mouseup and replay unmodified click so tmux sees it
+          e.stopImmediatePropagation()
+          e.preventDefault()
           bypass = true
           const target = e.target as Element
           target.dispatchEvent(
