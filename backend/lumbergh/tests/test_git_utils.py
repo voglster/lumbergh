@@ -3,6 +3,9 @@ Tests for git_utils module.
 """
 
 from lumbergh.git_utils import (
+    _build_raw_refs,
+    _classify_ref,
+    _enrich_ref_entry,
     generate_untracked_file_diff,
     get_branches,
     get_commit_diff,
@@ -176,3 +179,62 @@ class TestGetBranches:
 
         assert result["clean"] is True
         assert len(result["local"]) >= 1
+
+
+class TestClassifyRef:
+    def test_local_branch(self):
+        assert _classify_ref("refs/heads/main") == ("main", "local")
+
+    def test_remote_branch(self):
+        assert _classify_ref("refs/remotes/origin/main") == ("origin/main", "remote")
+
+    def test_tag_with_prefix(self):
+        assert _classify_ref("refs/tags/v1.0.0") == ("v1.0.0", "tag")
+
+    def test_origin_shorthand(self):
+        assert _classify_ref("origin/feature") == ("origin/feature", "remote")
+
+    def test_bare_name_defaults_to_local(self):
+        assert _classify_ref("main") == ("main", "local")
+
+
+class TestBuildRawRefs:
+    def test_tags_classified_as_tag(self, mock_git_repo):
+        import subprocess
+
+        subprocess.run(
+            ["git", "tag", "v1.0.0"],
+            cwd=mock_git_repo,
+            capture_output=True,
+        )
+        from git import Repo
+
+        repo = Repo(mock_git_repo)
+        raw = _build_raw_refs(repo)
+
+        tag_entries = [
+            (name, kind) for entries in raw.values() for name, kind in entries if name == "v1.0.0"
+        ]
+        assert len(tag_entries) == 1
+        assert tag_entries[0] == ("v1.0.0", "tag")
+
+    def test_branches_not_classified_as_tag(self, mock_git_repo):
+        from git import Repo
+
+        repo = Repo(mock_git_repo)
+        raw = _build_raw_refs(repo)
+
+        for entries in raw.values():
+            for name, kind in entries:
+                if kind == "local":
+                    assert name != ""
+
+
+class TestEnrichRefEntry:
+    def test_tag_entry(self):
+        result = _enrich_ref_entry("v1.0.0", "tag", "abc123", set(), {}, {})
+        assert result == {"name": "v1.0.0", "local": False, "remote": False, "tag": True}
+
+    def test_head_skipped(self):
+        result = _enrich_ref_entry("HEAD", "local", "abc123", set(), {}, {})
+        assert result is None

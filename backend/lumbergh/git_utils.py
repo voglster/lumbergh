@@ -268,9 +268,14 @@ def _classify_ref(name: str) -> tuple[str, str]:
 
 def _build_raw_refs(repo: Repo) -> dict[str, list[tuple[str, str]]]:
     """Build hash -> [(name, kind)] map from all repo refs."""
+    from git import TagReference
+
     raw_refs: dict[str, list[tuple[str, str]]] = {}
     for ref in repo.refs:
-        name, kind = _classify_ref(ref.name)
+        if isinstance(ref, TagReference):
+            name, kind = ref.name, "tag"
+        else:
+            name, kind = _classify_ref(ref.name)
         if name == "origin/HEAD" or name.startswith("refs/stash"):
             continue
         try:

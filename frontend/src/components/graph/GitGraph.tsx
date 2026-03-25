@@ -1,10 +1,19 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { MoreVertical, Monitor, Cloud, Archive } from 'lucide-react'
+import { MoreVertical, Monitor, Cloud, Archive, Tag } from 'lucide-react'
 import { getApiBase } from '../../config'
 import type { GraphData } from '../diff/types'
 import { computeGraphLayout, laneColor } from './graphLayout'
 import { relativeDate } from '../../utils/relativeDate'
 import dayjs from 'dayjs'
+
+function TagBadge({ name }: { name: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-1 text-base rounded font-medium leading-none max-w-full bg-slate-700/30 text-slate-400 ring-1 ring-slate-600/40">
+      <Tag size={12} className="opacity-70 shrink-0" />
+      <span className="truncate">{name}</span>
+    </span>
+  )
+}
 
 const ROW_HEIGHT = 38
 const LANE_WIDTH = 28
@@ -768,13 +777,19 @@ export default function GitGraph({
 
   // Compute branch label positions for left panel
   const branchEntries = useMemo(() => {
-    const labels: { row: number; refs: { name: string; local: boolean; remote: boolean }[] }[] = []
+    const labels: {
+      row: number
+      refs: { name: string; local: boolean; remote: boolean; tag?: boolean; stash?: boolean }[]
+    }[] = []
     const currentBranch = graphData?.head?.branch
     for (let row = 0; row < nodes.length; row++) {
       if (nodes[row].commit.refs.length > 0) {
         const sorted = [...nodes[row].commit.refs].sort((a, b) => {
           if (a.name === currentBranch) return -1
           if (b.name === currentBranch) return 1
+          // Tags after branches, stashes last
+          if (a.tag !== b.tag) return a.tag ? 1 : -1
+          if (a.stash !== b.stash) return a.stash ? 1 : -1
           return a.name.localeCompare(b.name)
         })
         labels.push({ row, refs: sorted })
@@ -1081,7 +1096,13 @@ export default function GitGraph({
                 const isExpanded = expandedRow === row
 
                 const renderBranchBadge = (
-                  ref: { name: string; local: boolean; remote: boolean; stash?: boolean },
+                  ref: {
+                    name: string
+                    local: boolean
+                    remote: boolean
+                    tag?: boolean
+                    stash?: boolean
+                  },
                   commitRow: number
                 ) => {
                   // Stash badges: clickable with pop/drop context menu
@@ -1177,7 +1198,11 @@ export default function GitGraph({
                     style={{ top: rowToY(row), height: ROW_HEIGHT }}
                   >
                     <div className="flex flex-row items-center gap-1 px-2 h-full overflow-hidden">
-                      {renderBranchBadge(primaryRef, row)}
+                      {primaryRef.tag ? (
+                        <TagBadge key={primaryRef.name} name={primaryRef.name} />
+                      ) : (
+                        renderBranchBadge(primaryRef, row)
+                      )}
                       {extraCount > 0 && (
                         <span
                           className="inline-flex items-center px-1.5 py-1 text-xs rounded font-medium leading-none bg-bg-surface text-text-muted ring-1 ring-border-default cursor-default shrink-0"
@@ -1211,7 +1236,15 @@ export default function GitGraph({
                           expandedRowTimeout.current = setTimeout(() => setExpandedRow(null), 300)
                         }}
                       >
-                        {refs.slice(1).map((ref) => renderBranchBadge(ref, row))}
+                        {refs
+                          .slice(1)
+                          .map((ref) =>
+                            ref.tag ? (
+                              <TagBadge key={ref.name} name={ref.name} />
+                            ) : (
+                              renderBranchBadge(ref, row)
+                            )
+                          )}
                       </div>
                     )}
                   </div>
