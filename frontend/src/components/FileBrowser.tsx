@@ -400,6 +400,7 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
   const fetchFileContent = async (path: string) => {
     setLoadingFile(true)
     setShowMarkdownPreview(path.endsWith('.md'))
+    setHasSelection(false)
 
     // Auto-collapse sidebar on mobile when selecting a file
     const isMobile = window.matchMedia('(max-width: 767px)').matches
