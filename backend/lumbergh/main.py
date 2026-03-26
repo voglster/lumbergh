@@ -58,12 +58,15 @@ async def lifespan(app: FastAPI):  # noqa: ARG001 - required by FastAPI
 
     backup_scheduler.start()
 
-    # Fire startup telemetry (non-blocking)
-    from lumbergh.telemetry import send_startup
+    # Fire startup telemetry (non-blocking) + periodic heartbeat
+    from lumbergh.telemetry import heartbeat_loop, send_startup
 
     _telemetry_task = asyncio.create_task(send_startup())  # noqa: RUF006
+    _heartbeat_task = asyncio.create_task(heartbeat_loop())
 
     yield
+
+    _heartbeat_task.cancel()
 
     # Stop background services
     backup_scheduler.stop()

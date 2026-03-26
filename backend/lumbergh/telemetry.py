@@ -1,7 +1,11 @@
 """
 Startup telemetry — fire-and-forget POST to lumbergh-cloud.
+
+Sends a startup event on first launch, then heartbeat events every 4 hours
+while the server is running.
 """
 
+import asyncio
 import logging
 import platform
 import subprocess
@@ -15,7 +19,7 @@ from lumbergh.routers.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
-_THROTTLE_SECONDS = 24 * 3600  # 24 hours
+_THROTTLE_SECONDS = 4 * 3600  # 4 hours
 _version_cache: str | None = None
 _STAMP_FILE = Path("~/.local/state/lumbergh/last_startup_telemetry").expanduser()
 
@@ -118,3 +122,45 @@ async def send_startup() -> None:
         logger.debug("Startup telemetry sent")
     except Exception:
         logger.debug("Startup telemetry failed", exc_info=True)
+
+
+async def _send_event(event: str, extra_props: dict | None = None) -> None:
+    """Send a single telemetry event to lumbergh-cloud."""
+    settings = get_settings()
+
+    if not settings.get("telemetryConsent"):
+        return
+
+    cloud_url = settings.get("cloudUrl", "https://lumbergh.jc.turbo.inc")
+    install_id = settings.get("installationId", "")
+    if not install_id:
+        return
+
+    properties: dict = {
+        "version": get_version(),
+        "os": platform.system(),
+        "arch": platform.machine(),
+    }
+    if extra_props:
+        properties.update(extra_props)
+
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        await client.post(
+            f"{cloud_url}/api/telemetry/events",
+            json={
+                "install_id": install_id,
+                "version": get_version(),
+                "events": [{"event": event, "properties": properties}],
+            },
+        )
+
+
+async def heartbeat_loop() -> None:
+    """Send heartbeat events every 4 hours while the server is running."""
+    while True:
+        await asyncio.sleep(_THROTTLE_SECONDS)
+        try:
+            await _send_event("heartbeat")
+            logger.debug("Heartbeat telemetry sent")
+        except Exception:
+            logger.debug("Heartbeat telemetry failed", exc_info=True)
