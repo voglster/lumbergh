@@ -212,6 +212,19 @@ export default function SessionDetail() {
     [name]
   )
 
+  const saveShowSessionDots = useCallback(async (value: boolean) => {
+    setShowSessionDots(value)
+    try {
+      await fetch(`${getApiBase()}/settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ showSessionDots: value }),
+      })
+    } catch (err) {
+      console.error('Failed to save session dots setting:', err)
+    }
+  }, [])
+
   const handleFocusReady = useCallback((fn: () => void) => {
     focusFnRef.current = fn
   }, [])
@@ -506,6 +519,15 @@ export default function SessionDetail() {
                   </label>
                 )
               })}
+              <label className="flex items-center gap-2 py-1 text-sm border-t border-border-default mt-1 pt-2">
+                <input
+                  type="checkbox"
+                  checked={showSessionDots}
+                  onChange={() => saveShowSessionDots(!showSessionDots)}
+                  className="rounded border-input-border bg-input-bg"
+                />
+                <span className="text-text-secondary">Session Dots</span>
+              </label>
             </div>
           )}
         </div>

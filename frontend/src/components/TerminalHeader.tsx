@@ -83,7 +83,11 @@ export default function TerminalHeader({
             </span>
           )}
         </span>
-        {showSessionDots && <SessionNavigatorDots currentSessionName={sessionName} />}
+        {showSessionDots ? (
+          <SessionNavigatorDots currentSessionName={sessionName} />
+        ) : (
+          <div className="flex-1" />
+        )}
         <div className="flex items-center gap-2 shrink-0">
           {isTouchDevice && (
             <button
