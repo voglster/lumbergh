@@ -391,7 +391,10 @@ export default memo(function Terminal({
           return
         }
         fakeShift(e)
-      } else if (e.button === 2) {
+      } else if (e.button === 1 || e.button === 2) {
+        // Middle-click (1): prevent tmux from seeing it so only the browser's
+        // native X11 PRIMARY paste fires (avoids double-paste on Linux).
+        // Right-click (2): let browser show context menu instead of tmux handling it.
         fakeShift(e)
       }
     }
