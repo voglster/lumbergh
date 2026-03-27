@@ -12,7 +12,7 @@ graph TD
         API[FastAPI Backend] -->|LibTmux| Tmux[Tmux Server]
         API -->|Subprocess| Git[Git CLI]
         API -->|TinyDB| DB[(JSON Metadata)]
-        API -->|AI Providers| AI[Ollama / OpenAI / Anthropic / Google]
+        API -->|AI Providers| AI[Ollama / OpenAI / Anthropic / Google / Cloud]
 
         Tmux -->|pty| Shell[Zsh / Bash]
         Shell -->|Run| Claude[Claude Code / Cursor / Aider / etc.]
@@ -22,6 +22,7 @@ graph TD
         BG[Background Services]
         BG -->|5s poll| DiffCache[Diff Cache]
         BG -->|2s poll| IdleMonitor[Idle Monitor]
+        BG -->|5m poll| BackupSched[Backup Scheduler]
     end
 
     subgraph Browser Client
@@ -45,7 +46,7 @@ graph TD
 | Terminal | xterm.js | Industry standard terminal emulator |
 | Styling | Tailwind CSS | Utility-first CSS for responsive layouts |
 | Persistence | TinyDB | Serverless, portable, human-readable JSON |
-| AI Providers | Ollama, OpenAI, Anthropic, Google, OpenAI-compatible | Multi-provider via common interface |
+| AI Providers | Ollama, OpenAI, Anthropic, Google, OpenAI-compatible, Lumbergh Cloud | Multi-provider via common interface |
 
 ## Middleware Stack
 

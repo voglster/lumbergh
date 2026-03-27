@@ -22,6 +22,10 @@ Templates exist at two levels:
 
 Click a template to send it directly to the active terminal session. The prompt is typed into the terminal exactly as written.
 
+## Variables
+
+Templates support `@mention` variables that reference other templates by name. When a template containing `@other_template` is sent to the terminal, the referenced template's content is expanded inline.
+
 ## Edit Mode
 
 Toggle edit mode to manage your templates:
@@ -29,6 +33,15 @@ Toggle edit mode to manage your templates:
 - **Reorder** -- drag and drop to change the order
 - **Move** -- shift templates between project and global scope
 - **Delete** -- remove templates you no longer need
+
+## Sharing & Community Prompts
+
+With a [Lumbergh Cloud](../reference/configuration.md#lumbergh-cloud) connection, you can share and discover prompts:
+
+- **Share** -- publish a prompt template via a short share code. Recipients can install it with one click.
+- **Auto-update** -- when you update a shared prompt, users who installed it are notified and can pull the latest version.
+- **Community browse** -- discover and install prompts shared by other Lumbergh users.
+- **Linting** -- prompts are validated for syntax and variable references before sharing.
 
 ## Persistence
 

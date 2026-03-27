@@ -22,6 +22,11 @@ It's published on PyPI as `pylumbergh`, running on Tailscale for real users. The
 - Multi-agent support (Claude Code, Cursor, OpenCode, Gemini CLI, Aider, Codex)
 - Version check endpoint with PyPI update detection
 - Tmux mouse mode configuration
+- Lumbergh Cloud integration (device code auth, free AI provider)
+- Cloud backup with optional AES-256 encryption (auto-backup every 5 minutes)
+- Prompt sharing via short codes with auto-update support
+- Community prompt discovery and installation
+- Telemetry (opt-in, throttled heartbeats)
 - E2E test suite (97 API tests + 13 UI tests in QEMU VM)
 
 ---
@@ -59,7 +64,7 @@ The manager watches and comments. It doesn't drive sessions or make autonomous d
 
 **Why:** Open-source growth requires making Lumbergh easy to adopt, configure, and contribute to.
 
-- Prompt template export/import/sync — share prompt packs as JSON
+- ~~Prompt template export/import/sync — share prompt packs as JSON~~ ✓ shipped (cloud prompt sharing + community browse)
 - CLAUDE.md template editor — AI-assisted "generate a CLAUDE.md from this repo"
 - Plugin/hook system — user-defined hooks ("on idle, run tests"), plugin API for custom widgets
 - Docker image — one-command deployment

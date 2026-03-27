@@ -152,6 +152,7 @@ Supported providers:
 | Anthropic | `apiKey`, `model` | Claude models |
 | Google | `apiKey`, `model` | Gemini with thinking config |
 | OpenAI-compatible | `baseUrl`, `apiKey`, `model` | vLLM, text-generation-inference, etc. |
+| Lumbergh Cloud | Cloud account (device code auth) | Free, no API key needed |
 
 Used for: commit message generation, prompt name generation, session status summaries.
 

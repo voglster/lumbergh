@@ -40,14 +40,14 @@ Models are auto-discovered from your Ollama installation -- any model you've pul
 | Setting | Notes |
 |---------|-------|
 | API Key | Required |
-| Models | Claude Sonnet (default: `claude-sonnet-4-20250514`), Opus, Haiku |
+| Models | `claude-sonnet-4-20250514` (default), `claude-opus-4-20250514`, `claude-3-5-sonnet-20241022`, `claude-3-5-haiku-20241022` |
 
 ### Google AI
 
 | Setting | Notes |
 |---------|-------|
 | API Key | Required |
-| Models | Gemini Flash (default: `gemini-3-flash-preview`), Gemini Flash Lite |
+| Models | `gemini-3-flash-preview` (default, 1M context), `gemini-2.5-flash`, `gemini-2.5-flash-lite` |
 
 ### OpenAI Compatible
 
@@ -59,6 +59,10 @@ Use any endpoint that implements the OpenAI API format.
 | API Key | Optional (depends on the endpoint) |
 
 This works with local servers like LM Studio, text-generation-webui, or any hosted OpenAI-compatible API.
+
+### Lumbergh Cloud (Free)
+
+No API key needed. Connect your Lumbergh Cloud account in **Settings --> Cloud** using the device code flow, then select "Lumbergh Cloud" as your AI provider. Models are loaded dynamically from the cloud service.
 
 ## AI Prompt Templates
 

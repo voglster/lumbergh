@@ -54,6 +54,7 @@ Watch diffs roll in, fire off prompts, check todos, and keep your AI workers on 
 - **Todos & scratchpad** — per-project notes and task tracking with cross-session todo moves
 - **Shared files** — share context (including images) across sessions
 - **AI status summaries** — AI-generated labels for what each session is doing
+- **Cloud sync** — optional cloud backup, prompt sharing, and community prompt discovery via Lumbergh Cloud
 - **Optional authentication** — password protection with signed cookie sessions
 - **Mobile-first + PWA** — responsive design, installable on your phone or tablet
 - **Tailscale integration** — auto-detects Tailscale for secure remote access with HTTPS/TLS support
