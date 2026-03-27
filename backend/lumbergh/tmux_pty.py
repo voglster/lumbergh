@@ -9,14 +9,20 @@ import pty
 import struct
 import termios
 
-import libtmux
-from libtmux._internal.query_list import ObjectDoesNotExist
+import sys
+
+if sys.platform == "win32":
+    import psmux as tmux_provider
+    from psmux._internal.query_list import ObjectDoesNotExist
+else:
+    import libtmux as tmux_provider
+    from libtmux._internal.query_list import ObjectDoesNotExist
 
 
 def list_tmux_sessions() -> list[dict]:
     """List all available tmux sessions."""
     try:
-        server = libtmux.Server()
+        server = tmux_provider.Server()
         sessions = server.sessions
         return [
             {
@@ -33,7 +39,7 @@ def list_tmux_sessions() -> list[dict]:
 
 def get_session_pane_id(session_name: str) -> str:
     """Get the active pane ID for a session."""
-    server = libtmux.Server()
+    server = tmux_provider.Server()
     try:
         session = server.sessions.get(session_name=session_name)
     except ObjectDoesNotExist:
@@ -52,7 +58,7 @@ def capture_pane_content(session_name: str) -> str:
 
     Returns the terminal content with ANSI escape codes preserved.
     """
-    server = libtmux.Server()
+    server = tmux_provider.Server()
     try:
         session = server.sessions.get(session_name=session_name)
     except ObjectDoesNotExist:
@@ -93,7 +99,7 @@ class TmuxPtySession:
     def spawn(self) -> None:
         """Spawn a PTY running tmux attach."""
         # Verify session exists
-        server = libtmux.Server()
+        server = tmux_provider.Server()
         try:
             session = server.sessions.get(session_name=self.session_name)
         except ObjectDoesNotExist:
@@ -187,7 +193,7 @@ class TmuxPtySession:
     def is_alive(self) -> bool:
         """Check if the underlying tmux session still exists."""
         try:
-            server = libtmux.Server()
+            server = tmux_provider.Server()
             return server.sessions.get(session_name=self.session_name) is not None
         except Exception:
             return False

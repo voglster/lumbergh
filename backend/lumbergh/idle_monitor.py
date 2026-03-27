@@ -10,7 +10,12 @@ import logging
 import time
 from datetime import UTC, datetime
 
-import libtmux
+import sys
+
+if sys.platform == "win32":
+    import psmux as tmux_provider
+else:
+    import libtmux as tmux_provider
 
 from lumbergh.db_utils import get_session_data_db
 from lumbergh.idle_detector import IdleDetectionResult, IdleDetector, SessionState
@@ -96,7 +101,7 @@ class IdleMonitor:
     def _get_live_session_names(self) -> list[str]:
         """Get names of all live tmux sessions."""
         try:
-            server = libtmux.Server()
+            server = tmux_provider.Server()
             return [s.name for s in server.sessions if s.name is not None]
         except Exception:
             return []

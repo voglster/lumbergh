@@ -32,7 +32,8 @@ classifiers = [
 dependencies = [
     "fastapi",
     "uvicorn[standard]",
-    "libtmux",
+    "libtmux; sys_platform != 'win32'",
+    "psmux; sys_platform == 'win32'",
     "tinydb",
     "gitpython>=3.1",
     "httpx>=0.27",

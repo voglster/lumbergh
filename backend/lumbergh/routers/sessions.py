@@ -12,7 +12,12 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TypeVar
 
-import libtmux
+import sys
+
+if sys.platform == "win32":
+    import psmux as tmux_provider
+else:
+    import libtmux as tmux_provider
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from tinydb import Query
@@ -224,9 +229,9 @@ async def search_directories(query: str = ""):
     return {"directories": directories}
 
 
-def get_tmux_server() -> libtmux.Server:
+def get_tmux_server() -> tmux_provider.Server:
     """Get the tmux server instance."""
-    return libtmux.Server()
+    return tmux_provider.Server()
 
 
 def get_live_sessions() -> dict[str, dict]:
