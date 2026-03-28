@@ -100,6 +100,7 @@ async def send_startup() -> None:
             "version": get_version(),
             "os": platform.system(),
             "arch": platform.machine(),
+            "hostname": platform.node(),
             "default_agent": settings.get("defaultAgent", ""),
         }
 

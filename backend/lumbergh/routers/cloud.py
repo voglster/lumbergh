@@ -104,6 +104,7 @@ async def _link_instance(settings: dict) -> None:
                 "version": get_version(),
                 "os": platform.system(),
                 "arch": platform.machine(),
+                "hostname": platform.node(),
             },
             timeout=10.0,
         )
