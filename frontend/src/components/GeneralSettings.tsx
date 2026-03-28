@@ -244,7 +244,7 @@ export default function GeneralSettings({
             <p className="text-xs text-text-muted mt-0.5">
               Help improve Lumbergh by sending anonymous usage data.{' '}
               <a
-                href="https://lumbergh.jc.turbo.inc/privacy"
+                href="https://app.lumbergh.dev/privacy"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-400 hover:text-blue-300"

@@ -91,7 +91,7 @@ async def send_startup() -> None:
         if _was_recently_sent():
             return
 
-        cloud_url = settings.get("cloudUrl", "https://lumbergh.jc.turbo.inc")
+        cloud_url = settings.get("cloudUrl", "https://app.lumbergh.dev")
         install_id = settings.get("installationId", "")
         if not install_id:
             return
@@ -131,7 +131,7 @@ async def _send_event(event: str, extra_props: dict | None = None) -> None:
     if not settings.get("telemetryConsent"):
         return
 
-    cloud_url = settings.get("cloudUrl", "https://lumbergh.jc.turbo.inc")
+    cloud_url = settings.get("cloudUrl", "https://app.lumbergh.dev")
     install_id = settings.get("installationId", "")
     if not install_id:
         return

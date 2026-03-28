@@ -141,7 +141,7 @@ export default function TelemetryOptIn({ onClose }: Props) {
           Send anonymous usage statistics to help us improve Lumbergh. No personal data, session
           content, or code is ever collected.{' '}
           <a
-            href="https://lumbergh.jc.turbo.inc/privacy"
+            href="https://app.lumbergh.dev/privacy"
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-400 hover:text-blue-300"

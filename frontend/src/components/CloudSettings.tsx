@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getApiBase } from '../config'
 
-const DEFAULT_CLOUD_URL = 'https://lumbergh.jc.turbo.inc'
+const DEFAULT_CLOUD_URL = 'https://app.lumbergh.dev'
 
 interface BackupStatus {
   enabled: boolean
@@ -451,6 +451,20 @@ export default function CloudSettings({ onConnected }: { onConnected?: () => voi
     }
   }
 
+  const handleRelink = async () => {
+    try {
+      const res = await fetch(`${getApiBase()}/cloud/relink`, { method: 'POST' })
+      if (!res.ok) {
+        const data = await res.json()
+        setCloudError(data.detail || 'Relink failed')
+        return
+      }
+      setCloudError(null)
+    } catch {
+      setCloudError('Relink failed')
+    }
+  }
+
   const handleDisconnect = async () => {
     try {
       await fetch(`${getApiBase()}/cloud/disconnect`, { method: 'POST' })
@@ -483,13 +497,22 @@ export default function CloudSettings({ onConnected }: { onConnected?: () => voi
                 Connected as <span className="font-medium text-text-primary">{cloudUsername}</span>
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleDisconnect}
-              className="text-sm text-red-400 hover:text-red-300 transition-colors"
-            >
-              Disconnect
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleRelink}
+                className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                Relink
+              </button>
+              <button
+                type="button"
+                onClick={handleDisconnect}
+                className="text-sm text-red-400 hover:text-red-300 transition-colors"
+              >
+                Disconnect
+              </button>
+            </div>
           </div>
 
           <BackupSection key={backupKey} onRefresh={() => setBackupKey((k) => k + 1)} />

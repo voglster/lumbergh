@@ -40,7 +40,7 @@ def _get_defaults() -> dict:
             "shared": True,
         },
         "showSessionDots": True,
-        "cloudUrl": "https://lumbergh.jc.turbo.inc",
+        "cloudUrl": "https://app.lumbergh.dev",
         "ai": {
             "provider": "ollama",
             "providers": {

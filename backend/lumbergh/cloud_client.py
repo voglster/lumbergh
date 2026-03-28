@@ -19,7 +19,7 @@ def _get_cloud_config() -> tuple[str, str]:
     from lumbergh.routers.settings import get_settings
 
     settings = get_settings()
-    cloud_url = settings.get("cloudUrl", "https://lumbergh.jc.turbo.inc")
+    cloud_url = settings.get("cloudUrl", "https://app.lumbergh.dev")
     cloud_token = settings.get("cloudToken", "")
     return cloud_url, cloud_token
 
