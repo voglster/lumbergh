@@ -280,8 +280,8 @@ class CloudTunnel:
 
         session_q = Query()
         doc = sessions_table.get(session_q.name == session_name)
-        if doc:
-            record = dict(doc)
+        if doc and isinstance(doc, dict):
+            record = {**doc}
             record["cloud_enabled"] = enabled
             sessions_table.upsert(record, session_q.name == session_name)
             self.notify_session_change()

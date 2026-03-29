@@ -43,6 +43,160 @@ interface PlanInfo {
   used: number
 }
 
+function SessionGrid({
+  sessions,
+  cloudAtLimit,
+  onDelete,
+  onUpdate,
+  onReset,
+}: {
+  sessions: Session[]
+  cloudAtLimit: boolean
+  onDelete: (name: string, cleanupWorktree?: boolean) => void
+  onUpdate: (
+    name: string,
+    updates: {
+      displayName?: string
+      description?: string
+      paused?: boolean
+      agentProvider?: string
+      tabVisibility?: Record<string, boolean>
+      cloudEnabled?: boolean
+    }
+  ) => void
+  onReset: (name: string) => void
+}) {
+  const sortByLastUsed = (a: Session, b: Session) =>
+    (b.lastUsedAt || '').localeCompare(a.lastUsedAt || '')
+  const alive = sessions.filter((s) => s.alive).sort(sortByLastUsed)
+  const dead = sessions.filter((s) => !s.alive).sort(sortByLastUsed)
+
+  return (
+    <>
+      {alive.length > 0 && (
+        <section className="mb-8">
+          <h2 className="text-sm font-medium text-text-tertiary mb-3 uppercase tracking-wide">
+            Active Sessions
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {alive.map((session) => (
+              <div key={session.name} data-testid={`session-card-${session.name}`}>
+                <SessionCard
+                  session={session}
+                  onDelete={onDelete}
+                  onUpdate={onUpdate}
+                  onReset={onReset}
+                  cloudAtLimit={cloudAtLimit}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+      {dead.length > 0 && (
+        <section>
+          <h2 className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wide">
+            Inactive Sessions
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {dead.map((session) => (
+              <div key={session.name} data-testid={`session-card-${session.name}`}>
+                <SessionCard
+                  session={session}
+                  onDelete={onDelete}
+                  onUpdate={onUpdate}
+                  onReset={onReset}
+                  cloudAtLimit={cloudAtLimit}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </>
+  )
+}
+
+function DashboardContent({
+  loading,
+  error,
+  sessions,
+  cloudAtLimit,
+  onDelete,
+  onUpdate,
+  onReset,
+  onRetry,
+  onCreateNew,
+}: {
+  loading: boolean
+  error: string | null
+  sessions: Session[]
+  cloudAtLimit: boolean
+  onDelete: (name: string, cleanupWorktree?: boolean) => void
+  onUpdate: (
+    name: string,
+    updates: {
+      displayName?: string
+      description?: string
+      paused?: boolean
+      agentProvider?: string
+      tabVisibility?: Record<string, boolean>
+      cloudEnabled?: boolean
+    }
+  ) => void
+  onReset: (name: string) => void
+  onRetry: () => void
+  onCreateNew: () => void
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <span className="text-text-muted">Loading sessions...</span>
+      </div>
+    )
+  }
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 gap-4">
+        <span className="text-red-400">{error}</span>
+        <button
+          onClick={onRetry}
+          className="px-4 py-2 bg-control-bg hover:bg-control-bg-hover rounded transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    )
+  }
+  if (sessions.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 gap-4 text-text-muted">
+        <Monitor size={64} strokeWidth={1} />
+        <p>No sessions yet</p>
+        <p className="text-sm">
+          Create a new session to get started, or existing tmux sessions will appear here
+        </p>
+        <button
+          onClick={onCreateNew}
+          className="mt-2 flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors text-base"
+        >
+          <Plus size={20} />
+          Create Your First Session
+        </button>
+      </div>
+    )
+  }
+  return (
+    <SessionGrid
+      sessions={sessions}
+      cloudAtLimit={cloudAtLimit}
+      onDelete={onDelete}
+      onUpdate={onUpdate}
+      onReset={onReset}
+    />
+  )
+}
+
 function DashboardBanners({
   lbSharedInstalled,
   installingLbShared,
@@ -347,7 +501,14 @@ export default function Dashboard() {
       fetchPlanInfo()
     }, 10000)
     return () => clearInterval(interval)
-  }, [fetchSessions, fetchPlanInfo, checkFirstRun, checkLbSharedStatus, checkTmuxMouse, checkVersion])
+  }, [
+    fetchSessions,
+    fetchPlanInfo,
+    checkFirstRun,
+    checkLbSharedStatus,
+    checkTmuxMouse,
+    checkVersion,
+  ])
 
   const handleDelete = async (name: string, cleanupWorktree?: boolean) => {
     try {
@@ -416,14 +577,6 @@ export default function Dashboard() {
     }
   }
 
-  // Separate alive and dead sessions, sort by last used (most recent first)
-  const sortByLastUsed = (a: Session, b: Session) => {
-    const aTime = a.lastUsedAt || ''
-    const bTime = b.lastUsedAt || ''
-    return bTime.localeCompare(aTime)
-  }
-  const aliveSessions = sessions.filter((s) => s.alive).sort(sortByLastUsed)
-  const deadSessions = sessions.filter((s) => !s.alive).sort(sortByLastUsed)
   const cloudAtLimit = planInfo ? planInfo.limit > 0 && planInfo.used >= planInfo.limit : false
 
   return (
@@ -433,7 +586,9 @@ export default function Dashboard() {
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-semibold text-text-secondary">Lumbergh</h1>
           {planInfo && planInfo.limit > 0 && (
-            <span className={`text-xs font-medium ${planInfo.used >= planInfo.limit ? 'text-yellow-500' : 'text-text-muted'}`}>
+            <span
+              className={`text-xs font-medium ${planInfo.used >= planInfo.limit ? 'text-yellow-500' : 'text-text-muted'}`}
+            >
               Cloud: {planInfo.used}/{planInfo.limit}
             </span>
           )}
@@ -498,82 +653,17 @@ export default function Dashboard() {
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-4">
         <div className="max-w-6xl mx-auto">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <span className="text-text-muted">Loading sessions...</span>
-            </div>
-          ) : error ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-4">
-              <span className="text-red-400">{error}</span>
-              <button
-                onClick={fetchSessions}
-                className="px-4 py-2 bg-control-bg hover:bg-control-bg-hover rounded transition-colors"
-              >
-                Retry
-              </button>
-            </div>
-          ) : sessions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-4 text-text-muted">
-              <Monitor size={64} strokeWidth={1} />
-              <p>No sessions yet</p>
-              <p className="text-sm">
-                Create a new session to get started, or existing tmux sessions will appear here
-              </p>
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="mt-2 flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors text-base"
-              >
-                <Plus size={20} />
-                Create Your First Session
-              </button>
-            </div>
-          ) : (
-            <>
-              {/* Active sessions */}
-              {aliveSessions.length > 0 && (
-                <section className="mb-8">
-                  <h2 className="text-sm font-medium text-text-tertiary mb-3 uppercase tracking-wide">
-                    Active Sessions
-                  </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {aliveSessions.map((session) => (
-                      <div key={session.name} data-testid={`session-card-${session.name}`}>
-                        <SessionCard
-                          session={session}
-                          onDelete={handleDelete}
-                          onUpdate={handleUpdate}
-                          onReset={handleReset}
-                          cloudAtLimit={cloudAtLimit}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* Dead sessions (stored but not running) */}
-              {deadSessions.length > 0 && (
-                <section>
-                  <h2 className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wide">
-                    Inactive Sessions
-                  </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {deadSessions.map((session) => (
-                      <div key={session.name} data-testid={`session-card-${session.name}`}>
-                        <SessionCard
-                          session={session}
-                          onDelete={handleDelete}
-                          onUpdate={handleUpdate}
-                          onReset={handleReset}
-                          cloudAtLimit={cloudAtLimit}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-            </>
-          )}
+          <DashboardContent
+            loading={loading}
+            error={error}
+            sessions={sessions}
+            cloudAtLimit={cloudAtLimit}
+            onDelete={handleDelete}
+            onUpdate={handleUpdate}
+            onReset={handleReset}
+            onRetry={fetchSessions}
+            onCreateNew={() => setShowCreateModal(true)}
+          />
         </div>
       </main>
 

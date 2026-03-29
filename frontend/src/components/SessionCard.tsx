@@ -48,6 +48,77 @@ interface SessionUpdate {
   cloudEnabled?: boolean
 }
 
+function SessionCardFooter({
+  session,
+  cloudAtLimit,
+  onToggleCloud,
+}: {
+  session: Pick<Session, 'windows' | 'attached' | 'workdir' | 'cloudEnabled'>
+  cloudAtLimit?: boolean
+  onToggleCloud: (e: React.MouseEvent) => void
+}) {
+  return (
+    <div className="flex items-center gap-3 text-xs text-text-muted">
+      <span>
+        {session.windows} window{session.windows !== 1 ? 's' : ''}
+      </span>
+      {session.attached && <span className="text-blue-400">attached</span>}
+      {!session.workdir && <span className="text-yellow-500">orphan</span>}
+      <button
+        onClick={onToggleCloud}
+        className={`ml-auto p-0.5 rounded transition-colors ${
+          session.cloudEnabled
+            ? 'text-blue-400 hover:text-blue-300'
+            : cloudAtLimit
+              ? 'text-text-muted opacity-40 cursor-not-allowed'
+              : 'text-text-muted hover:text-blue-400'
+        }`}
+        title={
+          session.cloudEnabled
+            ? 'Cloud enabled (click to disable)'
+            : cloudAtLimit
+              ? 'Cloud session limit reached'
+              : 'Enable cloud access'
+        }
+      >
+        <Cloud size={14} fill={session.cloudEnabled ? 'currentColor' : 'none'} />
+      </button>
+    </div>
+  )
+}
+
+async function confirmDeleteSession(
+  session: Pick<Session, 'name' | 'type' | 'workdir'>,
+  onDelete: (name: string, cleanupWorktree?: boolean) => void
+) {
+  if (session.type === 'worktree') {
+    let dirty = false
+    try {
+      const res = await fetch(`${getApiBase()}/sessions/${session.name}/git/status`)
+      if (res.ok) {
+        const data = await res.json()
+        dirty = data.files && data.files.length > 0
+      }
+    } catch {
+      // If we can't check, proceed with caution
+    }
+
+    const msg = dirty
+      ? `Delete session "${session.name}" and its worktree?\n\n` +
+        `WARNING: This worktree has uncommitted changes that will be lost.\n` +
+        `${session.workdir}`
+      : `Delete session "${session.name}" and its worktree?\n\n${session.workdir}`
+
+    if (confirm(msg)) {
+      onDelete(session.name, true)
+    }
+  } else {
+    if (confirm(`Delete session "${session.name}"?`)) {
+      onDelete(session.name)
+    }
+  }
+}
+
 interface Props {
   session: Session
   onDelete: (name: string, cleanupWorktree?: boolean) => void
@@ -68,34 +139,7 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset, clou
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation()
-
-    if (session.type === 'worktree') {
-      // Check for uncommitted changes before deleting worktree
-      let dirty = false
-      try {
-        const res = await fetch(`${getApiBase()}/sessions/${session.name}/git/status`)
-        if (res.ok) {
-          const data = await res.json()
-          dirty = data.files && data.files.length > 0
-        }
-      } catch {
-        // If we can't check, proceed with caution
-      }
-
-      const msg = dirty
-        ? `Delete session "${session.name}" and its worktree?\n\n` +
-          `WARNING: This worktree has uncommitted changes that will be lost.\n` +
-          `${session.workdir}`
-        : `Delete session "${session.name}" and its worktree?\n\n${session.workdir}`
-
-      if (confirm(msg)) {
-        onDelete(session.name, true)
-      }
-    } else {
-      if (confirm(`Delete session "${session.name}"?`)) {
-        onDelete(session.name)
-      }
-    }
+    await confirmDeleteSession(session, onDelete)
   }
 
   const handleReset = (e: React.MouseEvent) => {
@@ -189,32 +233,11 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset, clou
         </div>
       )}
 
-      <div className="flex items-center gap-3 text-xs text-text-muted">
-        <span>
-          {session.windows} window{session.windows !== 1 ? 's' : ''}
-        </span>
-        {session.attached && <span className="text-blue-400">attached</span>}
-        {!session.workdir && <span className="text-yellow-500">orphan</span>}
-        <button
-          onClick={handleToggleCloud}
-          className={`ml-auto p-0.5 rounded transition-colors ${
-            session.cloudEnabled
-              ? 'text-blue-400 hover:text-blue-300'
-              : cloudAtLimit
-                ? 'text-text-muted opacity-40 cursor-not-allowed'
-                : 'text-text-muted hover:text-blue-400'
-          }`}
-          title={
-            session.cloudEnabled
-              ? 'Cloud enabled (click to disable)'
-              : cloudAtLimit
-                ? 'Cloud session limit reached'
-                : 'Enable cloud access'
-          }
-        >
-          <Cloud size={14} fill={session.cloudEnabled ? 'currentColor' : 'none'} />
-        </button>
-      </div>
+      <SessionCardFooter
+        session={session}
+        cloudAtLimit={cloudAtLimit}
+        onToggleCloud={handleToggleCloud}
+      />
     </div>
   )
 }

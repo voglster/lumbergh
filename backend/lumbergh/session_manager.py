@@ -9,12 +9,18 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-
-from fastapi import WebSocket
+from typing import Protocol, runtime_checkable
 
 from lumbergh.tmux_pty import TmuxPtySession, capture_pane_content
 
 logger = logging.getLogger(__name__)
+
+
+@runtime_checkable
+class TerminalClient(Protocol):
+    """Any object that can receive JSON messages (WebSocket or CloudClient)."""
+
+    async def send_json(self, data: dict) -> None: ...
 
 
 @dataclass
@@ -22,7 +28,7 @@ class ManagedSession:
     """A PTY session with multiple connected WebSocket clients."""
 
     pty: TmuxPtySession
-    clients: set[WebSocket] = field(default_factory=set)
+    clients: set[TerminalClient] = field(default_factory=set)
     read_task: asyncio.Task | None = None
     copy_mode_task: asyncio.Task | None = None
 
@@ -52,7 +58,7 @@ class SessionManager:
             self._lock: asyncio.Lock = asyncio.Lock()
             self._initialized = True
 
-    async def register_client(self, session_name: str, websocket: WebSocket) -> ManagedSession:
+    async def register_client(self, session_name: str, websocket: TerminalClient) -> ManagedSession:
         """
         Register a WebSocket client for a tmux session.
         Creates the PTY if this is the first client.
@@ -117,7 +123,7 @@ class SessionManager:
 
         return managed
 
-    async def unregister_client(self, session_name: str, websocket: WebSocket) -> None:
+    async def unregister_client(self, session_name: str, websocket: TerminalClient) -> None:
         """
         Unregister a WebSocket client.
         Closes the PTY if this was the last client.
@@ -311,7 +317,7 @@ class SessionManager:
                 pass
 
     async def handle_client_message(
-        self, session_name: str, message: dict, sender: WebSocket | None = None
+        self, session_name: str, message: dict, sender: TerminalClient | None = None
     ) -> None:
         """Handle a message from a WebSocket client."""
         if session_name not in self._sessions:
