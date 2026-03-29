@@ -12,9 +12,12 @@ if (saved !== 'light') {
   document.documentElement.classList.add('dark')
 }
 
+// When proxied through Lumbergh Cloud, the app runs under a subpath
+const basename = window.__LUMBERGH_ROUTER_BASE__ || '/'
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename={basename}>
       <AuthProvider>
         <ThemeProvider>
           <App />

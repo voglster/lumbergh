@@ -178,6 +178,14 @@ async def proxy_lint_prompt(body: LintPromptRequest):
     return await _cloud_json("POST", "/api/prompts/lint", json=body.model_dump(), timeout=90.0)
 
 
+@router.get("/plan")
+async def get_plan():
+    """Return cloud plan info from the tunnel's cached state."""
+    from lumbergh.tunnel import cloud_tunnel
+
+    return cloud_tunnel.get_plan_info()
+
+
 @router.post("/disconnect")
 async def disconnect():
     """Clear cloud token and username from settings."""

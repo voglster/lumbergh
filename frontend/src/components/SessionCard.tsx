@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getApiBase } from '../config'
-import { Minus, Pause, Play, AlertCircle, AlertTriangle, Circle } from 'lucide-react'
+import { Minus, Pause, Play, AlertCircle, AlertTriangle, Circle, Cloud } from 'lucide-react'
 import SessionCardEditForm from './SessionCardEditForm'
 import SessionCardActions from './SessionCardActions'
 import SessionCardBadges from './SessionCardBadges'
@@ -21,6 +21,7 @@ interface Session extends SessionBase {
   worktreeBranch?: string | null
   agentProvider?: string | null
   tabVisibility?: Record<string, boolean> | null
+  cloudEnabled?: boolean
 }
 
 const statusIcons = {
@@ -44,6 +45,7 @@ interface SessionUpdate {
   description?: string
   paused?: boolean
   agentProvider?: string
+  cloudEnabled?: boolean
 }
 
 interface Props {
@@ -51,9 +53,10 @@ interface Props {
   onDelete: (name: string, cleanupWorktree?: boolean) => void
   onUpdate: (name: string, updates: SessionUpdate) => void
   onReset: (name: string) => void
+  cloudAtLimit?: boolean
 }
 
-export default function SessionCard({ session, onDelete, onUpdate, onReset }: Props) {
+export default function SessionCard({ session, onDelete, onUpdate, onReset, cloudAtLimit }: Props) {
   const navigate = useNavigate()
   const [isEditing, setIsEditing] = useState(false)
 
@@ -109,6 +112,12 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
   const handleTogglePaused = (e: React.MouseEvent) => {
     e.stopPropagation()
     onUpdate(session.name, { paused: !session.paused })
+  }
+
+  const handleToggleCloud = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!session.cloudEnabled && cloudAtLimit) return
+    onUpdate(session.name, { cloudEnabled: !session.cloudEnabled })
   }
 
   const handleEditClick = (e: React.MouseEvent) => {
@@ -186,6 +195,25 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
         </span>
         {session.attached && <span className="text-blue-400">attached</span>}
         {!session.workdir && <span className="text-yellow-500">orphan</span>}
+        <button
+          onClick={handleToggleCloud}
+          className={`ml-auto p-0.5 rounded transition-colors ${
+            session.cloudEnabled
+              ? 'text-blue-400 hover:text-blue-300'
+              : cloudAtLimit
+                ? 'text-text-muted opacity-40 cursor-not-allowed'
+                : 'text-text-muted hover:text-blue-400'
+          }`}
+          title={
+            session.cloudEnabled
+              ? 'Cloud enabled (click to disable)'
+              : cloudAtLimit
+                ? 'Cloud session limit reached'
+                : 'Enable cloud access'
+          }
+        >
+          <Cloud size={14} fill={session.cloudEnabled ? 'currentColor' : 'none'} />
+        </button>
       </div>
     </div>
   )

@@ -34,6 +34,13 @@ interface Session extends SessionBase {
   lastUsedAt?: string | null
   agentProvider?: string | null
   tabVisibility?: Record<string, boolean> | null
+  cloudEnabled?: boolean
+}
+
+interface PlanInfo {
+  plan: string
+  limit: number
+  used: number
 }
 
 function DashboardBanners({
@@ -187,6 +194,7 @@ export default function Dashboard() {
     latest: string
   } | null>(null)
   const [currentVersion, setCurrentVersion] = useState<string | null>(null)
+  const [planInfo, setPlanInfo] = useState<PlanInfo | null>(null)
   const { theme, setTheme } = useTheme()
 
   const UPDATE_MESSAGES = [
@@ -315,16 +323,31 @@ export default function Dashboard() {
     }
   }
 
+  const fetchPlanInfo = useCallback(async () => {
+    try {
+      const res = await fetch(`${getApiBase()}/cloud/plan`)
+      if (res.ok) {
+        setPlanInfo(await res.json())
+      }
+    } catch {
+      // Cloud plan info is optional
+    }
+  }, [])
+
   useEffect(() => {
     fetchSessions()
     checkFirstRun()
     checkLbSharedStatus()
     checkTmuxMouse()
     checkVersion()
+    fetchPlanInfo()
     // Poll for session updates every 10 seconds
-    const interval = setInterval(fetchSessions, 10000)
+    const interval = setInterval(() => {
+      fetchSessions()
+      fetchPlanInfo()
+    }, 10000)
     return () => clearInterval(interval)
-  }, [fetchSessions, checkFirstRun, checkLbSharedStatus, checkTmuxMouse, checkVersion])
+  }, [fetchSessions, fetchPlanInfo, checkFirstRun, checkLbSharedStatus, checkTmuxMouse, checkVersion])
 
   const handleDelete = async (name: string, cleanupWorktree?: boolean) => {
     try {
@@ -354,6 +377,7 @@ export default function Dashboard() {
       paused?: boolean
       agentProvider?: string
       tabVisibility?: Record<string, boolean>
+      cloudEnabled?: boolean
     }
   ) => {
     try {
@@ -370,6 +394,7 @@ export default function Dashboard() {
       }
       // Refresh sessions list
       fetchSessions()
+      if (updates.cloudEnabled !== undefined) fetchPlanInfo()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to update session')
     }
@@ -399,12 +424,23 @@ export default function Dashboard() {
   }
   const aliveSessions = sessions.filter((s) => s.alive).sort(sortByLastUsed)
   const deadSessions = sessions.filter((s) => !s.alive).sort(sortByLastUsed)
+  const cloudAtLimit = planInfo ? planInfo.limit > 0 && planInfo.used >= planInfo.limit : false
 
   return (
     <div className="h-full flex flex-col bg-bg-sunken text-text-primary overflow-hidden">
       {/* Header */}
       <header className="flex items-center justify-between p-4 bg-bg-surface border-b border-border-default">
-        <h1 className="text-xl font-semibold text-text-secondary">Lumbergh</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-semibold text-text-secondary">Lumbergh</h1>
+          {planInfo && planInfo.limit > 0 && (
+            <span className={`text-xs font-medium ${planInfo.used >= planInfo.limit ? 'text-yellow-500' : 'text-text-muted'}`}>
+              Cloud: {planInfo.used}/{planInfo.limit}
+            </span>
+          )}
+          {planInfo && planInfo.limit === 0 && (
+            <span className="text-xs font-medium text-text-muted">Cloud: Pro</span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           {/* GitHub docs */}
           <a
@@ -507,6 +543,7 @@ export default function Dashboard() {
                           onDelete={handleDelete}
                           onUpdate={handleUpdate}
                           onReset={handleReset}
+                          cloudAtLimit={cloudAtLimit}
                         />
                       </div>
                     ))}
@@ -528,6 +565,7 @@ export default function Dashboard() {
                           onDelete={handleDelete}
                           onUpdate={handleUpdate}
                           onReset={handleReset}
+                          cloudAtLimit={cloudAtLimit}
                         />
                       </div>
                     ))}

@@ -28,6 +28,9 @@ COOKIE_MAX_AGE = 30 * 24 * 3600  # 30 days
 # Random signing key — generated once at startup, so server restart = logout
 _SIGNING_KEY = secrets.token_hex(32)
 
+# Internal bypass key for cloud tunnel proxy requests (generated at startup)
+CLOUD_PROXY_KEY = secrets.token_hex(32)
+
 
 def _get_password() -> str:
     """Get the configured password. Env var takes precedence over config."""
@@ -96,6 +99,11 @@ class AuthMiddleware:
         # Allow: auth endpoints, health check, non-API paths (frontend static)
         if path.startswith("/api/auth") or path == "/api/health" or not path.startswith("/api/"):
             return await self.app(scope, receive, send)
+
+        # Allow cloud tunnel proxy requests (already authenticated at the cloud layer)
+        for key, val in scope.get("headers", []):
+            if key == b"x-cloud-proxy-key" and hmac.compare_digest(val.decode(), CLOUD_PROXY_KEY):
+                return await self.app(scope, receive, send)
 
         token = _get_cookie_from_scope(scope)
         valid = token is not None and _verify_token(token)

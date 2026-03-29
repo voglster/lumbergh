@@ -142,6 +142,7 @@ class SessionUpdate(BaseModel):
     paused: bool | None = None
     agentProvider: str | None = None  # noqa: N815 - API field name
     tabVisibility: dict[str, bool] | None = None  # noqa: N815 - API field name
+    cloudEnabled: bool | None = None  # noqa: N815 - API field name
 
 
 class TodoMoveRequest(BaseModel):

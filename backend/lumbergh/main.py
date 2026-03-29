@@ -64,11 +64,19 @@ async def lifespan(app: FastAPI):  # noqa: ARG001 - required by FastAPI
     _telemetry_task = asyncio.create_task(send_startup())  # noqa: RUF006
     _heartbeat_task = asyncio.create_task(heartbeat_loop())
 
+    # Start cloud tunnel for remote session access (if cloud is configured)
+    from lumbergh.routers.settings import get_settings
+    from lumbergh.tunnel import cloud_tunnel
+
+    if get_settings().get("cloudToken"):
+        cloud_tunnel.start()
+
     yield
 
     _heartbeat_task.cancel()
 
     # Stop background services
+    cloud_tunnel.stop()
     backup_scheduler.stop()
     diff_cache.stop()
     idle_monitor.stop()

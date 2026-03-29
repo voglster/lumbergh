@@ -316,6 +316,7 @@ async def list_sessions():
                 "paused": meta.get("paused", False),
                 "agentProvider": meta.get("agent_provider"),
                 "tabVisibility": meta.get("tab_visibility"),
+                "cloudEnabled": meta.get("cloud_enabled", False),
             }
         )
 
@@ -397,8 +398,16 @@ async def update_session(name: str, body: SessionUpdate):
         record["agent_provider"] = body.agentProvider
     if body.tabVisibility is not None:
         record["tab_visibility"] = body.tabVisibility
+    if body.cloudEnabled is not None:
+        record["cloud_enabled"] = body.cloudEnabled
 
     sessions_table.upsert(record, session_q.name == name)
+
+    # Notify cloud tunnel if cloud state changed
+    if body.cloudEnabled is not None:
+        from lumbergh.tunnel import cloud_tunnel
+
+        cloud_tunnel.notify_session_change()
 
     return record
 
@@ -568,6 +577,11 @@ async def create_session(body: CreateSessionRequest):
     live = get_live_sessions()
     live_info = live.get(body.name, {})
 
+    # Notify cloud tunnel of session change
+    from lumbergh.tunnel import cloud_tunnel
+
+    cloud_tunnel.notify_session_change()
+
     return {
         "name": body.name,
         "workdir": str(workdir),
@@ -673,6 +687,11 @@ async def delete_session(name: str, cleanup_worktree: bool = False):
 
     session_q = Query()
     sessions_table.remove(session_q.name == name)
+
+    # Notify cloud tunnel of session change
+    from lumbergh.tunnel import cloud_tunnel
+
+    cloud_tunnel.notify_session_change()
 
     return {
         "status": "deleted",
