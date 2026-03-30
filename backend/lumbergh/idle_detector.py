@@ -197,7 +197,7 @@ class IdleDetector:
         """
         Analyze buffer to determine current state.
 
-        Priority: ERROR > shell prompt > spinner > WORKING > IDLE > UNKNOWN
+        Priority: ERROR > shell prompt > spinner > IDLE (last 3 lines) > WORKING > IDLE > UNKNOWN
         """
         if not self._buffer:
             return SessionState.UNKNOWN, 0.0, "No data"
@@ -220,15 +220,21 @@ class IdleDetector:
         if any(char in last_line for char in self.SPINNER_CHARS):
             return SessionState.WORKING, 0.95, "Spinner detected"
 
-        # 4. Working patterns
+        # 4. Idle patterns on most recent lines (current screen state wins)
+        last_few = recent_lines[-3:]
+        match = self._match_patterns(last_few, self.IDLE_PATTERNS)
+        if match:
+            return SessionState.IDLE, 0.9, f"Idle pattern: {match.pattern}"
+
+        # 5. Working patterns (across all recent lines)
         match = self._match_patterns(recent_lines, self.WORKING_PATTERNS)
         if match:
             return SessionState.WORKING, 0.85, f"Working pattern: {match.pattern}"
 
-        # 5. Idle patterns
+        # 6. Idle patterns (across all recent lines, lower priority)
         match = self._match_patterns(recent_lines, self.IDLE_PATTERNS)
         if match:
-            return SessionState.IDLE, 0.9, f"Idle pattern: {match.pattern}"
+            return SessionState.IDLE, 0.8, f"Idle pattern: {match.pattern}"
 
         return SessionState.UNKNOWN, 0.3, "Unable to determine"
 
