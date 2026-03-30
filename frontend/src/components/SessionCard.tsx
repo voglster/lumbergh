@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getApiBase } from '../config'
-import { Minus, Pause, Play, AlertCircle, AlertTriangle, Circle, Cloud } from 'lucide-react'
+import { Minus, Pause, Play, AlertCircle, AlertTriangle, Circle, Cloud, Star } from 'lucide-react'
 import SessionCardEditForm from './SessionCardEditForm'
 import SessionCardActions from './SessionCardActions'
 import SessionCardBadges from './SessionCardBadges'
@@ -22,6 +22,7 @@ interface Session extends SessionBase {
   agentProvider?: string | null
   tabVisibility?: Record<string, boolean> | null
   cloudEnabled?: boolean
+  theOne?: boolean
 }
 
 const statusIcons = {
@@ -46,16 +47,19 @@ interface SessionUpdate {
   paused?: boolean
   agentProvider?: string
   cloudEnabled?: boolean
+  theOne?: boolean
 }
 
 function SessionCardFooter({
   session,
   cloudAtLimit,
   onToggleCloud,
+  onToggleTheOne,
 }: {
-  session: Pick<Session, 'windows' | 'attached' | 'workdir' | 'cloudEnabled'>
+  session: Pick<Session, 'windows' | 'attached' | 'workdir' | 'cloudEnabled' | 'theOne'>
   cloudAtLimit?: boolean
   onToggleCloud: (e: React.MouseEvent) => void
+  onToggleTheOne: (e: React.MouseEvent) => void
 }) {
   return (
     <div className="flex items-center gap-3 text-xs text-text-muted">
@@ -65,8 +69,19 @@ function SessionCardFooter({
       {session.attached && <span className="text-blue-400">attached</span>}
       {!session.workdir && <span className="text-yellow-500">orphan</span>}
       <button
-        onClick={onToggleCloud}
+        onClick={onToggleTheOne}
         className={`ml-auto p-0.5 rounded transition-colors ${
+          session.theOne
+            ? 'text-yellow-400 hover:text-yellow-300'
+            : 'text-text-muted hover:text-yellow-400'
+        }`}
+        title={session.theOne ? 'Starred (click to unstar)' : 'Star session'}
+      >
+        <Star size={14} fill={session.theOne ? 'currentColor' : 'none'} />
+      </button>
+      <button
+        onClick={onToggleCloud}
+        className={`p-0.5 rounded transition-colors ${
           session.cloudEnabled
             ? 'text-blue-400 hover:text-blue-300'
             : cloudAtLimit
@@ -164,6 +179,11 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset, clou
     onUpdate(session.name, { cloudEnabled: !session.cloudEnabled })
   }
 
+  const handleToggleTheOne = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onUpdate(session.name, { theOne: !session.theOne })
+  }
+
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     setIsEditing(true)
@@ -193,7 +213,7 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset, clou
     <div
       onClick={handleClick}
       data-testid="session-card-link"
-      className={`bg-bg-surface rounded-lg p-4 cursor-pointer hover:bg-bg-elevated transition-colors border border-border-default hover:border-border-subtle ${session.paused ? 'opacity-50' : ''}`}
+      className={`bg-bg-surface rounded-lg p-4 cursor-pointer hover:bg-bg-elevated transition-colors border ${session.theOne ? 'border-blue-500 dark:border-blue-400' : 'border-border-default hover:border-border-subtle'} ${session.paused ? 'opacity-50' : ''}`}
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -237,6 +257,7 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset, clou
         session={session}
         cloudAtLimit={cloudAtLimit}
         onToggleCloud={handleToggleCloud}
+        onToggleTheOne={handleToggleTheOne}
       />
     </div>
   )

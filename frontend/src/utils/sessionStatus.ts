@@ -4,6 +4,7 @@ export interface SessionBase {
   idleState?: 'unknown' | 'idle' | 'working' | 'error' | 'stalled' | null
   paused?: boolean
   displayName: string | null
+  theOne?: boolean
 }
 
 export function getSessionStatus(session: SessionBase): {

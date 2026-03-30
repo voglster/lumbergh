@@ -35,6 +35,7 @@ interface Session extends SessionBase {
   agentProvider?: string | null
   tabVisibility?: Record<string, boolean> | null
   cloudEnabled?: boolean
+  theOne?: boolean
 }
 
 interface PlanInfo {
@@ -62,14 +63,18 @@ function SessionGrid({
       agentProvider?: string
       tabVisibility?: Record<string, boolean>
       cloudEnabled?: boolean
+      theOne?: boolean
     }
   ) => void
   onReset: (name: string) => void
 }) {
-  const sortByLastUsed = (a: Session, b: Session) =>
-    (b.lastUsedAt || '').localeCompare(a.lastUsedAt || '')
-  const alive = sessions.filter((s) => s.alive).sort(sortByLastUsed)
-  const dead = sessions.filter((s) => !s.alive).sort(sortByLastUsed)
+  const sortSessions = (a: Session, b: Session) => {
+    if (a.theOne && !b.theOne) return -1
+    if (!a.theOne && b.theOne) return 1
+    return (b.lastUsedAt || '').localeCompare(a.lastUsedAt || '')
+  }
+  const alive = sessions.filter((s) => s.alive).sort(sortSessions)
+  const dead = sessions.filter((s) => !s.alive).sort(sortSessions)
 
   return (
     <>
@@ -142,6 +147,7 @@ function DashboardContent({
       agentProvider?: string
       tabVisibility?: Record<string, boolean>
       cloudEnabled?: boolean
+      theOne?: boolean
     }
   ) => void
   onReset: (name: string) => void
@@ -539,6 +545,7 @@ export default function Dashboard() {
       agentProvider?: string
       tabVisibility?: Record<string, boolean>
       cloudEnabled?: boolean
+      theOne?: boolean
     }
   ) => {
     try {

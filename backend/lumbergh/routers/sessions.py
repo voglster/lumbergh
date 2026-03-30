@@ -317,6 +317,7 @@ async def list_sessions():
                 "agentProvider": meta.get("agent_provider"),
                 "tabVisibility": meta.get("tab_visibility"),
                 "cloudEnabled": meta.get("cloud_enabled", False),
+                "theOne": meta.get("the_one", False),
             }
         )
 
@@ -344,6 +345,7 @@ async def list_sessions():
                     "paused": False,
                     "agentProvider": None,
                     "tabVisibility": None,
+                    "theOne": False,
                 }
             )
 
@@ -372,6 +374,23 @@ async def touch_session(name: str):
     return {"ok": True}
 
 
+def _apply_session_updates(record: dict, body: SessionUpdate) -> None:
+    """Apply non-None fields from the update body to the record."""
+    field_map = {
+        "displayName": "displayName",
+        "description": "description",
+        "paused": "paused",
+        "agentProvider": "agent_provider",
+        "tabVisibility": "tab_visibility",
+        "cloudEnabled": "cloud_enabled",
+        "theOne": "the_one",
+    }
+    for attr, key in field_map.items():
+        value = getattr(body, attr)
+        if value is not None:
+            record[key] = value
+
+
 @router.patch("/{name}")
 async def update_session(name: str, body: SessionUpdate):
     """Update session metadata (e.g., displayName)."""
@@ -387,19 +406,7 @@ async def update_session(name: str, body: SessionUpdate):
         # Create a new record for the orphan session
         record = {"name": name}
 
-    # Update fields
-    if body.displayName is not None:
-        record["displayName"] = body.displayName
-    if body.description is not None:
-        record["description"] = body.description
-    if body.paused is not None:
-        record["paused"] = body.paused
-    if body.agentProvider is not None:
-        record["agent_provider"] = body.agentProvider
-    if body.tabVisibility is not None:
-        record["tab_visibility"] = body.tabVisibility
-    if body.cloudEnabled is not None:
-        record["cloud_enabled"] = body.cloudEnabled
+    _apply_session_updates(record, body)
 
     sessions_table.upsert(record, session_q.name == name)
 

@@ -286,13 +286,25 @@ export default function SessionDetail() {
         const data = await res.json()
         const active = (data.sessions || [])
           .filter((s: { alive: boolean; paused?: boolean }) => s.alive && !s.paused)
-          .map((s: { name: string }) => s.name)
-          .sort()
+          .sort((a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name))
         if (active.length <= 1) return
-        const currentIdx = active.indexOf(name)
+        const currentIdx = active.findIndex((s: { name: string }) => s.name === name)
+
+        // On forward cycle, check starred sessions first — visit the first idle one
+        if (direction === 'next') {
+          const starredIdle = active.filter(
+            (s: { name: string; theOne?: boolean; idleState?: string }) =>
+              s.theOne && s.name !== name && s.idleState === 'idle'
+          )
+          if (starredIdle.length > 0) {
+            navigate(`/session/${starredIdle[0].name}`)
+            return
+          }
+        }
+
         const step = direction === 'next' ? 1 : active.length - 1
         const nextIdx = (currentIdx + step) % active.length
-        navigate(`/session/${active[nextIdx]}`)
+        navigate(`/session/${active[nextIdx].name}`)
       } catch {
         // Ignore errors
       }
