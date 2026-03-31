@@ -77,9 +77,9 @@ export default function SessionSummaryOverlay({ sessionName, onDismiss, onTempHi
               <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
             </button>
             <button
-              onClick={onDismiss}
+              onClick={onTempHide}
               className="text-text-muted hover:text-text-secondary transition-colors p-0.5"
-              title="Don't show again (re-enable via brain button)"
+              title="Close"
             >
               <X size={14} />
             </button>
@@ -91,10 +91,16 @@ export default function SessionSummaryOverlay({ sessionName, onDismiss, onTempHi
           {isLoading ? <LoadingSkeleton /> : <SummaryBody summary={summary} theme={theme} />}
         </div>
 
-        {/* Footer — model info */}
-        {modelLabel && !isLoading && (
-          <div className="px-4 pb-3 pt-0">
-            <span className="text-[10px] text-text-muted">{modelLabel}</span>
+        {/* Footer — model info + dismiss link */}
+        {!isLoading && (
+          <div className="px-4 pb-3 pt-0 flex items-center justify-between">
+            {modelLabel && <span className="text-[10px] text-text-muted">{modelLabel}</span>}
+            <button
+              onClick={onDismiss}
+              className="text-[10px] text-text-muted hover:text-text-secondary transition-colors"
+            >
+              never show this again
+            </button>
           </div>
         )}
       </div>
