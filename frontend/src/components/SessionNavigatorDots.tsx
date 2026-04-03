@@ -88,36 +88,44 @@ export default function SessionNavigatorDots({ currentSessionName, compact = fal
     const isCurrent = s.name === currentSessionName
     const isPulsing = alerting[s.name]
 
+    const tooltipText = `${s.displayName || s.name} — ${status.label}`
+
     if (compact) {
       return (
-        <button
-          key={s.name}
-          onClick={() => navigate(`/session/${s.name}`)}
-          title={`${s.displayName || s.name} — ${status.label}`}
-          className={`shrink-0 rounded-full transition-all ${colors.dot} flex items-center justify-center font-bold text-black/60 text-[8px] ${
-            isCurrent
-              ? `w-6 h-6 ring-2 ${statusRingClasses[status.color]} ring-offset-1 ring-offset-[var(--bg-surface)]`
-              : 'w-5 h-5 hover:scale-110'
-          } ${isPulsing ? 'animate-[pulse-dot_1.2s_ease-in-out_3]' : ''}`}
-        >
-          {getInitial(s.displayName || s.name)}
-        </button>
+        <div key={s.name} className="group relative shrink-0">
+          <button
+            onClick={() => navigate(`/session/${s.name}`)}
+            className={`shrink-0 rounded-full transition-all ${colors.dot} flex items-center justify-center font-bold text-black/60 text-[8px] ${
+              isCurrent
+                ? `w-6 h-6 ring-2 ${statusRingClasses[status.color]} ring-offset-1 ring-offset-[var(--bg-surface)]`
+                : 'w-5 h-5 hover:scale-110'
+            } ${isPulsing ? 'animate-[pulse-dot_1.2s_ease-in-out_3]' : ''}`}
+          >
+            {getInitial(s.displayName || s.name)}
+          </button>
+          <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity z-50">
+            {tooltipText}
+          </span>
+        </div>
       )
     }
 
     return (
-      <button
-        key={s.name}
-        onClick={() => navigate(`/session/${s.name}`)}
-        title={`${s.displayName || s.name} — ${status.label}`}
-        className={`rounded-full transition-all ${colors.dot} flex items-center justify-center font-bold text-black/60 ${
-          isCurrent
-            ? `w-7 h-7 text-sm ring-2 ${statusRingClasses[status.color]} ring-offset-1 ring-offset-[var(--bg-surface)]`
-            : 'w-7 h-7 text-sm hover:scale-110'
-        } ${isPulsing ? 'animate-[pulse-dot_1.2s_ease-in-out_3]' : ''}`}
-      >
-        {getInitial(s.displayName || s.name)}
-      </button>
+      <div key={s.name} className="group relative">
+        <button
+          onClick={() => navigate(`/session/${s.name}`)}
+          className={`rounded-full transition-all ${colors.dot} flex items-center justify-center font-bold text-black/60 ${
+            isCurrent
+              ? `w-7 h-7 text-sm ring-2 ${statusRingClasses[status.color]} ring-offset-1 ring-offset-[var(--bg-surface)]`
+              : 'w-7 h-7 text-sm hover:scale-110'
+          } ${isPulsing ? 'animate-[pulse-dot_1.2s_ease-in-out_3]' : ''}`}
+        >
+          {getInitial(s.displayName || s.name)}
+        </button>
+        <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity z-50">
+          {tooltipText}
+        </span>
+      </div>
     )
   })
 
