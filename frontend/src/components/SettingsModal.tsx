@@ -28,6 +28,7 @@ interface Settings {
   cloudUsername?: string
   tabVisibility?: Record<string, boolean>
   showSessionDots?: boolean
+  scratchMaxAgeDays?: number
 }
 
 type TabId = 'general' | 'ai' | 'cloud' | 'security'
@@ -54,6 +55,7 @@ export default function SettingsModal({ onClose }: Props) {
     shared: true,
   })
   const [showSessionDots, setShowSessionDots] = useState(true)
+  const [scratchMaxAgeDays, setScratchMaxAgeDays] = useState('7')
   const [cloudUsername, setCloudUsername] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -82,14 +84,15 @@ export default function SettingsModal({ onClose }: Props) {
       const data: Settings = await res.json()
       setRepoSearchDir(data.repoSearchDir || '')
       if (data.gitGraphCommits) setGitGraphCommits(String(data.gitGraphCommits))
-      setPasswordSet(data.passwordSet ?? false)
+      setPasswordSet(!!data.passwordSet)
       setPasswordSource(data.passwordSource ?? null)
-      setTelemetryConsent(data.telemetryConsent ?? false)
+      setTelemetryConsent(!!data.telemetryConsent)
       setCloudUsername(data.cloudUsername ?? null)
       if (data.defaultAgent) setDefaultAgent(data.defaultAgent)
       if (data.agentProviders) setAgentProviders(data.agentProviders)
       if (data.tabVisibility) setTabVisibility(data.tabVisibility)
       if (data.showSessionDots != null) setShowSessionDots(data.showSessionDots)
+      if (data.scratchMaxAgeDays != null) setScratchMaxAgeDays(String(data.scratchMaxAgeDays))
       if (data.ai) applyAiSettings(data.ai)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load settings')
@@ -125,6 +128,7 @@ export default function SettingsModal({ onClose }: Props) {
       payload.defaultAgent = defaultAgent
       payload.tabVisibility = tabVisibility
       payload.showSessionDots = showSessionDots
+      payload.scratchMaxAgeDays = Math.max(0, parseInt(scratchMaxAgeDays) || 7)
       payload.ai = {
         provider: aiProvider,
         providers: providerConfigs,
@@ -211,6 +215,8 @@ export default function SettingsModal({ onClose }: Props) {
                 onTabVisibilityChange={setTabVisibility}
                 showSessionDots={showSessionDots}
                 onShowSessionDotsChange={setShowSessionDots}
+                scratchMaxAgeDays={scratchMaxAgeDays}
+                onScratchMaxAgeDaysChange={setScratchMaxAgeDays}
                 telemetryConsent={telemetryConsent}
                 onTelemetryConsentChange={setTelemetryConsent}
               />

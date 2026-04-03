@@ -12,6 +12,7 @@ import PromptTemplates from '../components/PromptTemplates'
 import SharedFiles from '../components/SharedFiles'
 import TelemetryOptIn from '../components/TelemetryOptIn'
 import SessionSummaryOverlay from '../components/SessionSummaryBanner'
+import ScratchPromoteBanner from '../components/ScratchPromoteBanner'
 import { isSummaryDismissed, dismissSummary, enableSummary } from '../hooks/useSessionSummary'
 import GitTab from '../components/graph/GitTab'
 import SessionNavigatorDots from '../components/SessionNavigatorDots'
@@ -93,6 +94,7 @@ export default function SessionDetail() {
   const [sessionTabVisibility, setSessionTabVisibility] = useState<TabVisibility | null>(null)
   const [showTabSettings, setShowTabSettings] = useState(false)
   const [showSummary, setShowSummary] = useState(false)
+  const [isScratch, setIsScratch] = useState(false)
   const tabSettingsRef = useRef<HTMLDivElement>(null)
   const focusFnRef = useRef<(() => void) | null>(null)
 
@@ -126,16 +128,17 @@ export default function SessionDetail() {
       .then((res) => res.json())
       .then((data) => {
         const session = (data.sessions || []).find((s: { name: string }) => s.name === name)
-        if (session?.tabVisibility) {
-          setSessionTabVisibility(session.tabVisibility)
-        }
-        // Auto-show summary if: not dismissed, active session, untouched for 30+ min
-        if (session && !isSummaryDismissed() && session.alive && !session.paused) {
-          const STALE_MINUTES = 30
-          const lastUsed = session.lastUsedAt ? new Date(session.lastUsedAt).getTime() : 0
-          const minutesSinceTouch = (Date.now() - lastUsed) / 60_000
-          if (minutesSinceTouch >= STALE_MINUTES) {
-            setShowSummary(true)
+        if (session) {
+          if (session.tabVisibility) setSessionTabVisibility(session.tabVisibility)
+          setIsScratch(session.type === 'scratch')
+          // Auto-show summary if: not dismissed, active session, untouched for 30+ min
+          if (!isSummaryDismissed() && session.alive && !session.paused) {
+            const STALE_MINUTES = 30
+            const lastUsed = session.lastUsedAt ? new Date(session.lastUsedAt).getTime() : 0
+            const minutesSinceTouch = (Date.now() - lastUsed) / 60_000
+            if (minutesSinceTouch >= STALE_MINUTES) {
+              setShowSummary(true)
+            }
           }
         }
       })
@@ -648,6 +651,11 @@ export default function SessionDetail() {
 
   return (
     <div className="h-full flex flex-col bg-bg-sunken text-text-primary">
+      <ScratchPromoteBanner
+        sessionName={name!}
+        isScratch={isScratch}
+        onPromoted={() => setIsScratch(false)}
+      />
       {showTelemetryOptIn && <TelemetryOptIn onClose={() => setShowTelemetryOptIn(false)} />}
 
       {/* Conditionally render only desktop OR mobile layout (not both) */}

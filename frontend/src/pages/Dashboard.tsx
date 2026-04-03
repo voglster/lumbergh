@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Sun,
   Moon,
@@ -11,6 +12,7 @@ import {
   BookOpen,
   Star,
   FolderOpen,
+  Zap,
 } from 'lucide-react'
 import { getApiBase } from '../config'
 import SessionCard from '../components/SessionCard'
@@ -28,7 +30,7 @@ interface Session extends SessionBase {
   status?: string | null
   statusUpdatedAt?: string | null
   idleStateUpdatedAt?: string | null
-  type?: 'direct' | 'worktree'
+  type?: 'direct' | 'worktree' | 'scratch'
   worktreeParentRepo?: string | null
   worktreeBranch?: string | null
   lastUsedAt?: string | null
@@ -36,6 +38,7 @@ interface Session extends SessionBase {
   tabVisibility?: Record<string, boolean> | null
   cloudEnabled?: boolean
   theOne?: boolean
+  scratch?: boolean
 }
 
 interface PlanInfo {
@@ -338,11 +341,13 @@ function DashboardBanners({
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate()
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [creatingScratch, setCreatingScratch] = useState(false)
   const [isFirstRun, setIsFirstRun] = useState<boolean | null>(null)
   const [defaultRepoDir, setDefaultRepoDir] = useState('')
   const [lbSharedInstalled, setLbSharedInstalled] = useState<boolean | null>(null)
@@ -584,6 +589,24 @@ export default function Dashboard() {
     }
   }
 
+  const handleCreateScratch = async () => {
+    if (creatingScratch) return
+    setCreatingScratch(true)
+    try {
+      const res = await fetch(`${getApiBase()}/sessions/scratch`, { method: 'POST' })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.detail || 'Failed to create scratch session')
+      }
+      const data = await res.json()
+      navigate(`/session/${data.name}`)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to create scratch session')
+    } finally {
+      setCreatingScratch(false)
+    }
+  }
+
   const cloudAtLimit = planInfo ? planInfo.limit > 0 && planInfo.used >= planInfo.limit : false
 
   return (
@@ -629,6 +652,15 @@ export default function Dashboard() {
             className="p-2 text-text-tertiary hover:text-text-primary hover:bg-control-bg rounded transition-colors"
           >
             <Settings size={20} />
+          </button>
+          <button
+            onClick={handleCreateScratch}
+            disabled={creatingScratch}
+            title="Quick scratch session"
+            data-testid="scratch-session-btn"
+            className="p-2 text-amber-400 hover:bg-amber-600/20 hover:text-amber-300 disabled:opacity-50 rounded transition-colors"
+          >
+            <Zap size={16} />
           </button>
           <button
             onClick={() => setShowCreateModal(true)}

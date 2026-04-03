@@ -40,6 +40,7 @@ def _get_defaults() -> dict:
             "shared": True,
         },
         "showSessionDots": True,
+        "scratchMaxAgeDays": 7,
         "cloudUrl": "https://app.lumbergh.dev",
         "ai": {
             "provider": "ollama",
@@ -107,6 +108,7 @@ class SettingsUpdate(BaseModel):
     backupIncludeApiKeys: bool | None = None  # noqa: N815 - API field name
     backupPassphrase: str | None = None  # noqa: N815 - API field name
     showSessionDots: bool | None = None  # noqa: N815 - API field name
+    scratchMaxAgeDays: int | None = None  # noqa: N815 - API field name
 
 
 def deep_merge(base: dict, override: dict) -> dict:

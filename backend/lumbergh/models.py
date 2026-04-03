@@ -139,6 +139,8 @@ class SessionUpdate(BaseModel):
 
     displayName: str | None = None  # noqa: N815 - API field name
     description: str | None = None
+    workdir: str | None = None  # For scratch→project promotion
+    scratch: bool | None = None  # Set to False to promote scratch→direct
     paused: bool | None = None
     agentProvider: str | None = None  # noqa: N815 - API field name
     tabVisibility: dict[str, bool] | None = None  # noqa: N815 - API field name

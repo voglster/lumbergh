@@ -6,7 +6,9 @@ Stores metadata in ~/.config/lumbergh/sessions.json
 import asyncio
 import logging
 import re
+import shutil
 import subprocess
+import time
 import uuid
 from collections.abc import Callable
 from pathlib import Path
@@ -17,7 +19,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from tinydb import Query
 
-from lumbergh.constants import IGNORE_DIRS, REPO_SEARCH_SKIP_DIRS
+from lumbergh.constants import IGNORE_DIRS, REPO_SEARCH_SKIP_DIRS, SCRATCH_DIR
 from lumbergh.db_utils import (
     get_project_db,
     get_session_data_db,
@@ -86,6 +88,9 @@ T = TypeVar("T")
 
 GIT_READ_TIMEOUT = 10  # seconds — status, diff, log, branches
 GIT_WRITE_TIMEOUT = 30  # seconds — push, pull, rebase, commit
+
+# Auto-cleanup gating: only check stale scratch sessions once per hour
+_last_scratch_cleanup: float = 0.0
 
 
 async def _run_git(fn: Callable[..., T], *args, timeout: float = GIT_READ_TIMEOUT, **kwargs) -> T:
@@ -283,9 +288,61 @@ def get_session_status(name: str) -> dict:
     return result
 
 
+def _remove_scratch_session(name: str, meta: dict, live: dict) -> None:
+    """Remove a single scratch session: kill tmux, delete dir, remove from DB."""
+    if name in live:
+        subprocess.run(
+            ["tmux", "kill-session", "-t", name],
+            capture_output=True,
+            text=True,
+        )
+    workdir = meta.get("workdir")
+    if workdir:
+        scratch_path = Path(workdir)
+        if scratch_path.is_relative_to(SCRATCH_DIR) and scratch_path.exists():
+            shutil.rmtree(scratch_path, ignore_errors=True)
+    sessions_table.remove(Query().name == name)
+
+
+def _cleanup_stale_scratch() -> None:
+    """Remove scratch sessions older than the configured max age."""
+    global _last_scratch_cleanup
+    now = time.time()
+    if now - _last_scratch_cleanup < 3600:
+        return
+    _last_scratch_cleanup = now
+
+    from lumbergh.routers.settings import get_settings
+
+    max_days = get_settings().get("scratchMaxAgeDays", 7)
+    if max_days <= 0:
+        return
+
+    from datetime import UTC, datetime
+
+    cutoff_ts = datetime.now(UTC).timestamp() - max_days * 86400
+    stored = get_stored_sessions()
+    live = get_live_sessions()
+
+    for name, meta in stored.items():
+        if meta.get("type") != "scratch":
+            continue
+        last_used = meta.get("lastUsedAt")
+        if last_used:
+            try:
+                session_ts = datetime.fromisoformat(last_used).timestamp()
+            except (ValueError, TypeError):
+                continue
+        else:
+            session_ts = 0
+        if session_ts < cutoff_ts:
+            _remove_scratch_session(name, meta, live)
+
+
 @router.get("")
 async def list_sessions():
     """List all sessions (merge TinyDB metadata + live tmux state)."""
+    _cleanup_stale_scratch()
     live = get_live_sessions()
     stored = get_stored_sessions()
 
@@ -318,6 +375,7 @@ async def list_sessions():
                 "tabVisibility": meta.get("tab_visibility"),
                 "cloudEnabled": meta.get("cloud_enabled", False),
                 "theOne": meta.get("the_one", False),
+                "scratch": meta.get("type") == "scratch",
             }
         )
 
@@ -389,6 +447,15 @@ def _apply_session_updates(record: dict, body: SessionUpdate) -> None:
         value = getattr(body, attr)
         if value is not None:
             record[key] = value
+
+    # Promotion: update workdir and clear scratch type
+    if body.workdir is not None:
+        workdir = Path(body.workdir).expanduser().resolve()
+        if not workdir.is_dir():
+            raise HTTPException(status_code=400, detail=f"Directory does not exist: {body.workdir}")
+        record["workdir"] = str(workdir)
+    if body.scratch is False:
+        record["type"] = "direct"
 
 
 @router.patch("/{name}")
@@ -602,6 +669,57 @@ async def create_session(body: CreateSessionRequest):
     }
 
 
+@router.post("/scratch")
+async def create_scratch_session():
+    """Create a one-click scratch session with no project directory."""
+    name = f"scratch-{uuid.uuid4().hex[:8]}"
+    workdir = SCRATCH_DIR / name
+    _init_repo(workdir)
+
+    launch_cmd = _resolve_launch_command(None)
+
+    try:
+        create_tmux_session(name, workdir, launch_command=launch_cmd)
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    session_q = Query()
+    sessions_table.upsert(
+        {
+            "name": name,
+            "workdir": str(workdir),
+            "description": "",
+            "type": "scratch",
+            "agent_provider": None,
+            "tab_visibility": {
+                "git": False,
+                "files": False,
+                "todos": False,
+                "prompts": True,
+                "shared": True,
+            },
+        },
+        session_q.name == name,
+    )
+
+    from lumbergh.tunnel import cloud_tunnel
+
+    cloud_tunnel.notify_session_change()
+
+    live = get_live_sessions()
+    live_info = live.get(name, {})
+
+    return {
+        "name": name,
+        "workdir": str(workdir),
+        "description": "",
+        "alive": live_info.get("alive", True),
+        "attached": live_info.get("attached", False),
+        "windows": live_info.get("windows", 1),
+        "type": "scratch",
+    }
+
+
 @router.post("/{name}/reset")
 async def reset_session(name: str):
     """Reset a session: kill all windows and start fresh with venv + claude."""
@@ -691,6 +809,12 @@ async def delete_session(name: str, cleanup_worktree: bool = False):
     if cleanup_worktree and session_type == "worktree" and worktree_parent_repo and workdir:
         wt_result = remove_worktree(Path(worktree_parent_repo), Path(workdir), force=True)
         worktree_removed = wt_result.get("status") == "removed"
+
+    # Clean up scratch directory
+    if session_type == "scratch" and workdir:
+        scratch_path = Path(workdir)
+        if scratch_path.is_relative_to(SCRATCH_DIR) and scratch_path.exists():
+            shutil.rmtree(scratch_path, ignore_errors=True)
 
     session_q = Query()
     sessions_table.remove(session_q.name == name)

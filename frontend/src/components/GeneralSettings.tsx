@@ -12,6 +12,8 @@ interface Props {
   onTabVisibilityChange: (value: Record<string, boolean>) => void
   showSessionDots: boolean
   onShowSessionDotsChange: (value: boolean) => void
+  scratchMaxAgeDays: string
+  onScratchMaxAgeDaysChange: (value: string) => void
   telemetryConsent: boolean
   onTelemetryConsentChange: (value: boolean) => void
 }
@@ -105,6 +107,8 @@ export default function GeneralSettings({
   onTabVisibilityChange,
   showSessionDots,
   onShowSessionDotsChange,
+  scratchMaxAgeDays,
+  onScratchMaxAgeDaysChange,
   telemetryConsent,
   onTelemetryConsentChange,
 }: Props) {
@@ -237,6 +241,19 @@ export default function GeneralSettings({
             </p>
           </div>
           <Toggle on={showSessionDots} onChange={onShowSessionDotsChange} />
+        </div>
+        <div>
+          <label className="block text-sm text-text-tertiary">Scratch Session Max Age (days)</label>
+          <p className="text-xs text-text-muted mt-0.5 mb-1">
+            Auto-delete scratch sessions older than this many days. Set to 0 to disable.
+          </p>
+          <input
+            type="number"
+            min="0"
+            value={scratchMaxAgeDays}
+            onChange={(e) => onScratchMaxAgeDaysChange(e.target.value)}
+            className="w-24 px-2 py-1 text-sm bg-bg-base border border-border-default rounded focus:border-blue-500 focus:outline-none"
+          />
         </div>
         <div className="flex items-center justify-between">
           <div>
