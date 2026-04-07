@@ -49,6 +49,7 @@ class IdleDetector:
         re.compile(r"esc to (interrupt|cancel)", re.IGNORECASE),  # Actively processing
         re.compile(r"Reading|Writing|Searching", re.IGNORECASE),  # Cursor agent tool usage
         re.compile(r"Working \(\d+s", re.IGNORECASE),  # Codex CLI working indicator
+        re.compile(r"◼\s"),  # Claude Code subagent task in progress
     ]
 
     # Patterns indicating idle state (waiting for user input)
@@ -197,7 +198,7 @@ class IdleDetector:
         """
         Analyze buffer to determine current state.
 
-        Priority: ERROR > shell prompt > spinner > IDLE (last 3 lines) > WORKING > IDLE > UNKNOWN
+        Priority: ERROR > shell prompt > spinner > WORKING > IDLE (last 3 lines) > IDLE > UNKNOWN
         """
         if not self._buffer:
             return SessionState.UNKNOWN, 0.0, "No data"
@@ -220,16 +221,17 @@ class IdleDetector:
         if any(char in last_line for char in self.SPINNER_CHARS):
             return SessionState.WORKING, 0.95, "Spinner detected"
 
-        # 4. Idle patterns on most recent lines (current screen state wins)
+        # 4. Working patterns across all recent lines (checked before narrow
+        #    idle check so that subagent activity isn't masked by the prompt)
+        match = self._match_patterns(recent_lines, self.WORKING_PATTERNS)
+        if match:
+            return SessionState.WORKING, 0.85, f"Working pattern: {match.pattern}"
+
+        # 5. Idle patterns on most recent lines (current screen state wins)
         last_few = recent_lines[-3:]
         match = self._match_patterns(last_few, self.IDLE_PATTERNS)
         if match:
             return SessionState.IDLE, 0.9, f"Idle pattern: {match.pattern}"
-
-        # 5. Working patterns (across all recent lines)
-        match = self._match_patterns(recent_lines, self.WORKING_PATTERNS)
-        if match:
-            return SessionState.WORKING, 0.85, f"Working pattern: {match.pattern}"
 
         # 6. Idle patterns (across all recent lines, lower priority)
         match = self._match_patterns(recent_lines, self.IDLE_PATTERNS)
