@@ -76,8 +76,8 @@ function SessionGrid({
     if (!a.theOne && b.theOne) return 1
     return (b.lastUsedAt || '').localeCompare(a.lastUsedAt || '')
   }
-  const alive = sessions.filter((s) => s.alive).sort(sortSessions)
-  const dead = sessions.filter((s) => !s.alive).sort(sortSessions)
+  const alive = sessions.filter((s) => s.alive && !s.paused).sort(sortSessions)
+  const dead = sessions.filter((s) => !s.alive || s.paused).sort(sortSessions)
 
   return (
     <>
@@ -554,17 +554,34 @@ export default function Dashboard() {
     }
   ) => {
     try {
-      const res = await fetch(`${getApiBase()}/sessions/${name}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updates),
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.detail || 'Failed to update session')
+      // Route pause/resume to dedicated endpoints
+      if (updates.paused !== undefined) {
+        const endpoint = updates.paused ? 'pause' : 'resume'
+        const res = await fetch(`${getApiBase()}/sessions/${name}/${endpoint}`, {
+          method: 'POST',
+        })
+        if (!res.ok) {
+          const data = await res.json()
+          throw new Error(data.detail || `Failed to ${endpoint} session`)
+        }
       }
+
+      // Send remaining (non-paused) updates via PATCH if any exist
+      const { paused: _, ...rest } = updates
+      if (Object.keys(rest).length > 0) {
+        const res = await fetch(`${getApiBase()}/sessions/${name}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(rest),
+        })
+        if (!res.ok) {
+          const data = await res.json()
+          throw new Error(data.detail || 'Failed to update session')
+        }
+      }
+
       // Refresh sessions list
       fetchSessions()
       if (updates.cloudEnabled !== undefined) fetchPlanInfo()
