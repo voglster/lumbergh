@@ -19,7 +19,7 @@ export default function SessionCardActions({
 }: Props) {
   return (
     <div className="flex items-center gap-1 flex-shrink-0">
-      {alive && (
+      {(alive || paused) && (
         <button
           onClick={onTogglePaused}
           className={`transition-colors p-1 ${paused ? 'text-yellow-400 hover:text-green-400' : 'text-text-muted hover:text-yellow-400'}`}

@@ -777,6 +777,103 @@ async def reset_session(name: str):
     }
 
 
+@router.post("/{name}/pause")
+async def pause_session(name: str):
+    """Pause a session by killing the Claude Code process (and its MCP children)."""
+    live = get_live_sessions()
+
+    if name not in live:
+        raise HTTPException(status_code=404, detail=f"Session '{name}' is not running")
+
+    # Get the shell PID from tmux
+    result = subprocess.run(
+        ["tmux", "display-message", "-t", name, "-p", "#{pane_pid}"],
+        capture_output=True,
+        text=True,
+    )
+    shell_pid = result.stdout.strip()
+
+    # Kill child processes of the shell (i.e. the Claude Code process)
+    subprocess.run(
+        ["pkill", "-TERM", "-P", shell_pid],
+        capture_output=True,
+        text=True,
+    )
+
+    await asyncio.sleep(0.5)
+
+    # Mark as paused in TinyDB
+    session_q = Query()
+    doc = sessions_table.get(session_q.name == name)
+    record: dict = dict(doc) if isinstance(doc, dict) else {"name": name}
+    record["paused"] = True
+    sessions_table.upsert(record, session_q.name == name)
+
+    return {"status": "paused", "name": name}
+
+
+@router.post("/{name}/resume")
+async def resume_session(name: str):
+    """Resume a paused session by restarting Claude Code with --continue."""
+    live = get_live_sessions()
+    stored = get_stored_sessions()
+
+    session_meta = stored.get(name, {})
+    if not session_meta:
+        raise HTTPException(status_code=404, detail=f"Session '{name}' not found")
+
+    workdir_str = session_meta.get("workdir")
+    if not workdir_str:
+        raise HTTPException(status_code=400, detail=f"Session '{name}' has no workdir configured")
+    workdir = Path(workdir_str)
+
+    launch_cmd = _resolve_launch_command(session_meta.get("agent_provider"))
+
+    if name in live:
+        # Kill any stale child processes before starting fresh
+        result = subprocess.run(
+            ["tmux", "display-message", "-t", name, "-p", "#{pane_pid}"],
+            capture_output=True,
+            text=True,
+        )
+        shell_pid = result.stdout.strip()
+        if shell_pid:
+            subprocess.run(
+                ["pkill", "-TERM", "-P", shell_pid],
+                capture_output=True,
+                text=True,
+            )
+            await asyncio.sleep(0.5)
+
+        # Activate venv if found
+        venv_activate = find_venv_activate(workdir)
+        if venv_activate:
+            subprocess.run(
+                ["tmux", "send-keys", "-t", name, f"source {venv_activate}", "Enter"],
+                capture_output=True,
+                text=True,
+            )
+
+        # Start the agent
+        subprocess.run(
+            ["tmux", "send-keys", "-t", name, launch_cmd, "Enter"],
+            capture_output=True,
+            text=True,
+        )
+    else:
+        # Tmux session is dead — recreate it
+        create_tmux_session(name, workdir, launch_cmd)
+
+    # Mark as resumed in TinyDB
+    session_q = Query()
+    doc = sessions_table.get(session_q.name == name)
+    record: dict = dict(doc) if isinstance(doc, dict) else {"name": name}
+    record["paused"] = False
+    sessions_table.upsert(record, session_q.name == name)
+
+    return {"status": "resumed", "name": name}
+
+
 @router.delete("/{name}")
 async def delete_session(name: str, cleanup_worktree: bool = False):
     """Kill a tmux session and remove metadata.
