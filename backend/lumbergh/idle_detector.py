@@ -46,7 +46,7 @@ class IdleDetector:
         re.compile(r"⠋|⠙|⠹|⠸|⠼|⠴|⠦|⠧|⠇|⠏"),  # Spinner chars
         re.compile(r"Running…|Executing"),  # Tool execution
         re.compile(r"thought for \d+s"),  # "thought for Xs" indicator
-        re.compile(r"esc to (interrupt|cancel)", re.IGNORECASE),  # Actively processing
+        re.compile(r"esc to interrupt", re.IGNORECASE),  # Actively processing
         re.compile(r"Reading|Writing|Searching", re.IGNORECASE),  # Cursor agent tool usage
         re.compile(r"Working \(\d+s", re.IGNORECASE),  # Codex CLI working indicator
         re.compile(r"◼\s"),  # Claude Code subagent task in progress
@@ -194,11 +194,69 @@ class IdleDetector:
                 return True
         return False
 
+    @staticmethod
+    def _recency_multiplier(distance_from_end: int) -> float:
+        """Return scoring multiplier based on line recency."""
+        if distance_from_end == 0:
+            return 2.0
+        if distance_from_end <= 2:
+            return 1.5
+        return 1.0
+
+    # Scoring weights
+    _BASE_WEIGHT = 3.0  # Per-pattern match
+    _SPINNER_WEIGHT = 8.0  # Spinner on last line (unambiguous)
+    _PROMPT_WEIGHT = 8.0  # Agent prompt on last line (unambiguous)
+
+    def _score_lines(
+        self, recent_lines: list[str]
+    ) -> tuple[dict[SessionState, float], dict[SessionState, list[str]]]:
+        """Score recent lines against WORKING and IDLE patterns with recency bias."""
+        scores: dict[SessionState, float] = {
+            SessionState.WORKING: 0.0,
+            SessionState.IDLE: 0.0,
+        }
+        reasons: dict[SessionState, list[str]] = {
+            SessionState.WORKING: [],
+            SessionState.IDLE: [],
+        }
+        last_line = recent_lines[-1] if recent_lines else ""
+        num_lines = len(recent_lines)
+
+        # Special: spinner on last line
+        if any(char in last_line for char in self.SPINNER_CHARS):
+            scores[SessionState.WORKING] += self._SPINNER_WEIGHT
+            reasons[SessionState.WORKING].append("Spinner on last line")
+
+        # Special: agent prompt on last line
+        if self.PROMPT_PATTERN.search(last_line):
+            scores[SessionState.IDLE] += self._PROMPT_WEIGHT
+            reasons[SessionState.IDLE].append("Agent prompt on last line")
+
+        # Score each line against all patterns
+        for i, line in enumerate(recent_lines):
+            dist = num_lines - 1 - i
+            mult = self._recency_multiplier(dist)
+
+            for pattern in self.WORKING_PATTERNS:
+                if pattern.search(line):
+                    scores[SessionState.WORKING] += self._BASE_WEIGHT * mult
+                    reasons[SessionState.WORKING].append(f"{pattern.pattern} (line -{dist})")
+
+            for pattern in self.IDLE_PATTERNS:
+                if pattern.search(line):
+                    scores[SessionState.IDLE] += self._BASE_WEIGHT * mult
+                    reasons[SessionState.IDLE].append(f"{pattern.pattern} (line -{dist})")
+
+        return scores, reasons
+
     def _analyze_state(self) -> tuple[SessionState, float, str]:
         """
-        Analyze buffer to determine current state.
+        Analyze buffer to determine current state using score-based detection.
 
-        Priority: ERROR > shell prompt > spinner > WORKING > IDLE (last 3 lines) > IDLE > UNKNOWN
+        ERROR and shell prompt are short-circuited (unambiguous).
+        WORKING vs IDLE is resolved by scoring: each pattern match adds a
+        weighted score (with recency bias), and the highest total wins.
         """
         if not self._buffer:
             return SessionState.UNKNOWN, 0.0, "No data"
@@ -206,39 +264,31 @@ class IdleDetector:
         recent_lines = list(self._buffer)[-10:]
         last_line = recent_lines[-1] if recent_lines else ""
 
-        # 1. Error patterns (highest priority)
+        # 1. Error patterns (short-circuit — unambiguous)
         match = self._match_patterns(recent_lines, self.ERROR_PATTERNS)
         if match:
             return SessionState.ERROR, 0.9, f"Error pattern: {match.pattern}"
 
-        # 2. Shell prompt (only if no working/idle indicators)
+        # 2. Shell prompt (short-circuit — depends on absence of indicators)
         if not self._has_activity_indicators(recent_lines):
             match = self._match_patterns([last_line], self.SHELL_PROMPT_PATTERNS)
             if match:
                 return SessionState.ERROR, 0.85, f"Shell prompt: {match.pattern}"
 
-        # 3. Spinner on last line
-        if any(char in last_line for char in self.SPINNER_CHARS):
-            return SessionState.WORKING, 0.95, "Spinner detected"
+        # 3. Score-based WORKING vs IDLE detection
+        scores, reasons = self._score_lines(recent_lines)
+        w_score = scores[SessionState.WORKING]
+        i_score = scores[SessionState.IDLE]
 
-        # 4. Working patterns across all recent lines (checked before narrow
-        #    idle check so that subagent activity isn't masked by the prompt)
-        match = self._match_patterns(recent_lines, self.WORKING_PATTERNS)
-        if match:
-            return SessionState.WORKING, 0.85, f"Working pattern: {match.pattern}"
+        if w_score == 0.0 and i_score == 0.0:
+            return SessionState.UNKNOWN, 0.3, "No patterns matched"
 
-        # 5. Idle patterns on most recent lines (current screen state wins)
-        last_few = recent_lines[-3:]
-        match = self._match_patterns(last_few, self.IDLE_PATTERNS)
-        if match:
-            return SessionState.IDLE, 0.9, f"Idle pattern: {match.pattern}"
-
-        # 6. Idle patterns (across all recent lines, lower priority)
-        match = self._match_patterns(recent_lines, self.IDLE_PATTERNS)
-        if match:
-            return SessionState.IDLE, 0.8, f"Idle pattern: {match.pattern}"
-
-        return SessionState.UNKNOWN, 0.3, "Unable to determine"
+        total = w_score + i_score
+        if w_score >= i_score:
+            top = "; ".join(reasons[SessionState.WORKING][:3])
+            return SessionState.WORKING, min(0.95, w_score / total), f"Working: {top}"
+        top = "; ".join(reasons[SessionState.IDLE][:3])
+        return SessionState.IDLE, min(0.95, i_score / total), f"Idle: {top}"
 
     @staticmethod
     def _strip_ansi(text: str) -> str:

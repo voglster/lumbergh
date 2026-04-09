@@ -25,7 +25,7 @@ export function getSessionStatus(session: SessionBase): {
     case 'stalled':
       return { color: 'red', pulse: true, label: 'Stalled' }
     default:
-      return { color: 'green', pulse: false, label: 'Active' }
+      return { color: 'gray', pulse: false, label: 'Unknown' }
   }
 }
 
