@@ -29,6 +29,7 @@ class IdleMonitor:
 
     POLL_INTERVAL_SECONDS = 2.0  # How often to check sessions
     STALL_THRESHOLD_SECONDS = 600
+    SUBAGENT_STALL_THRESHOLD_SECONDS = 1800  # 30 min for subagent work
 
     def __init__(self):
         self._detectors: dict[str, IdleDetector] = {}
@@ -124,10 +125,17 @@ class IdleMonitor:
         if result.state == SessionState.WORKING:
             if session_name not in self._working_since:
                 self._working_since[session_name] = time.time()
-            elif time.time() - self._working_since[session_name] > self.STALL_THRESHOLD_SECONDS:
-                result = IdleDetectionResult(
-                    SessionState.STALLED, result.confidence, "Working too long"
+            else:
+                is_subagent = "◼" in result.reason
+                threshold = (
+                    self.SUBAGENT_STALL_THRESHOLD_SECONDS
+                    if is_subagent
+                    else self.STALL_THRESHOLD_SECONDS
                 )
+                if time.time() - self._working_since[session_name] > threshold:
+                    result = IdleDetectionResult(
+                        SessionState.STALLED, result.confidence, "Working too long"
+                    )
         else:
             self._working_since.pop(session_name, None)
 
