@@ -129,7 +129,7 @@ export default function SessionDetail() {
       .then((data) => {
         const session = (data.sessions || []).find((s: { name: string }) => s.name === name)
         if (session) {
-          if (session.tabVisibility) setSessionTabVisibility(session.tabVisibility)
+          setSessionTabVisibility(session.tabVisibility || null)
           setIsScratch(session.type === 'scratch')
           // Auto-show summary if: not dismissed, active session, untouched for 30+ min
           if (!isSummaryDismissed() && session.alive && !session.paused) {
@@ -323,6 +323,18 @@ export default function SessionDetail() {
     },
     [name, navigate]
   )
+
+  // Ctrl+[ / Ctrl+] to cycle sessions
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && (e.key === '[' || e.key === ']')) {
+        e.preventDefault()
+        handleCycleSession(e.key === ']' ? 'next' : 'prev')
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [handleCycleSession])
 
   const handleBack = useCallback(() => {
     navigate('/')

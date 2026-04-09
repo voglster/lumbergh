@@ -290,6 +290,10 @@ export default memo(function Terminal({
     // When the custom handler blocks only keydown, xterm.js doesn't call preventDefault(),
     // so the browser fires keypress which leaks through and sends \r to the terminal.
     term.attachCustomKeyEventHandler((event) => {
+      // Ctrl+[ / Ctrl+] cycles sessions — let the window handler deal with it
+      if (event.ctrlKey && (event.key === '[' || event.key === ']')) {
+        return false
+      }
       if (event.key === 'Enter' && event.shiftKey) {
         if (event.type === 'keydown') {
           // Send newline character instead of carriage return
