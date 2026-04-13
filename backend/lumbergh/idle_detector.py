@@ -1,13 +1,17 @@
 """
-Idle state detector for agent terminal sessions.
+Pattern-based overrides for session state detection.
 
-Analyzes terminal output to detect whether the agent is idle (waiting for input)
-or actively working on a task.  Supports Claude Code, Cursor CLI, and other providers.
+The primary idle/working classifier is in :mod:`idle_monitor` and uses
+pane-content quiescence (the agent's spinner / timer / token counter
+animates continuously while working, so a frozen pane means idle).
+
+This module provides :func:`classify_overrides` for cases where quiescence
+is not enough: rate-limit errors, crashes, and shell prompts (agent
+exited).  These patterns take priority over quiescence because a stable
+pane showing an error or shell prompt is not really "idle".
 """
 
 import re
-import time
-from collections import deque
 from enum import Enum
 
 
@@ -19,229 +23,73 @@ class SessionState(Enum):
     STALLED = "stalled"  # Working for too long without progress
 
 
-class IdleDetectionResult:
-    """Result of idle detection analysis."""
+# Patterns indicating an error state (agent exited, rate limited, crashed).
+ERROR_PATTERNS: list[re.Pattern] = [
+    re.compile(r"rate limit|rate_limit", re.IGNORECASE),
+    re.compile(r"\b429\b|too many requests", re.IGNORECASE),
+    re.compile(r"overloaded", re.IGNORECASE),
+    re.compile(r"APIError|API error|APIConnectionError", re.IGNORECASE),
+    re.compile(r"unexpected error|Connection error", re.IGNORECASE),
+]
 
-    def __init__(self, state: SessionState, confidence: float, reason: str = ""):
-        self.state = state
-        self.confidence = confidence
-        self.reason = reason
+# Shell prompt patterns on the last non-empty line (agent exited, user is
+# back at their shell).  Only checked as a fallback.
+SHELL_PROMPT_PATTERNS: list[re.Pattern] = [
+    re.compile(r"[\$%#]\s*$"),
+    re.compile(r"@.*[\$%#]\s*$"),
+]
+
+_ANSI_PATTERN = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]|\x1b\][^\x07]*\x07|\x1b[PX^_][^\x1b]*\x1b\\")
+
+# Indicators that the agent is actively working — used to disambiguate a
+# stable pane that still has an active status line (edge case: animation
+# paused mid-frame).  If present, we do NOT treat the pane as shell/error.
+_ACTIVE_AGENT_HINTS: list[re.Pattern] = [
+    re.compile(r"esc to (interrupt|cancel)", re.IGNORECASE),
+    re.compile(r"shift\+tab to cycle", re.IGNORECASE),
+    re.compile(r"accept edits", re.IGNORECASE),
+    re.compile(r"\? for shortcuts", re.IGNORECASE),
+]
 
 
-class IdleDetector:
+def _strip_ansi(text: str) -> str:
+    return _ANSI_PATTERN.sub("", text)
+
+
+def _recent_lines(content: str, n: int = 15) -> list[str]:
+    lines = [_strip_ansi(line).rstrip() for line in content.split("\n")]
+    while lines and not lines[-1]:
+        lines.pop()
+    return lines[-n:]
+
+
+def classify_overrides(content: str) -> SessionState | None:
     """
-    Detects whether an agent session is idle or working.
+    Return an override SessionState if pattern matching indicates one,
+    else None (meaning "use the quiescence classifier").
 
-    Maintains a rolling buffer of terminal lines and analyzes patterns
-    to determine the current state.  Patterns cover Claude Code, Cursor CLI,
-    and other supported providers.
+    Priority:
+      1. ERROR patterns (rate limits, crashes)
+      2. Shell prompt on last line (agent exited) -> ERROR
+
+    A shell prompt match is suppressed if the pane also shows an active
+    agent hint (e.g. "esc to interrupt" in the status line), since those
+    lines can end with a `$` too.
     """
-
-    # Spinner characters used by Claude Code
-    SPINNER_CHARS = set("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")
-
-    # Patterns indicating active work (thinking, running tools)
-    WORKING_PATTERNS = [
-        re.compile(r"Thinking|Channelling", re.IGNORECASE),
-        re.compile(r"⠋|⠙|⠹|⠸|⠼|⠴|⠦|⠧|⠇|⠏"),  # Spinner chars
-        re.compile(r"Running…|Executing"),  # Tool execution
-        re.compile(r"thought for \d+s"),  # "thought for Xs" indicator
-        re.compile(r"esc to (interrupt|cancel)", re.IGNORECASE),  # Actively processing
-        re.compile(r"Reading|Writing|Searching", re.IGNORECASE),  # Cursor agent tool usage
-        re.compile(r"Working \(\d+s", re.IGNORECASE),  # Codex CLI working indicator
-    ]
-
-    # Patterns indicating idle state (waiting for user input)
-    IDLE_PATTERNS = [
-        re.compile(r"\u276f"),  # Agent prompt character (U+276F)
-        re.compile(r"Do you want to proceed\?"),
-        re.compile(r"Esc to cancel"),
-        re.compile(r"\? for shortcuts"),
-        re.compile(r"Yes.*No", re.DOTALL),  # Yes/No choice
-        re.compile(r"Shift\+Tab"),  # Cursor CLI mode switching hint
-        re.compile(r"\(y/n\)"),  # Command approval prompt (Cursor)
-        re.compile(r"Type your message"),  # Gemini CLI input prompt
-        re.compile(r"Action Required"),  # Gemini CLI approval prompt
-        re.compile(r"Apply this change\?"),  # Gemini CLI file write approval
-        re.compile(r"Allow (once|execution|for this session)"),  # Gemini CLI permission
-        re.compile(r"Would you like to make the following edits"),  # Codex CLI approval
-        re.compile(r"Yes, proceed|Yes, and don't ask again"),  # Codex CLI approval choices
-        re.compile(r"Press enter to confirm or esc to cancel"),  # Codex CLI confirmation
-        re.compile(r"\d+% left · ~/"),  # Codex CLI status bar (idle)
-    ]
-
-    # Patterns indicating an error state (agent exited, rate limited, crashed)
-    ERROR_PATTERNS = [
-        re.compile(r"rate limit|rate_limit", re.IGNORECASE),
-        re.compile(r"429|too many requests", re.IGNORECASE),
-        re.compile(r"overloaded", re.IGNORECASE),
-        re.compile(r"APIError|API error|APIConnectionError", re.IGNORECASE),
-        re.compile(r"unexpected error|Connection error", re.IGNORECASE),
-    ]
-
-    # Shell prompt patterns (agent exited, user is back at their shell)
-    SHELL_PROMPT_PATTERNS = [
-        re.compile(r"[\$%#]\s*$"),  # Ends with $ % or #
-        re.compile(r"@.*[\$%#]\s*$"),  # user@host$
-        re.compile(r"^\s*\w+@[\w.-]+[:\s]"),  # user@hostname:
-    ]
-
-    # Agent prompt pattern (idle state)
-    PROMPT_PATTERN = re.compile(r"^[\u276f>]\s*$")
-
-    # Hysteresis settings
-    STATE_CHANGE_DELAY_MS = 500  # Must be stable for this long before reporting
-
-    def __init__(self, buffer_lines: int = 50):
-        """
-        Initialize the idle detector.
-
-        Args:
-            buffer_lines: Number of recent lines to keep for analysis
-        """
-        self._buffer: deque[str] = deque(maxlen=buffer_lines)
-        self._current_state = SessionState.UNKNOWN
-        self._pending_state: SessionState | None = None
-        self._pending_state_time: float = 0
-        self._last_output_time: float = 0
-
-    def process_output(self, data: str) -> IdleDetectionResult:
-        """
-        Process terminal output and detect state changes.
-
-        Args:
-            data: Raw terminal output data
-
-        Returns:
-            IdleDetectionResult with current state and confidence
-        """
-        self._last_output_time = time.time()
-
-        # Split into lines and add to buffer
-        lines = data.split("\n")
-        for line in lines:
-            # Strip ANSI escape codes for analysis
-            clean_line = self._strip_ansi(line)
-            if clean_line:  # Only add non-empty lines
-                self._buffer.append(clean_line)
-
-        # Analyze current state
-        detected_state, confidence, reason = self._analyze_state()
-
-        # Handle hysteresis - only change state if stable
-        now = time.time()
-
-        if detected_state != self._current_state:
-            if self._pending_state != detected_state:
-                # New state detected, start waiting
-                self._pending_state = detected_state
-                self._pending_state_time = now
-            elif (now - self._pending_state_time) * 1000 >= self.STATE_CHANGE_DELAY_MS:
-                # State has been stable long enough, apply change
-                self._current_state = detected_state
-                self._pending_state = None
-        else:
-            # State matches current, clear pending
-            self._pending_state = None
-
-        return IdleDetectionResult(self._current_state, confidence, reason)
-
-    def get_state(self) -> SessionState:
-        """Get the current detected state."""
-        return self._current_state
-
-    def analyze_initial_content(self, content: str) -> IdleDetectionResult:
-        """
-        Analyze initial pane content to determine starting state.
-
-        Args:
-            content: Full pane content captured at connection time
-
-        Returns:
-            IdleDetectionResult with initial state
-        """
-        # Process content but skip hysteresis for initial state
-        lines = content.split("\n")
-        for line in lines:
-            clean_line = self._strip_ansi(line)
-            if clean_line:
-                self._buffer.append(clean_line)
-
-        detected_state, confidence, reason = self._analyze_state()
-
-        # Set initial state immediately (no hysteresis)
-        self._current_state = detected_state
-
-        return IdleDetectionResult(self._current_state, confidence, reason)
-
-    def _match_patterns(self, lines: list[str], patterns: list[re.Pattern]) -> re.Pattern | None:
-        """Return the first matching pattern across lines, or None."""
-        for line in lines:
-            for pattern in patterns:
-                if pattern.search(line):
-                    return pattern
+    lines = _recent_lines(content)
+    if not lines:
         return None
 
-    def _has_activity_indicators(self, lines: list[str]) -> bool:
-        """Check if any lines contain spinner, working, or idle indicators."""
+    for pattern in ERROR_PATTERNS:
         for line in lines:
-            if any(char in line for char in self.SPINNER_CHARS):
-                return True
-            if any(p.search(line) for p in self.WORKING_PATTERNS):
-                return True
-            if any(p.search(line) for p in self.IDLE_PATTERNS):
-                return True
-        return False
+            if pattern.search(line):
+                return SessionState.ERROR
 
-    def _analyze_state(self) -> tuple[SessionState, float, str]:
-        """
-        Analyze buffer to determine current state.
+    has_agent_hint = any(p.search(line) for line in lines for p in _ACTIVE_AGENT_HINTS)
+    if not has_agent_hint:
+        last_line = lines[-1]
+        for pattern in SHELL_PROMPT_PATTERNS:
+            if pattern.search(last_line):
+                return SessionState.ERROR
 
-        Priority: ERROR > shell prompt > spinner > IDLE (last 3 lines) > WORKING > IDLE > UNKNOWN
-        """
-        if not self._buffer:
-            return SessionState.UNKNOWN, 0.0, "No data"
-
-        recent_lines = list(self._buffer)[-10:]
-        last_line = recent_lines[-1] if recent_lines else ""
-
-        # 1. Error patterns (highest priority)
-        match = self._match_patterns(recent_lines, self.ERROR_PATTERNS)
-        if match:
-            return SessionState.ERROR, 0.9, f"Error pattern: {match.pattern}"
-
-        # 2. Shell prompt (only if no working/idle indicators)
-        if not self._has_activity_indicators(recent_lines):
-            match = self._match_patterns([last_line], self.SHELL_PROMPT_PATTERNS)
-            if match:
-                return SessionState.ERROR, 0.85, f"Shell prompt: {match.pattern}"
-
-        # 3. Spinner on last line
-        if any(char in last_line for char in self.SPINNER_CHARS):
-            return SessionState.WORKING, 0.95, "Spinner detected"
-
-        # 4. Idle patterns on most recent lines (current screen state wins)
-        last_few = recent_lines[-3:]
-        match = self._match_patterns(last_few, self.IDLE_PATTERNS)
-        if match:
-            return SessionState.IDLE, 0.9, f"Idle pattern: {match.pattern}"
-
-        # 5. Working patterns (across all recent lines)
-        match = self._match_patterns(recent_lines, self.WORKING_PATTERNS)
-        if match:
-            return SessionState.WORKING, 0.85, f"Working pattern: {match.pattern}"
-
-        # 6. Idle patterns (across all recent lines, lower priority)
-        match = self._match_patterns(recent_lines, self.IDLE_PATTERNS)
-        if match:
-            return SessionState.IDLE, 0.8, f"Idle pattern: {match.pattern}"
-
-        return SessionState.UNKNOWN, 0.3, "Unable to determine"
-
-    @staticmethod
-    def _strip_ansi(text: str) -> str:
-        """Remove ANSI escape codes from text."""
-        ansi_pattern = re.compile(
-            r"\x1b\[[0-9;]*[a-zA-Z]|\x1b\][^\x07]*\x07|\x1b[PX^_][^\x1b]*\x1b\\"
-        )
-        return ansi_pattern.sub("", text)
+    return None
