@@ -14,7 +14,7 @@ from pathlib import Path
 
 from lumbergh.ai.prompts import get_ai_prompt, render_prompt
 from lumbergh.ai.providers import get_provider
-from lumbergh.db_utils import get_session_data_db
+from lumbergh.db_utils import get_session_data_db, session_data_lock
 from lumbergh.diff_cache import _git_fingerprint
 from lumbergh.tmux_pty import capture_scrollback
 
@@ -45,10 +45,13 @@ def _get_cached(session_name: str) -> dict | None:
 
 
 def _save_cached(session_name: str, data: dict) -> None:
-    db = get_session_data_db(session_name)
-    table = db.table(SUMMARY_TABLE)
-    table.truncate()
-    table.insert(data)
+    # Hold the file-level lock so this write cannot interleave with
+    # idle_monitor's writes and corrupt the shared JSON file.
+    with session_data_lock(session_name):
+        db = get_session_data_db(session_name)
+        table = db.table(SUMMARY_TABLE)
+        table.truncate()
+        table.insert(data)
 
 
 async def get_or_generate_summary(

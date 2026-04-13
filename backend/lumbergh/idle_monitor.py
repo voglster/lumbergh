@@ -17,6 +17,7 @@ quiescence alone cannot (rate limit errors, shell prompts).
 
 import asyncio
 import hashlib
+import json
 import logging
 import re
 import time
@@ -24,7 +25,11 @@ from datetime import UTC, datetime
 
 import libtmux
 
-from lumbergh.db_utils import get_session_data_db
+from lumbergh.db_utils import (
+    get_session_data_db,
+    recover_session_data_db,
+    session_data_lock,
+)
 from lumbergh.idle_detector import SessionState, classify_overrides
 from lumbergh.tmux_pty import capture_pane_content
 
@@ -181,28 +186,44 @@ class IdleMonitor:
 
         old_state = self._states.get(session_name, SessionState.UNKNOWN)
         if state != old_state:
-            self._states[session_name] = state
             logger.info(f"Session {session_name} state: {old_state.value} -> {state.value}")
-            await self._persist_state(session_name, state)
+        self._states[session_name] = state
+
+        # Persist every poll (not just on change) so the DB stays fresh and
+        # a transient write failure does not leave us permanently stale.
+        await self._persist_state(session_name, state)
 
     async def _persist_state(self, session_name: str, state: SessionState) -> None:
         loop = asyncio.get_event_loop()
 
         def _save():
-            session_db = get_session_data_db(session_name)
-            state_table = session_db.table("idle_state")
-            state_table.truncate()
-            state_table.insert(
-                {
-                    "state": state.value,
-                    "updatedAt": datetime.now(tz=UTC).isoformat(),
-                }
-            )
+            with session_data_lock(session_name):
+                try:
+                    _write_idle_state(session_name, state)
+                except (ValueError, json.JSONDecodeError) as e:
+                    logger.warning(f"Corrupt DB for {session_name}; attempting recovery: {e}")
+                    if recover_session_data_db(session_name):
+                        _write_idle_state(session_name, state)
+                    else:
+                        raise
 
         try:
             await loop.run_in_executor(None, _save)
         except Exception as e:
-            logger.warning(f"Failed to persist state for {session_name}: {e}")
+            logger.error(f"Failed to persist state for {session_name}: {e}")
+
+
+def _write_idle_state(session_name: str, state: SessionState) -> None:
+    """Write the idle_state row.  Caller must hold session_data_lock(name)."""
+    session_db = get_session_data_db(session_name)
+    state_table = session_db.table("idle_state")
+    state_table.truncate()
+    state_table.insert(
+        {
+            "state": state.value,
+            "updatedAt": datetime.now(tz=UTC).isoformat(),
+        }
+    )
 
 
 # Global singleton instance

@@ -9,6 +9,10 @@ only for ERROR detection and for labeling specific idle sub-states.
 These tests exercise the pure classification logic without a live tmux.
 """
 
+import json
+
+import pytest
+
 from lumbergh.idle_detector import SessionState
 from lumbergh.idle_monitor import IdleMonitor
 
@@ -138,3 +142,63 @@ def test_sessions_tracked_independently():
     s2_state = mon._classify_burst("s2", [BUSY_FRAME_2, BUSY_FRAME_1, BUSY_FRAME_2], now=130.0)
     assert s1_state == SessionState.IDLE
     assert s2_state == SessionState.WORKING
+
+
+def test_recover_session_data_db_trims_trailing_garbage(tmp_path, monkeypatch):
+    """Trailing-garbage corruption from interleaved writes must be recoverable."""
+    # Point SESSIONS_DATA_DIR at an empty tmp_path
+    from lumbergh import constants, db_utils
+
+    monkeypatch.setattr(constants, "SESSIONS_DATA_DIR", tmp_path)
+    monkeypatch.setattr(db_utils, "SESSIONS_DATA_DIR", tmp_path)
+
+    valid = {"_default": {"1": {"state": "idle"}}, "extra": {"1": {"hello": "world"}}}
+    path = tmp_path / "s-garbage.json"
+    path.write_text(json.dumps(valid) + '}}}stray garbage from prior write")"}}}')
+
+    assert db_utils.recover_session_data_db("s-garbage") is True
+
+    # File is now valid JSON with all previously valid tables intact
+    recovered = json.loads(path.read_text())
+    assert recovered == valid
+
+
+def test_recover_session_data_db_resets_unrecoverable_file(tmp_path, monkeypatch):
+    """Totally corrupt files are backed up and replaced with an empty DB."""
+    from lumbergh import constants, db_utils
+
+    monkeypatch.setattr(constants, "SESSIONS_DATA_DIR", tmp_path)
+    monkeypatch.setattr(db_utils, "SESSIONS_DATA_DIR", tmp_path)
+
+    path = tmp_path / "s-broken.json"
+    path.write_text("definitely not json at all {{{")
+
+    assert db_utils.recover_session_data_db("s-broken") is True
+
+    # Main file is empty, backup exists beside it
+    assert json.loads(path.read_text()) == {}
+    backups = list(tmp_path.glob("s-broken.json.corrupt-*"))
+    assert len(backups) == 1
+    assert "not json" in backups[0].read_text()
+
+
+@pytest.mark.asyncio
+async def test_persist_state_self_heals_corrupt_db(tmp_path, monkeypatch):
+    """A corrupt DB file should not block future idle-state persistence."""
+    from lumbergh import constants, db_utils
+
+    monkeypatch.setattr(constants, "SESSIONS_DATA_DIR", tmp_path)
+    monkeypatch.setattr(db_utils, "SESSIONS_DATA_DIR", tmp_path)
+
+    path = tmp_path / "s-corrupt.json"
+    path.write_text('{"todos": {"1": {"items": []}}}trailing junk}}}')
+
+    mon = IdleMonitor()
+    await mon._persist_state("s-corrupt", SessionState.IDLE)
+
+    data = json.loads(path.read_text())
+    assert "idle_state" in data
+    idle_rows = list(data["idle_state"].values())
+    assert any(row.get("state") == "idle" for row in idle_rows)
+    # Pre-existing todos table survived the recovery
+    assert data.get("todos") == {"1": {"items": []}}
