@@ -12,6 +12,22 @@ interface Props {
   onManualEntry?: () => void
 }
 
+function EmptyResults({ query, looksLikePath }: { query: string; looksLikePath: boolean }) {
+  let message: string
+  if (!query) {
+    message = 'No repositories found in the configured search directory'
+  } else if (looksLikePath) {
+    message = `Path does not exist: ${query}`
+  } else {
+    message = 'No matching repositories found'
+  }
+  return (
+    <div className="px-3 py-2 text-sm">
+      <div className="text-text-tertiary">{message}</div>
+    </div>
+  )
+}
+
 export default function DirectoryPicker({ value, onChange, onManualEntry }: Props) {
   const [query, setQuery] = useState('')
   const [directories, setDirectories] = useState<Directory[]>([])
@@ -24,20 +40,33 @@ export default function DirectoryPicker({ value, onChange, onManualEntry }: Prop
   const dropdownRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<number | null>(null)
 
-  // Fetch directories based on query
+  // Fetch directories based on query. For absolute/home paths, skip the repo
+  // search and validate the path directly so the user can pick anything on disk.
   const fetchDirectories = useCallback(async (searchQuery: string) => {
     setIsLoading(true)
     setError(null)
 
+    const isAbsolute = searchQuery.startsWith('/') || searchQuery.startsWith('~')
+    const endpoint = isAbsolute
+      ? `${getApiBase()}/directories/validate?path=${encodeURIComponent(searchQuery.trim())}`
+      : `${getApiBase()}/directories/search?query=${encodeURIComponent(searchQuery)}`
+
     try {
-      const res = await fetch(
-        `${getApiBase()}/directories/search?query=${encodeURIComponent(searchQuery)}`
-      )
+      const res = await fetch(endpoint)
       if (!res.ok) {
         throw new Error('Failed to fetch directories')
       }
       const data = await res.json()
-      setDirectories(data.directories || [])
+      if (isAbsolute) {
+        const resolved: string = data.path || searchQuery
+        setDirectories(
+          data.exists
+            ? [{ path: resolved, name: resolved.split('/').filter(Boolean).pop() || resolved }]
+            : []
+        )
+      } else {
+        setDirectories(data.directories || [])
+      }
       setHighlightedIndex(0)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed')
@@ -93,6 +122,8 @@ export default function DirectoryPicker({ value, onChange, onManualEntry }: Prop
     setQuery('')
     setIsOpen(false)
   }
+
+  const looksLikePath = query.startsWith('/') || query.startsWith('~')
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isOpen) {
@@ -207,11 +238,7 @@ export default function DirectoryPicker({ value, onChange, onManualEntry }: Prop
           {error ? (
             <div className="px-3 py-2 text-red-400 text-sm">{error}</div>
           ) : directories.length === 0 && !isLoading ? (
-            <div className="px-3 py-2 text-text-tertiary text-sm">
-              {query
-                ? 'No matching repositories found'
-                : 'No repositories found in the configured search directory'}
-            </div>
+            <EmptyResults query={query} looksLikePath={looksLikePath} />
           ) : (
             directories.map((dir, index) => (
               <button
