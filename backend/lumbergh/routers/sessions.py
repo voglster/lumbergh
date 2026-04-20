@@ -11,6 +11,7 @@ import subprocess
 import time
 import uuid
 from collections.abc import Callable
+from http import HTTPStatus
 from pathlib import Path
 from typing import TypeVar
 
@@ -567,6 +568,22 @@ def _resolve_direct_workdir(body: CreateSessionRequest) -> Path:
     return workdir
 
 
+def _spawn_tmux_or_raise(body: CreateSessionRequest, workdir: Path) -> None:
+    """Spawn the tmux session, mapping exceptions to meaningful HTTP errors."""
+    launch_cmd = _resolve_launch_command(body.agent_provider)
+    try:
+        create_tmux_session(body.name, workdir, launch_command=launch_cmd)
+    except RuntimeError as e:
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=str(e))
+    except OSError as e:
+        # e.g. EMFILE "Too many open files" when the backend has leaked fds
+        raise HTTPException(
+            status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+            detail=f"Failed to spawn tmux ({e.__class__.__name__}: {e}). "
+            "The backend may have hit its file-descriptor limit; restart it and retry.",
+        )
+
+
 def _resolve_launch_command(agent_provider: str | None) -> str:
     """Resolve the agent launch command from provider + global settings."""
     from lumbergh.routers.settings import get_settings
@@ -625,12 +642,7 @@ async def create_session(body: CreateSessionRequest):
                 "worktreeBranch": meta.get("worktree_branch"),
             }
 
-    launch_cmd = _resolve_launch_command(body.agent_provider)
-
-    try:
-        create_tmux_session(body.name, workdir, launch_command=launch_cmd)
-    except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    _spawn_tmux_or_raise(body, workdir)
 
     session_q = Query()
     session_data: dict[str, object] = {

@@ -266,6 +266,39 @@ class SessionManager:
             except Exception:  # noqa: S110 - cleanup is best-effort
                 pass
 
+    async def _poll_copy_mode(self, session_name: str) -> bool | None:
+        """Return True/False for copy-mode active, or None if the probe failed.
+
+        On failure, kill+reap the subprocess so its stdout/stderr pipes are
+        closed; otherwise the 250ms polling loop leaks two fds per failure
+        until EMFILE.
+        """
+        proc = None
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "tmux",
+                "display-message",
+                "-p",
+                "-t",
+                session_name,
+                "#{pane_mode}",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=1.0)
+            return stdout.decode().strip() == "copy-mode"
+        except (TimeoutError, OSError, ValueError):
+            if proc is not None and proc.returncode is None:
+                try:
+                    proc.kill()
+                except ProcessLookupError:
+                    pass
+                try:
+                    await proc.wait()
+                except Exception:  # noqa: S110 - best-effort reap
+                    pass
+            return None
+
     async def _copy_mode_monitor(self, session_name: str) -> None:
         """Poll tmux pane_mode every 250ms and broadcast copy-mode state changes."""
         last_active = False
@@ -275,29 +308,16 @@ class SessionManager:
                 managed = self._sessions.get(session_name)
                 if not managed or not managed.clients:
                     break
-                try:
-                    proc = await asyncio.create_subprocess_exec(
-                        "tmux",
-                        "display-message",
-                        "-p",
-                        "-t",
-                        session_name,
-                        "#{pane_mode}",
-                        stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.PIPE,
-                    )
-                    stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=1.0)
-                    active = stdout.decode().strip() == "copy-mode"
-                except Exception:  # noqa: S112
+                active = await self._poll_copy_mode(session_name)
+                if active is None or active == last_active:
                     continue
-                if active != last_active:
-                    last_active = active
-                    message = {"type": "copy_mode", "active": active}
-                    for client in list(managed.clients):
-                        try:
-                            await client.send_json(message)
-                        except Exception:  # noqa: S110
-                            pass
+                last_active = active
+                message = {"type": "copy_mode", "active": active}
+                for client in list(managed.clients):
+                    try:
+                        await client.send_json(message)
+                    except Exception:  # noqa: S110
+                        pass
         except asyncio.CancelledError:
             pass
 

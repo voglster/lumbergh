@@ -16,6 +16,42 @@ interface Props {
 type SessionMode = 'existing' | 'new' | 'worktree'
 type DirStatus = 'unchecked' | 'checking' | 'exists' | 'not_found' | 'error'
 
+async function postSession(
+  body: Record<string, unknown>
+): Promise<{ name: string; existing?: boolean }> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 15000)
+  let res: Response
+  try {
+    res = await fetch(`${getApiBase()}/sessions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+  } catch (fetchErr) {
+    if ((fetchErr as Error).name === 'AbortError') {
+      throw new Error('Request timed out after 15s — the backend may be unresponsive.')
+    }
+    throw fetchErr
+  } finally {
+    clearTimeout(timeoutId)
+  }
+
+  if (!res.ok) {
+    let detail = `Server returned ${res.status}`
+    try {
+      const data = await res.json()
+      if (data.detail) detail = data.detail
+    } catch {
+      const text = await res.text().catch(() => '')
+      if (text) detail = text
+    }
+    throw new Error(detail)
+  }
+  return res.json()
+}
+
 // Generate a URL-safe slug from free-form text
 function toSlug(text: string): string {
   return text
@@ -180,18 +216,7 @@ export default function CreateSessionModal({ onClose, onCreated }: Props) {
         }
       }
 
-      const res = await fetch(`${getApiBase()}/sessions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.detail || 'Failed to create session')
-      }
-
-      const data = await res.json()
+      const data = await postSession(body)
       if (data.existing) {
         navigate(`/session/${data.name}`)
         onClose()

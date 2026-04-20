@@ -83,3 +83,39 @@ class TestFilesEndpoints:
         # If 200, it must be the SPA index.html, not actual file contents
         if response.status_code == 200:
             assert "root:" not in response.text
+
+
+class TestCreateSessionErrorMapping:
+    """Regression: OSError from subprocess (e.g. EMFILE) used to surface as a
+    bare 500 'Internal Server Error' with no body. It now maps to 503 with
+    a diagnostic detail so the frontend can show the real cause."""
+
+    def test_oserror_maps_to_503_with_detail(self, client, tmp_path, mocker):
+        mocker.patch(
+            "lumbergh.routers.sessions.create_tmux_session",
+            side_effect=OSError(24, "Too many open files"),
+        )
+
+        response = client.post(
+            "/api/sessions",
+            json={"name": "emfile-test", "workdir": str(tmp_path)},
+        )
+
+        assert response.status_code == 503
+        detail = response.json()["detail"]
+        assert "Too many open files" in detail
+        assert "file-descriptor" in detail
+
+    def test_runtime_error_still_maps_to_500(self, client, tmp_path, mocker):
+        mocker.patch(
+            "lumbergh.routers.sessions.create_tmux_session",
+            side_effect=RuntimeError("tmux session create failed: bad config"),
+        )
+
+        response = client.post(
+            "/api/sessions",
+            json={"name": "runtime-error-test", "workdir": str(tmp_path)},
+        )
+
+        assert response.status_code == 500
+        assert "bad config" in response.json()["detail"]
