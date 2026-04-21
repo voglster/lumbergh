@@ -23,6 +23,24 @@ logger = logging.getLogger(__name__)
 _session_data_locks: dict[str, threading.Lock] = {}
 _session_data_locks_mutex = threading.Lock()
 
+# Cache TinyDB instances by resolved path.  TinyDB's JSONStorage opens the
+# backing file in __init__ and only releases the fd on .close(); constructing
+# a new instance per call leaks fds until GC finalizers run, which exhausts
+# macOS's 256-per-process default soft limit under load.
+_db_cache: dict[Path, TinyDB] = {}
+_db_cache_mutex = threading.Lock()
+
+
+def _get_cached_db(path: Path) -> TinyDB:
+    """Return a process-wide cached TinyDB for ``path``, creating it once."""
+    key = path.resolve() if path.exists() else path
+    with _db_cache_mutex:
+        db = _db_cache.get(key)
+        if db is None:
+            db = TinyDB(path)
+            _db_cache[key] = db
+        return db
+
 
 def session_data_lock(session_name: str) -> threading.Lock:
     """Return a process-wide threading.Lock scoped to a session's DB file."""
@@ -56,6 +74,7 @@ def recover_session_data_db(session_name: str) -> bool:
 
     try:
         obj, _ = json.JSONDecoder().raw_decode(raw)
+        invalidate_db_cache(path)
         path.write_text(json.dumps(obj))
         logger.warning(
             f"Recovered corrupt session DB for {session_name} (trimmed trailing garbage)"
@@ -66,6 +85,7 @@ def recover_session_data_db(session_name: str) -> bool:
 
     backup = path.with_suffix(f".json.corrupt-{int(time.time())}")
     try:
+        invalidate_db_cache(path)
         path.rename(backup)
         path.write_text("{}")
     except OSError as e:
@@ -103,17 +123,17 @@ def _resolve_main_repo(project_path: Path) -> Path:
 
 def get_sessions_db() -> TinyDB:
     """Get the TinyDB instance for session metadata."""
-    return TinyDB(CONFIG_DIR / "sessions.json")
+    return _get_cached_db(CONFIG_DIR / "sessions.json")
 
 
 def get_settings_db() -> TinyDB:
     """Get the TinyDB instance for application settings."""
-    return TinyDB(CONFIG_DIR / "settings.json")
+    return _get_cached_db(CONFIG_DIR / "settings.json")
 
 
 def get_global_db() -> TinyDB:
     """Get the TinyDB instance for global cross-project data."""
-    return TinyDB(CONFIG_DIR / "global.json")
+    return _get_cached_db(CONFIG_DIR / "global.json")
 
 
 def get_project_db(project_path: Path) -> TinyDB:
@@ -127,7 +147,7 @@ def get_project_db(project_path: Path) -> TinyDB:
         TinyDB instance for the project
     """
     project_hash = hashlib.md5(str(_resolve_main_repo(project_path)).encode()).hexdigest()[:12]
-    return TinyDB(PROJECTS_DIR / f"{project_hash}.json")
+    return _get_cached_db(PROJECTS_DIR / f"{project_hash}.json")
 
 
 def get_session_data_db(session_name: str) -> TinyDB:
@@ -140,7 +160,22 @@ def get_session_data_db(session_name: str) -> TinyDB:
     Returns:
         TinyDB instance for the session
     """
-    return TinyDB(SESSIONS_DATA_DIR / f"{session_name}.json")
+    return _get_cached_db(SESSIONS_DATA_DIR / f"{session_name}.json")
+
+
+def invalidate_db_cache(path: Path) -> None:
+    """Drop a cached TinyDB instance (e.g. after replacing the underlying file).
+
+    Used by recovery paths that rename/rewrite a DB file out from under TinyDB.
+    """
+    key = path.resolve() if path.exists() else path
+    with _db_cache_mutex:
+        db = _db_cache.pop(key, None)
+    if db is not None:
+        try:
+            db.close()
+        except Exception:  # noqa: S110 - best-effort close during invalidation
+            pass
 
 
 def get_single_document_items(table, key: str = "items") -> list:
