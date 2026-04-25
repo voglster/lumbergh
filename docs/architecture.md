@@ -1,5 +1,12 @@
 # Technical Architecture: Project Lumbergh
 
+> **Note:** The user-facing architecture reference lives at
+> [`docs-src/architecture.md`](../docs-src/architecture.md) and renders to
+> the public docs site. That copy is the canonical, kept-current reference.
+> This file is the original PRD-era architecture write-up retained for
+> historical context — some details (Windows/psmux, cloud tunnel,
+> telemetry, lag watchdog, backup scheduler) lag behind the public doc.
+
 ## 1. High-Level Architecture
 
 The system follows a decoupled Client-Server model. The backend serves a JSON API and WebSockets; the frontend is a React Single Page Application (SPA). The backend also serves the built frontend as static files in production.

@@ -1,7 +1,11 @@
 # Feature Spec: "The One"
 
-**Status:** Draft
-**Date:** 2026-03-30
+**Status:** Shipped (2026-04)
+**Date:** 2026-03-30 (original draft)
+
+> **User docs:** This is the original implementation spec, kept for
+> historical reference. End-user documentation now lives in the
+> [Sessions guide](../../docs-src/guides/sessions.md#starring-the-one).
 
 ## Summary
 

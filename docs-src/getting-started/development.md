@@ -9,9 +9,9 @@ Get a local development environment running for contributing to Lumbergh.
 ## Requirements
 
 - [uv](https://docs.astral.sh/uv/)
-- Node.js 18+ and npm
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
-- tmux
+- Node.js 20.19+ and npm
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (or any other supported agent)
+- tmux on Linux/macOS, or `psmux` on Windows (`uv tool install psmux`)
 - git
 
 ## Clone and Bootstrap

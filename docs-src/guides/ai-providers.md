@@ -40,7 +40,7 @@ Models are auto-discovered from your Ollama installation -- any model you've pul
 | Setting | Notes |
 |---------|-------|
 | API Key | Required |
-| Models | `claude-sonnet-4-20250514` (default), `claude-opus-4-20250514`, `claude-3-5-sonnet-20241022`, `claude-3-5-haiku-20241022` |
+| Models | `claude-sonnet-4-20250514` (default). The model field is freeform — paste any current Anthropic model ID (e.g. Sonnet 4.6 / Opus 4.7) once Anthropic publishes it. |
 
 ### Google AI
 
@@ -64,9 +64,19 @@ This works with local servers like LM Studio, text-generation-webui, or any host
 
 No API key needed. Connect your Lumbergh Cloud account in **Settings --> Cloud** using the device code flow, then select "Lumbergh Cloud" as your AI provider. Models are loaded dynamically from the cloud service.
 
+## AI Tasks
+
+Lumbergh uses the configured provider for three optional, user-triggered tasks:
+
+- **Commit message generation** — proposes a conventional-commit message from the staged diff
+- **Session status summaries** — one-line "what's this session doing right now" labels on dashboard cards
+- **Session summary overlays** — longer narrative summaries shown in the session detail view
+
+Each task uses an editable prompt template — see below.
+
 ## AI Prompt Templates
 
-Lumbergh uses customizable prompt templates for each AI task. You can edit these in **Settings > AI Prompts** at both the global and per-project level. This lets you tune the commit message style, status summary format, etc. to match your preferences.
+Lumbergh uses customizable prompt templates for each AI task. You can edit these inside the **Settings → AI** tab (scroll past the provider configuration to find the "Prompt Templates" section), at both the global and per-project level. This lets you tune the commit message style, status summary format, etc. to match your preferences.
 
 !!! note "Idle detection is not AI"
     Session status detection (working, idle, error, stalled) uses **pattern matching** on terminal output, not AI. It runs every 2 seconds and works without any AI provider configured. The AI is only used for the optional status *summary* labels on dashboard cards.

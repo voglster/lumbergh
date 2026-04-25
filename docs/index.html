@@ -590,7 +590,7 @@
 
 <header class="hero">
   <h1><span>Lumbergh</span></h1>
-  <p class="tagline">A self-hosted dashboard for supervising multiple Claude Code sessions. Micromanage your AI interns from any device.</p>
+  <p class="tagline">A self-hosted dashboard for supervising multiple AI coding agent sessions — Claude Code, Cursor, Aider, and more. Micromanage your AI interns from any device.</p>
   <div class="hero-buttons">
     <a href="#install" class="cta">Get Started</a>
     <a href="./docs/" class="cta-secondary">Documentation</a>
@@ -701,9 +701,10 @@
     <ol class="steps">
       <li>
         <h3>Install the prerequisites</h3>
-        <p>You just need <strong>tmux</strong> and <strong>git</strong>:</p>
-<pre><code>sudo apt install tmux git    # Debian/Ubuntu
-brew install tmux git         # macOS</code></pre>
+        <p>You need <strong>tmux</strong> (or <strong>psmux</strong> on Windows) and <strong>git</strong>:</p>
+<pre><code>sudo apt install tmux git              # Debian/Ubuntu
+brew install tmux git                   # macOS
+uv tool install psmux                   # Windows (instead of tmux)</code></pre>
       </li>
       <li>
         <h3>Install Lumbergh</h3>
@@ -720,8 +721,9 @@ brew install tmux git         # macOS</code></pre>
     </ol>
 
     <div class="callout">
-      <strong>Windows users: use WSL</strong>
-      <p>Lumbergh works great inside <a href="https://learn.microsoft.com/en-us/windows/wsl/install">WSL (Windows Subsystem for Linux)</a>. Install WSL with <code>wsl --install</code> from PowerShell, then follow the Linux instructions above inside your WSL terminal. Access the dashboard from your Windows browser at <code>http://localhost:8420</code> &mdash; WSL forwards ports automatically.</p>
+      <strong>Windows: native or WSL</strong>
+      <p>Lumbergh runs <strong>natively on Windows</strong> using <a href="https://pypi.org/project/psmux/">psmux</a> (a PowerShell-based tmux clone) in place of tmux. WSL is not required. Install with <code>uv tool install psmux</code> followed by <code>uv tool install pylumbergh</code>. <code>pywinpty</code> is pulled in automatically.</p>
+      <p>Prefer <a href="https://learn.microsoft.com/en-us/windows/wsl/install">WSL</a>? That works too &mdash; install with <code>wsl --install</code>, then follow the Linux instructions inside your WSL terminal.</p>
     </div>
 
     <div class="callout tip">
@@ -768,12 +770,14 @@ brew install tmux git         # macOS</code></pre>
     <p>The input bar at the bottom of the terminal lets you type and send text to the active session. You can choose to send text only (for composing multi-line input) or send with Enter to execute immediately. Switch between tmux windows using the window selector buttons.</p>
 
     <h3 style="margin-top: 2rem; margin-bottom: 0.75rem;">Creating Sessions</h3>
-    <p>Click <strong>"+ New Session"</strong> on the dashboard. There are three modes:</p>
+    <p>Click <strong>"+ New Session"</strong> on the dashboard. The modal offers three modes:</p>
     <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
       <li><strong>Existing Repo</strong> &mdash; point at any existing working directory. Give it a name, pick the directory using the repo finder (searches your configured repo directory), and optionally add a description.</li>
       <li><strong>New Repo</strong> &mdash; create a fresh project directory with an auto-initialized git repo. Pick a parent directory and name your project.</li>
       <li><strong>Worktree</strong> &mdash; create a git worktree from an existing repo. Pick the parent repo, choose an existing branch or create a new one, and Lumbergh sets up the worktree automatically. Great for running parallel feature branches.</li>
     </ul>
+    <p>For one-off experiments, hit the separate <strong>Scratch</strong> button on the dashboard &mdash; it spins up a throwaway working directory under <code>~/.config/lumbergh/scratch/</code> and starts an agent in it. Scratch sessions auto-clean themselves after a configurable number of days (default 7) and can be promoted to a permanent session via the in-session banner.</p>
+    <p>Star any session with the &#9733; icon on its card to mark it as <strong>"the one"</strong> &mdash; your highest-priority conversation. Starred sessions sort first on the dashboard, pin to the left in the navigator dots, and get priority when you cycle forward (<code>Ctrl+]</code>) and they're idle.</p>
     <p>Lumbergh auto-generates a URL-safe session ID from the name (e.g., "Auth Feature" becomes <code>auth-feature</code>) and creates the tmux session for you.</p>
 
     <div class="showcase-single">
@@ -832,7 +836,7 @@ brew install tmux git         # macOS</code></pre>
         </tr>
         <tr>
           <td><strong>Anthropic</strong></td>
-          <td>API key. Models: Claude Sonnet 4, Claude Opus 4, Claude 3.5 Sonnet, Claude 3.5 Haiku.</td>
+          <td>API key. Default model: <code>claude-sonnet-4-20250514</code>. The model field is freeform &mdash; paste any current Anthropic model ID (Sonnet 4.6, Opus 4.7, etc.) once it&rsquo;s released.</td>
         </tr>
         <tr>
           <td><strong>Google AI</strong></td>
@@ -892,13 +896,15 @@ brew install tmux git         # macOS</code></pre>
     </ul>
 
     <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">Data Storage</h3>
-    <p>All data lives in <code>~/.config/lumbergh/</code>:</p>
+    <p>All data lives in <code>~/.config/lumbergh/</code> (override with the <code>LUMBERGH_DATA_DIR</code> env var):</p>
     <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
-      <li><code>sessions.json</code> &mdash; session registry (names, workdirs, descriptions)</li>
-      <li><code>session_data/&lt;name&gt;.json</code> &mdash; per-session data (todos, scratchpad)</li>
-      <li><code>settings.json</code> &mdash; AI provider config, repo search path</li>
-      <li><code>global.json</code> &mdash; global prompt templates</li>
+      <li><code>sessions.json</code> &mdash; session registry (names, workdirs, agent provider, descriptions, <code>the_one</code> star flag, scratch flag, paused/cloud flags, last-used timestamp)</li>
+      <li><code>projects/&lt;hash&gt;.json</code> &mdash; per-project data (todos, scratchpad, prompt templates)</li>
+      <li><code>session_data/&lt;name&gt;.json</code> &mdash; per-session runtime data (status summaries, idle state)</li>
+      <li><code>settings.json</code> &mdash; AI provider config, repo search path, password, cloud token, telemetry consent, scratch max age, etc.</li>
+      <li><code>global.json</code> &mdash; global prompt templates and AI prompt overrides</li>
       <li><code>shared/</code> &mdash; shared files accessible from all sessions</li>
+      <li><code>scratch/&lt;name&gt;/</code> &mdash; throwaway worktrees for scratch sessions (auto-cleaned)</li>
     </ul>
     <p>No database server needed &mdash; it's all flat JSON files via TinyDB.</p>
   </section>
