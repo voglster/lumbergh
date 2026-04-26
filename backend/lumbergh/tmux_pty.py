@@ -18,11 +18,22 @@ import sys
 import sys
 
 if sys.platform == "win32":
-    import psmux as tmux_provider
-    from psmux._internal.query_list import ObjectDoesNotExist
+    try:
+        import psmux as tmux_provider
+        from psmux._internal.query_list import ObjectDoesNotExist
+    except ImportError:
+        import libtmux as tmux_provider
+        try:
+            from libtmux._internal.query_list import ObjectDoesNotExist
+        except ImportError:
+            # Fallback for libtmux versions where the internal path is different
+            class ObjectDoesNotExist(Exception): pass
 else:
     import libtmux as tmux_provider
-    from libtmux._internal.query_list import ObjectDoesNotExist
+    try:
+        from libtmux._internal.query_list import ObjectDoesNotExist
+    except ImportError:
+        class ObjectDoesNotExist(Exception): pass
 
 from lumbergh.constants import TMUX_CMD
 
@@ -217,17 +228,7 @@ class TmuxPtySession:
 
     def spawn(self) -> None:
         """Spawn a PTY running tmux attach."""
-<<<<<<< HEAD
-        # Verify session exists
-        server = tmux_provider.Server()
-        try:
-            session = server.sessions.get(session_name=self.session_name)
-        except ObjectDoesNotExist:
-            raise ValueError(f"Session '{self.session_name}' not found")
-        if not session:
-=======
         if not _session_exists(self.session_name):
->>>>>>> upstream/main
             raise ValueError(f"Session '{self.session_name}' not found")
 
         if IS_WINDOWS:
