@@ -82,6 +82,53 @@ def create_button_disabled_or_not_found(page: Page):
     )
 
 
+@when("I type the test-repo-2 absolute path into the directory search")
+def type_absolute_path_search(page: Page, repo_dir: str):
+    # DirectoryPicker's search input has no data-testid; locate by placeholder.
+    search = page.get_by_placeholder("Search git repositories...")
+    search.fill(f"{repo_dir}/test-repo-2")
+    # Picker debounces the validate call at 300ms — wait for the result row.
+    page.wait_for_timeout(600)
+
+
+@when(parsers.parse('I type absolute path "{path}" into the directory search'))
+def type_custom_absolute_path(page: Page, path: str):
+    search = page.get_by_placeholder("Search git repositories...")
+    search.fill(path)
+    page.wait_for_timeout(600)
+
+
+@then("the typed path should appear as a selectable result")
+def typed_path_appears(page: Page, repo_dir: str):
+    expected_path = f"{repo_dir}/test-repo-2"
+    # The dropdown entry renders the path as monospace subtext.
+    entry = page.get_by_text(expected_path, exact=True)
+    expect(entry).to_be_visible(timeout=5000)
+
+
+@when("I select the typed path result")
+def select_typed_path(page: Page, repo_dir: str):
+    expected_path = f"{repo_dir}/test-repo-2"
+    page.get_by_text(expected_path, exact=True).click()
+
+
+@then("the directory search should show a path-does-not-exist error")
+def path_missing_error(page: Page):
+    expect(page.get_by_text("Path does not exist:", exact=False)).to_be_visible(timeout=5000)
+
+
+@then("the create button should be disabled")
+def create_button_disabled(page: Page):
+    btn = page.locator('[data-testid="create-session-submit"]')
+    expect(btn).to_be_disabled()
+
+
+@then(parsers.parse('the "{name}" session is cleaned up'))
+def cleanup_created_session(base_url: str, name: str):
+    with httpx.Client(base_url=base_url, timeout=10.0) as client:
+        client.delete(f"/api/sessions/{name}")
+
+
 @given("I am on the dashboard with mobile viewport")
 def go_to_dashboard_mobile(page: Page, base_url: str):
     """Resize the existing page to a mobile viewport (iPhone-sized) and navigate."""

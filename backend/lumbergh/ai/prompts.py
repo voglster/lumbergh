@@ -50,6 +50,25 @@ STATUS_SUMMARY_PROMPT = """Summarize this task in 2-3 words maximum.
 Examples: "fixing auth", "adding tests", "refactoring API"
 Task: {text}"""
 
+# Default prompt for session summary ("What happened?")
+# Based on tmux scrollback with recency bias — recent lines are full,
+# older lines are sampled every 5th line.
+DEFAULT_SESSION_SUMMARY_PROMPT = """You are summarizing a coding agent's terminal session. The output below is from its tmux scrollback buffer. Recent lines (at the bottom) are more important than older lines.
+
+Current agent state: {{session_state}}
+
+Terminal output:
+```
+{{terminal_output}}
+```
+
+Respond with a short markdown summary (no headings, just bullets):
+- First bullet: what the agent is doing RIGHT NOW (based on the last few lines)
+- Then 2-4 bullets covering what it did before that (key actions, files changed, tests run, errors hit)
+- Keep it under 80 words total
+- Be specific (name files, functions, errors) — not vague
+- Skip noise (blank lines, progress bars, ANSI artifacts)"""
+
 # Table name for AI prompts
 AI_PROMPTS_TABLE = "ai_prompts"
 
@@ -63,7 +82,14 @@ def get_default_ai_prompts() -> list[dict]:
             "name": "Default Commit Message",
             "template": DEFAULT_COMMIT_MESSAGE_PROMPT,
             "isDefault": True,
-        }
+        },
+        {
+            "id": "session_summary",
+            "task": "session_summary",
+            "name": "Session Summary",
+            "template": DEFAULT_SESSION_SUMMARY_PROMPT,
+            "isDefault": True,
+        },
     ]
 
 

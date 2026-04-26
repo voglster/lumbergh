@@ -84,14 +84,24 @@ A unified interface for micromanaging a single "Intern" via tabbed navigation.
 - **Commit Message Generation:** AI-generated conventional commit messages from the current diff.
 - **Prompt Name Generation:** AI-generated snake_case names for prompt templates.
 - **Status Summaries:** 2-3 word AI-generated session status labels.
-- **Multi-Provider:** Ollama (local), OpenAI, Anthropic, Google, OpenAI-compatible endpoints.
+- **Multi-Provider:** Ollama (local), OpenAI, Anthropic, Google, OpenAI-compatible endpoints, Lumbergh Cloud (free).
 - **AI Prompt Management:** Customizable prompt templates for AI tasks (global + per-project).
 
-### 2.4 Settings & Auth
+### 2.4 Cloud & Backup
+
+- **Lumbergh Cloud:** Optional companion service (device code auth, no API keys).
+- **Cloud Backup:** Auto-backup every 5 minutes with optional AES-256 encryption. Restore from any machine.
+- **Prompt Sharing:** Share prompts via short codes with auto-update support.
+- **Community Prompts:** Browse and install prompts shared by other users.
+- **Free AI Provider:** Use Lumbergh Cloud for status detection and commit summaries at no cost.
+
+### 2.5 Settings & Auth
 
 - **Optional Password Protection:** Single shared password, cookie-based sessions (30-day).
-- **Global Settings:** Repo search directory, git graph commit limit, AI provider config, default agent.
+- **Global Settings:** Repo search directory, git graph commit limit, AI provider config, default agent, tab visibility.
+- **Tab Visibility:** Per-session and global defaults for which tabs appear.
 - **Version Check:** PyPI update detection.
+- **Telemetry:** Opt-in anonymous usage analytics.
 
 ## 3. Technical Constraints
 

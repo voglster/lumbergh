@@ -7,12 +7,15 @@ import shutil
 import sys
 
 from lumbergh._version import __version__
+from lumbergh.constants import TMUX_CMD
 from lumbergh.tailscale import detect_tailscale
 
 IS_WINDOWS = platform.system() == "Windows"
 
 REQUIRED_TOOLS = {
-    "tmux": "sudo apt install tmux  (or: brew install tmux)",
+    TMUX_CMD: (
+        "uv tool install psmux" if IS_WINDOWS else "sudo apt install tmux  (or: brew install tmux)"
+    ),
     "git": "sudo apt install git  (or: brew install git)",
 }
 

@@ -1,54 +1,45 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getApiBase } from '../config'
-import { Minus, Pause, Play, AlertCircle, AlertTriangle, Circle } from 'lucide-react'
+import { Minus, Pause, Play, AlertCircle, AlertTriangle, Circle, Cloud, Star } from 'lucide-react'
 import SessionCardEditForm from './SessionCardEditForm'
 import SessionCardActions from './SessionCardActions'
 import SessionCardBadges from './SessionCardBadges'
+import type { SessionBase } from '../utils/sessionStatus'
+import { getSessionStatus as getBaseStatus, statusColorClasses } from '../utils/sessionStatus'
 
-interface Session {
-  name: string
+interface Session extends SessionBase {
   workdir: string | null
   description: string | null
-  displayName: string | null
-  alive: boolean
   attached: boolean
   windows: number
   status?: string | null
   statusUpdatedAt?: string | null
-  idleState?: 'unknown' | 'idle' | 'working' | 'error' | 'stalled' | null
   idleStateUpdatedAt?: string | null
-  type?: 'direct' | 'worktree'
+  type?: 'direct' | 'worktree' | 'scratch'
   worktreeParentRepo?: string | null
   worktreeBranch?: string | null
-  paused?: boolean
   agentProvider?: string | null
   tabVisibility?: Record<string, boolean> | null
+  cloudEnabled?: boolean
+  theOne?: boolean
+  scratch?: boolean
 }
+
+const statusIcons = {
+  gray: Minus,
+  yellow: Pause,
+  green: Circle,
+  red: AlertCircle,
+} as const
 
 function getSessionStatus(session: Session) {
-  if (!session.alive) {
-    return { color: 'gray', pulse: false, label: 'Offline', Icon: Minus }
-  }
-  switch (session.idleState) {
-    case 'idle':
-      return { color: 'yellow', pulse: true, label: 'Waiting for input', Icon: Pause }
-    case 'working':
-      return { color: 'green', pulse: false, label: 'Working', Icon: Play }
-    case 'error':
-      return { color: 'red', pulse: true, label: 'Error', Icon: AlertCircle }
-    case 'stalled':
-      return { color: 'red', pulse: true, label: 'Stalled', Icon: AlertTriangle }
-    default:
-      return { color: 'green', pulse: false, label: 'Active', Icon: Circle }
-  }
-}
-
-const statusColorClasses: Record<string, { dot: string; text: string }> = {
-  gray: { dot: 'bg-gray-500', text: 'text-text-tertiary' },
-  yellow: { dot: 'bg-yellow-400', text: 'text-yellow-400' },
-  green: { dot: 'bg-green-500', text: 'text-green-400' },
-  red: { dot: 'bg-red-500', text: 'text-red-400' },
+  const base = getBaseStatus(session)
+  let Icon = statusIcons[base.color as keyof typeof statusIcons] || Circle
+  // Refine icons for specific states
+  if (session.idleState === 'working') Icon = Play
+  if (session.idleState === 'stalled') Icon = AlertTriangle
+  return { ...base, Icon }
 }
 
 interface SessionUpdate {
@@ -56,6 +47,92 @@ interface SessionUpdate {
   description?: string
   paused?: boolean
   agentProvider?: string
+  cloudEnabled?: boolean
+  theOne?: boolean
+}
+
+function SessionCardFooter({
+  session,
+  cloudAtLimit,
+  onToggleCloud,
+  onToggleTheOne,
+}: {
+  session: Pick<Session, 'windows' | 'attached' | 'workdir' | 'cloudEnabled' | 'theOne'>
+  cloudAtLimit?: boolean
+  onToggleCloud: (e: React.MouseEvent) => void
+  onToggleTheOne: (e: React.MouseEvent) => void
+}) {
+  return (
+    <div className="flex items-center gap-3 text-xs text-text-muted">
+      <span>
+        {session.windows} window{session.windows !== 1 ? 's' : ''}
+      </span>
+      {session.attached && <span className="text-blue-400">attached</span>}
+      {!session.workdir && <span className="text-yellow-500">orphan</span>}
+      <button
+        onClick={onToggleTheOne}
+        className={`ml-auto p-0.5 rounded transition-colors ${
+          session.theOne
+            ? 'text-yellow-400 hover:text-yellow-300'
+            : 'text-text-muted hover:text-yellow-400'
+        }`}
+        title={session.theOne ? 'Starred (click to unstar)' : 'Star session'}
+      >
+        <Star size={14} fill={session.theOne ? 'currentColor' : 'none'} />
+      </button>
+      <button
+        onClick={onToggleCloud}
+        className={`p-0.5 rounded transition-colors ${
+          session.cloudEnabled
+            ? 'text-blue-400 hover:text-blue-300'
+            : cloudAtLimit
+              ? 'text-text-muted opacity-40 cursor-not-allowed'
+              : 'text-text-muted hover:text-blue-400'
+        }`}
+        title={
+          session.cloudEnabled
+            ? 'Cloud enabled (click to disable)'
+            : cloudAtLimit
+              ? 'Cloud session limit reached'
+              : 'Enable cloud access'
+        }
+      >
+        <Cloud size={14} fill={session.cloudEnabled ? 'currentColor' : 'none'} />
+      </button>
+    </div>
+  )
+}
+
+async function confirmDeleteSession(
+  session: Pick<Session, 'name' | 'type' | 'workdir'>,
+  onDelete: (name: string, cleanupWorktree?: boolean) => void
+) {
+  if (session.type === 'worktree') {
+    let dirty = false
+    try {
+      const res = await fetch(`${getApiBase()}/sessions/${session.name}/git/status`)
+      if (res.ok) {
+        const data = await res.json()
+        dirty = data.files && data.files.length > 0
+      }
+    } catch {
+      // If we can't check, proceed with caution
+    }
+
+    const msg = dirty
+      ? `Delete session "${session.name}" and its worktree?\n\n` +
+        `WARNING: This worktree has uncommitted changes that will be lost.\n` +
+        `${session.workdir}`
+      : `Delete session "${session.name}" and its worktree?\n\n${session.workdir}`
+
+    if (confirm(msg)) {
+      onDelete(session.name, true)
+    }
+  } else {
+    if (confirm(`Delete session "${session.name}"?`)) {
+      onDelete(session.name)
+    }
+  }
 }
 
 interface Props {
@@ -63,9 +140,10 @@ interface Props {
   onDelete: (name: string, cleanupWorktree?: boolean) => void
   onUpdate: (name: string, updates: SessionUpdate) => void
   onReset: (name: string) => void
+  cloudAtLimit?: boolean
 }
 
-export default function SessionCard({ session, onDelete, onUpdate, onReset }: Props) {
+export default function SessionCard({ session, onDelete, onUpdate, onReset, cloudAtLimit }: Props) {
   const navigate = useNavigate()
   const [isEditing, setIsEditing] = useState(false)
 
@@ -77,34 +155,7 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation()
-
-    if (session.type === 'worktree') {
-      // Check for uncommitted changes before deleting worktree
-      let dirty = false
-      try {
-        const res = await fetch(`${getApiBase()}/sessions/${session.name}/git/status`)
-        if (res.ok) {
-          const data = await res.json()
-          dirty = data.files && data.files.length > 0
-        }
-      } catch {
-        // If we can't check, proceed with caution
-      }
-
-      const msg = dirty
-        ? `Delete session "${session.name}" and its worktree?\n\n` +
-          `WARNING: This worktree has uncommitted changes that will be lost.\n` +
-          `${session.workdir}`
-        : `Delete session "${session.name}" and its worktree?\n\n${session.workdir}`
-
-      if (confirm(msg)) {
-        onDelete(session.name, true)
-      }
-    } else {
-      if (confirm(`Delete session "${session.name}"?`)) {
-        onDelete(session.name)
-      }
-    }
+    await confirmDeleteSession(session, onDelete)
   }
 
   const handleReset = (e: React.MouseEvent) => {
@@ -121,6 +172,17 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
   const handleTogglePaused = (e: React.MouseEvent) => {
     e.stopPropagation()
     onUpdate(session.name, { paused: !session.paused })
+  }
+
+  const handleToggleCloud = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!session.cloudEnabled && cloudAtLimit) return
+    onUpdate(session.name, { cloudEnabled: !session.cloudEnabled })
+  }
+
+  const handleToggleTheOne = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onUpdate(session.name, { theOne: !session.theOne })
   }
 
   const handleEditClick = (e: React.MouseEvent) => {
@@ -152,7 +214,7 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
     <div
       onClick={handleClick}
       data-testid="session-card-link"
-      className={`bg-bg-surface rounded-lg p-4 cursor-pointer hover:bg-bg-elevated transition-colors border border-border-default hover:border-border-subtle ${session.paused ? 'opacity-50' : ''}`}
+      className={`bg-bg-surface rounded-lg p-4 cursor-pointer hover:bg-bg-elevated transition-colors border ${session.type === 'scratch' ? 'border-dashed border-amber-500/50' : session.theOne ? 'border-blue-500 dark:border-blue-400' : 'border-border-default hover:border-border-subtle'} ${session.paused ? 'opacity-50' : ''}`}
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -180,7 +242,7 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
         worktreeBranch={session.worktreeBranch}
         worktreeParentRepo={session.worktreeParentRepo}
         agentProvider={session.agentProvider}
-        workdir={session.workdir}
+        workdir={session.type === 'scratch' ? null : session.workdir}
         description={session.description}
         status={session.status}
       />
@@ -192,13 +254,12 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset }: Pr
         </div>
       )}
 
-      <div className="flex items-center gap-3 text-xs text-text-muted">
-        <span>
-          {session.windows} window{session.windows !== 1 ? 's' : ''}
-        </span>
-        {session.attached && <span className="text-blue-400">attached</span>}
-        {!session.workdir && <span className="text-yellow-500">orphan</span>}
-      </div>
+      <SessionCardFooter
+        session={session}
+        cloudAtLimit={cloudAtLimit}
+        onToggleCloud={handleToggleCloud}
+        onToggleTheOne={handleToggleTheOne}
+      />
     </div>
   )
 }

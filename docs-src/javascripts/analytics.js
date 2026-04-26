@@ -1,5 +1,5 @@
 (function() {
-  var API = 'https://lumbergh.jc.turbo.inc/api/telemetry/web';
+  var API = 'https://app.lumbergh.dev/api/telemetry/web';
   var vid = localStorage.getItem('lb_vid');
   if (!vid) { vid = crypto.randomUUID(); localStorage.setItem('lb_vid', vid); }
 

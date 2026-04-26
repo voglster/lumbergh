@@ -1,7 +1,7 @@
-import React, { useEffect, useCallback, useRef } from 'react'
+import React, { useEffect, useCallback, useRef, useState } from 'react'
 import MarkdownPreview from '@uiw/react-markdown-preview'
 import mermaid from 'mermaid'
-import { FileText, X } from 'lucide-react'
+import { FileText, X, Code2, Eye, Copy, Check } from 'lucide-react'
 import { useTheme } from '../hooks/useTheme'
 
 interface Props {
@@ -74,6 +74,8 @@ function Code({ children, className }: { children?: React.ReactNode; className?:
 
 export default function MarkdownViewer({ content, filePath, onClose }: Props) {
   const { theme } = useTheme()
+  const [viewSource, setViewSource] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   // Re-initialize mermaid when theme changes
   useEffect(() => {
@@ -108,6 +110,13 @@ export default function MarkdownViewer({ content, filePath, onClose }: Props) {
 
   const fileName = filePath.split('/').pop() || filePath
 
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(content).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }, [content])
+
   return (
     <div
       className="fixed inset-0 bg-black/95 flex flex-col z-50"
@@ -124,31 +133,53 @@ export default function MarkdownViewer({ content, filePath, onClose }: Props) {
           </span>
           <span className="text-text-muted text-xs hidden sm:inline">({filePath})</span>
         </div>
-        <button
-          onClick={onClose}
-          className="text-text-tertiary hover:text-text-primary transition-colors p-1 flex-shrink-0"
-          title="Close (Esc)"
-        >
-          <X size={24} />
-        </button>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            onClick={() => setViewSource((v) => !v)}
+            className="text-text-tertiary hover:text-text-primary transition-colors p-1.5 rounded hover:bg-bg-hover"
+            title={viewSource ? 'Preview' : 'View source'}
+          >
+            {viewSource ? <Eye size={18} /> : <Code2 size={18} />}
+          </button>
+          <button
+            onClick={handleCopy}
+            className="text-text-tertiary hover:text-text-primary transition-colors p-1.5 rounded hover:bg-bg-hover"
+            title="Copy markdown"
+          >
+            {copied ? <Check size={18} className="text-green-400" /> : <Copy size={18} />}
+          </button>
+          <button
+            onClick={onClose}
+            className="text-text-tertiary hover:text-text-primary transition-colors p-1 flex-shrink-0"
+            title="Close (Esc)"
+          >
+            <X size={24} />
+          </button>
+        </div>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
-          <MarkdownPreview
-            source={content}
-            style={{
-              backgroundColor: 'transparent',
-              color: theme === 'dark' ? '#e5e7eb' : '#073642',
-            }}
-            wrapperElement={{
-              'data-color-mode': theme,
-            }}
-            components={{
-              code: Code,
-            }}
-          />
+          {viewSource ? (
+            <pre className="font-mono text-sm text-text-secondary whitespace-pre-wrap break-words">
+              {content}
+            </pre>
+          ) : (
+            <MarkdownPreview
+              source={content}
+              style={{
+                backgroundColor: 'transparent',
+                color: theme === 'dark' ? '#e5e7eb' : '#073642',
+              }}
+              wrapperElement={{
+                'data-color-mode': theme,
+              }}
+              components={{
+                code: Code,
+              }}
+            />
+          )}
         </div>
       </div>
     </div>

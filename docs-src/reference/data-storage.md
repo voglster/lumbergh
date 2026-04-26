@@ -12,21 +12,28 @@ Override with the `LUMBERGH_DATA_DIR` environment variable.
 
 ```
 ~/.config/lumbergh/
-├── sessions.json              # Session registry (names, workdirs, descriptions, agent, idle state)
+├── sessions.json              # Session registry (names, workdirs, agent, the_one flag, scratch flag)
 ├── projects/
 │   └── <repo-hash>.json       # Per-project data (todos, scratchpad, prompts, AI prompts)
-├── settings.json              # AI provider config, repo search path, git graph commits, password
+├── session_data/
+│   └── <session-name>.json    # Per-session runtime data (idle state, status, AI summaries)
+├── settings.json              # AI provider config, repo search path, git graph commits, password,
+│                              # cloudToken, telemetryConsent, scratchMaxAgeDays, backupPassphrase
 ├── global.json                # Global prompt templates and global AI prompts
-└── shared/                    # Shared files accessible from all sessions
+├── shared/                    # Shared files accessible from all sessions
+└── scratch/
+    └── <name>/                # Throwaway worktrees for scratch sessions (auto-cleaned)
 ```
 
 | File | Contents |
 |------|----------|
-| `sessions.json` | Session registry -- names, working directories, descriptions, agent provider, idle state, display names |
+| `sessions.json` | Session registry — names, working directories, descriptions, agent provider, `the_one` star flag (exposed as `theOne` over the API), session type (e.g. `scratch`), display names, paused/cloud flags, `lastUsedAt` timestamp |
 | `projects/<hash>.json` | Per-project todos, scratchpad notes, project-specific prompts, and AI prompt overrides. Keyed by repo path hash, so multiple sessions on the same repo share data. |
-| `settings.json` | AI provider configuration, repo search path, git graph commit count, default agent, password |
+| `session_data/<name>.json` | Per-session runtime data — idle state, status, AI-generated session summaries. One file per session. |
+| `settings.json` | Global settings — AI provider configuration, repo search path, git graph commit count, default agent, tab visibility, cloud token, telemetry consent, scratch max-age, password, backup passphrase |
 | `global.json` | Global prompt templates and global AI prompt templates |
 | `shared/` | Shared files (including images) accessible from every session |
+| `scratch/<name>/` | Working directories for [scratch sessions](../guides/sessions.md#scratch-mode). Auto-deleted after `scratchMaxAgeDays` of inactivity. |
 
 ## Format
 
@@ -37,6 +44,8 @@ All files are **human-readable JSON** stored via [TinyDB](https://tinydb.readthe
 
 ## Backup & Restore
 
+### Manual Backup
+
 Back up everything by copying the data directory:
 
 ```bash
@@ -44,3 +53,7 @@ cp -r ~/.config/lumbergh/ ~/lumbergh-backup/
 ```
 
 To restore, copy the backup back to the same path (or point `LUMBERGH_DATA_DIR` at it).
+
+### Cloud Backup
+
+With a [Lumbergh Cloud](configuration.md#lumbergh-cloud) connection, you can enable automatic cloud backup in **Settings --> Cloud**. Backups run every 5 minutes when changes are detected and include sessions, todos, prompts, scratchpads, shared markdown files, and settings (with secrets stripped by default). Backups support optional AES-256 encryption with a passphrase. Restore from the Cloud tab to pull your data to any machine.

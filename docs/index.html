@@ -590,7 +590,7 @@
 
 <header class="hero">
   <h1><span>Lumbergh</span></h1>
-  <p class="tagline">A self-hosted dashboard for supervising multiple Claude Code sessions. Micromanage your AI interns from any device.</p>
+  <p class="tagline">A self-hosted dashboard for supervising multiple AI coding agent sessions — Claude Code, Cursor, Aider, and more. Micromanage your AI interns from any device.</p>
   <div class="hero-buttons">
     <a href="#install" class="cta">Get Started</a>
     <a href="./docs/" class="cta-secondary">Documentation</a>
@@ -637,7 +637,15 @@
       </div>
       <div class="feature">
         <h3>Multi-Session</h3>
-        <p>Run and monitor multiple Claude Code sessions from a single dashboard.</p>
+        <p>Run and monitor multiple AI coding sessions from a single dashboard.</p>
+      </div>
+      <div class="feature">
+        <h3>Multi-Agent</h3>
+        <p>Works with Claude Code, Cursor, Aider, Gemini CLI, OpenCode, and Codex.</p>
+      </div>
+      <div class="feature">
+        <h3>Advanced Git</h3>
+        <p>Commit, amend, rebase, cherry-pick, stash, branch management &mdash; all from the UI.</p>
       </div>
       <div class="feature">
         <h3>Todos &amp; Notes</h3>
@@ -645,11 +653,15 @@
       </div>
       <div class="feature">
         <h3>Prompt Templates</h3>
-        <p>Reusable prompts with variables. Fire them at any session with one click.</p>
+        <p>Reusable prompts with variables. Share via Lumbergh Cloud or browse community prompts.</p>
       </div>
       <div class="feature">
-        <h3>Manager AI</h3>
-        <p>Built-in AI chat pane for reviewing and coordinating work across sessions.</p>
+        <h3>Cloud Sync</h3>
+        <p>Optional cloud backup, prompt sharing, and community prompt discovery.</p>
+      </div>
+      <div class="feature">
+        <h3>Password Auth</h3>
+        <p>Optional password protection with cookie-based sessions. Set via env var or settings.</p>
       </div>
       <div class="feature">
         <h3>Mobile-First</h3>
@@ -689,9 +701,10 @@
     <ol class="steps">
       <li>
         <h3>Install the prerequisites</h3>
-        <p>You just need <strong>tmux</strong> and <strong>git</strong>:</p>
-<pre><code>sudo apt install tmux git    # Debian/Ubuntu
-brew install tmux git         # macOS</code></pre>
+        <p>You need <strong>tmux</strong> (or <strong>psmux</strong> on Windows) and <strong>git</strong>:</p>
+<pre><code>sudo apt install tmux git              # Debian/Ubuntu
+brew install tmux git                   # macOS
+uv tool install psmux                   # Windows (instead of tmux)</code></pre>
       </li>
       <li>
         <h3>Install Lumbergh</h3>
@@ -708,8 +721,9 @@ brew install tmux git         # macOS</code></pre>
     </ol>
 
     <div class="callout">
-      <strong>Windows users: use WSL</strong>
-      <p>Lumbergh works great inside <a href="https://learn.microsoft.com/en-us/windows/wsl/install">WSL (Windows Subsystem for Linux)</a>. Install WSL with <code>wsl --install</code> from PowerShell, then follow the Linux instructions above inside your WSL terminal. Access the dashboard from your Windows browser at <code>http://localhost:8420</code> &mdash; WSL forwards ports automatically.</p>
+      <strong>Windows: native or WSL</strong>
+      <p>Lumbergh runs <strong>natively on Windows</strong> using <a href="https://pypi.org/project/psmux/">psmux</a> (a PowerShell-based tmux clone) in place of tmux. WSL is not required. Install with <code>uv tool install psmux</code> followed by <code>uv tool install pylumbergh</code>. <code>pywinpty</code> is pulled in automatically.</p>
+      <p>Prefer <a href="https://learn.microsoft.com/en-us/windows/wsl/install">WSL</a>? That works too &mdash; install with <code>wsl --install</code>, then follow the Linux instructions inside your WSL terminal.</p>
     </div>
 
     <div class="callout tip">
@@ -727,9 +741,11 @@ brew install tmux git         # macOS</code></pre>
     <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">The Dashboard</h3>
     <p>The home page shows all your sessions as cards, split into <strong>Active</strong> and <strong>Inactive</strong> groups. Each card shows:</p>
     <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
-      <li>Session status (working, waiting for input, idle, error)</li>
+      <li>Session status (working, waiting for input, idle, error, stalled)</li>
       <li>What the AI is currently doing &mdash; auto-detected from terminal activity</li>
-      <li>Number of tmux windows and whether a client is attached</li>
+      <li>Agent provider badge (Claude Code, Cursor, Aider, etc.)</li>
+      <li>Git info: branch name, worktree indicator, parent repo</li>
+      <li>Number of tmux windows and last used timestamp</li>
       <li>Quick actions: edit, reset, or delete the session</li>
     </ul>
     <p>Click any card to open the session detail view.</p>
@@ -743,10 +759,10 @@ brew install tmux git         # macOS</code></pre>
     <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">Session Detail Tabs</h3>
     <p>Each session has a left pane (terminal) and a right pane with these tabs:</p>
     <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
-      <li><strong>Git</strong> &mdash; live diff viewer showing unstaged changes, staged changes, and recent commit history. See line-by-line additions and deletions as the AI writes code.</li>
+      <li><strong>Git</strong> &mdash; interactive commit graph, live diff viewer (unstaged, staged, commit history), and full git operations: commit, amend, push, rebase, cherry-pick, stash, branch management, and more.</li>
       <li><strong>Files</strong> &mdash; browse the project file tree with syntax-highlighted previews. Select code to send as context to the terminal.</li>
-      <li><strong>Todo</strong> &mdash; per-project task list. Add tasks, check them off, drag to reorder. Great for tracking what you've asked the AI to do.</li>
-      <li><strong>Prompts</strong> &mdash; reusable prompt templates (see below).</li>
+      <li><strong>Todo</strong> &mdash; per-project task list with drag-to-reorder, descriptions, and a free-form scratchpad for notes.</li>
+      <li><strong>Prompts</strong> &mdash; reusable prompt templates with @mention variables. Share prompts via Lumbergh Cloud or browse community prompts.</li>
       <li><strong>Shared</strong> &mdash; files shared across sessions for cross-project context.</li>
     </ul>
 
@@ -754,11 +770,14 @@ brew install tmux git         # macOS</code></pre>
     <p>The input bar at the bottom of the terminal lets you type and send text to the active session. You can choose to send text only (for composing multi-line input) or send with Enter to execute immediately. Switch between tmux windows using the window selector buttons.</p>
 
     <h3 style="margin-top: 2rem; margin-bottom: 0.75rem;">Creating Sessions</h3>
-    <p>Click <strong>"+ New Session"</strong> on the dashboard. There are two modes:</p>
+    <p>Click <strong>"+ New Session"</strong> on the dashboard. The modal offers three modes:</p>
     <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
-      <li><strong>Direct</strong> &mdash; point at any existing working directory. Give it a name, pick the directory using the repo finder (searches your configured repo directory), and optionally add a description.</li>
+      <li><strong>Existing Repo</strong> &mdash; point at any existing working directory. Give it a name, pick the directory using the repo finder (searches your configured repo directory), and optionally add a description.</li>
+      <li><strong>New Repo</strong> &mdash; create a fresh project directory with an auto-initialized git repo. Pick a parent directory and name your project.</li>
       <li><strong>Worktree</strong> &mdash; create a git worktree from an existing repo. Pick the parent repo, choose an existing branch or create a new one, and Lumbergh sets up the worktree automatically. Great for running parallel feature branches.</li>
     </ul>
+    <p>For one-off experiments, hit the separate <strong>Scratch</strong> button on the dashboard &mdash; it spins up a throwaway working directory under <code>~/.config/lumbergh/scratch/</code> and starts an agent in it. Scratch sessions auto-clean themselves after a configurable number of days (default 7) and can be promoted to a permanent session via the in-session banner.</p>
+    <p>Star any session with the &#9733; icon on its card to mark it as <strong>"the one"</strong> &mdash; your highest-priority conversation. Starred sessions sort first on the dashboard, pin to the left in the navigator dots, and get priority when you cycle forward (<code>Ctrl+]</code>) and they're idle.</p>
     <p>Lumbergh auto-generates a URL-safe session ID from the name (e.g., "Auth Feature" becomes <code>auth-feature</code>) and creates the tmux session for you.</p>
 
     <div class="showcase-single">
@@ -791,6 +810,8 @@ brew install tmux git         # macOS</code></pre>
     <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
       <li><strong>Repository search directory</strong> &mdash; the root path Lumbergh scans to find git repos when creating sessions (defaults to the directory where <code>lumbergh</code> was launched). Set this to wherever you keep your projects.</li>
       <li><strong>Git graph commits</strong> &mdash; how many commits to load in the graph visualization (10&ndash;1000, default 100).</li>
+      <li><strong>Default agent</strong> &mdash; which coding agent new sessions use (Claude Code, Cursor, Aider, Gemini CLI, OpenCode, or Codex). Can be overridden per-session.</li>
+      <li><strong>Tab visibility</strong> &mdash; toggle which tabs (Git, Files, Todos, Prompts, Shared) appear by default. Can also be customized per-session.</li>
     </ul>
 
     <div class="showcase-single">
@@ -815,15 +836,19 @@ brew install tmux git         # macOS</code></pre>
         </tr>
         <tr>
           <td><strong>Anthropic</strong></td>
-          <td>API key. Models: Claude Sonnet, Opus, Haiku.</td>
+          <td>API key. Default model: <code>claude-sonnet-4-20250514</code>. The model field is freeform &mdash; paste any current Anthropic model ID (Sonnet 4.6, Opus 4.7, etc.) once it&rsquo;s released.</td>
         </tr>
         <tr>
           <td><strong>Google AI</strong></td>
-          <td>API key. Models: Gemini Flash, Gemini Flash Lite.</td>
+          <td>API key. Models: Gemini 3 Flash Preview (1M context), Gemini 2.5 Flash, Gemini 2.5 Flash Lite.</td>
         </tr>
         <tr>
           <td><strong>OpenAI Compatible</strong></td>
           <td>Base URL + optional API key. Use with any OpenAI-compatible endpoint.</td>
+        </tr>
+        <tr>
+          <td><strong>Lumbergh Cloud</strong> (free)</td>
+          <td>No API key needed. Connect your account via device code flow in the Cloud tab.</td>
         </tr>
       </tbody>
     </table>
@@ -853,14 +878,33 @@ brew install tmux git         # macOS</code></pre>
       <div class="caption">Dark and light themes &mdash; toggle with one click</div>
     </div>
 
-    <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">Data Storage</h3>
-    <p>All data lives in <code>~/.config/lumbergh/</code>:</p>
+    <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">Password Authentication</h3>
+    <p>Lumbergh supports optional password protection. When a password is set, all routes require authentication via a login page. There are two ways to set a password:</p>
     <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
-      <li><code>sessions.json</code> &mdash; session registry (names, workdirs, descriptions)</li>
-      <li><code>session_data/&lt;name&gt;.json</code> &mdash; per-session data (todos, scratchpad)</li>
-      <li><code>settings.json</code> &mdash; AI provider config, repo search path</li>
-      <li><code>global.json</code> &mdash; global prompt templates</li>
+      <li><strong><code>LUMBERGH_PASSWORD</code> env var</strong> &mdash; takes precedence. Set it before launching Lumbergh.</li>
+      <li><strong>Security tab in Settings</strong> &mdash; set or change the password from the dashboard UI.</li>
+    </ul>
+    <p>Sessions use HMAC-signed cookies that last 30 days. Restarting the server invalidates all sessions (signing key is regenerated). If no password is configured, auth is completely disabled.</p>
+
+    <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">Lumbergh Cloud</h3>
+    <p>Lumbergh Cloud is an optional companion service that adds cloud features while keeping the app fully functional offline. Connect via the <strong>Cloud tab</strong> in Settings using a device code flow (no API keys needed).</p>
+    <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+      <li><strong>Cloud backup</strong> &mdash; auto-backup your sessions, todos, prompts, and settings on a 5-minute interval. Supports optional AES-256 encryption with a passphrase. Restore from any machine.</li>
+      <li><strong>Prompt sharing</strong> &mdash; share prompt templates via a short code. Recipients can install and get auto-updates when you publish changes.</li>
+      <li><strong>Community prompts</strong> &mdash; browse and install prompts shared by other users.</li>
+      <li><strong>Free AI provider</strong> &mdash; use Lumbergh Cloud as an AI provider for status detection and commit summaries at no cost.</li>
+    </ul>
+
+    <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">Data Storage</h3>
+    <p>All data lives in <code>~/.config/lumbergh/</code> (override with the <code>LUMBERGH_DATA_DIR</code> env var):</p>
+    <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+      <li><code>sessions.json</code> &mdash; session registry (names, workdirs, agent provider, descriptions, <code>the_one</code> star flag, scratch flag, paused/cloud flags, last-used timestamp)</li>
+      <li><code>projects/&lt;hash&gt;.json</code> &mdash; per-project data (todos, scratchpad, prompt templates)</li>
+      <li><code>session_data/&lt;name&gt;.json</code> &mdash; per-session runtime data (status summaries, idle state)</li>
+      <li><code>settings.json</code> &mdash; AI provider config, repo search path, password, cloud token, telemetry consent, scratch max age, etc.</li>
+      <li><code>global.json</code> &mdash; global prompt templates and AI prompt overrides</li>
       <li><code>shared/</code> &mdash; shared files accessible from all sessions</li>
+      <li><code>scratch/&lt;name&gt;/</code> &mdash; throwaway worktrees for scratch sessions (auto-cleaned)</li>
     </ul>
     <p>No database server needed &mdash; it's all flat JSON files via TinyDB.</p>
   </section>
@@ -901,9 +945,9 @@ brew install tmux git         # macOS</code></pre>
       </li>
     </ol>
 
-    <div class="callout warn">
-      <strong>No authentication built in</strong>
-      <p>Lumbergh has no login system &mdash; it trusts your network. Don't expose it directly to the public internet. Use Tailscale or an SSH tunnel for remote access.</p>
+    <div class="callout tip">
+      <strong>Optional password protection</strong>
+      <p>Lumbergh supports optional password authentication. Set a password via the <code>LUMBERGH_PASSWORD</code> environment variable or in the Security tab of Settings. When enabled, users must log in before accessing the dashboard. Cookie-based sessions last 30 days. If no password is set, auth is disabled and Lumbergh trusts your network &mdash; use Tailscale or an SSH tunnel if you don't set a password.</p>
     </div>
   </section>
 
@@ -1003,7 +1047,7 @@ document.querySelectorAll('.copy-btn').forEach(btn => {
 
 /* ---- Analytics ---- */
 (function() {
-  var API = 'https://lumbergh.jc.turbo.inc/api/telemetry/web';
+  var API = 'https://app.lumbergh.dev/api/telemetry/web';
   var vid = localStorage.getItem('lb_vid');
   if (!vid) { vid = crypto.randomUUID(); localStorage.setItem('lb_vid', vid); }
 

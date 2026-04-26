@@ -16,9 +16,11 @@ The backend runs on Python 3.11 or newer.
 python3 --version
 ```
 
-### tmux
+### tmux (or psmux on Windows)
 
-Terminal session management is built on tmux.
+Terminal session management is built on tmux. On Windows, Lumbergh uses
+[`psmux`](https://pypi.org/project/psmux/) — a PowerShell-based tmux clone — in
+its place. WSL is **not** required.
 
 === "Ubuntu/Debian"
 
@@ -31,6 +33,18 @@ Terminal session management is built on tmux.
     ```bash
     brew install tmux
     ```
+
+=== "Windows"
+
+    Install psmux as a uv tool (see uv setup below). Lumbergh detects the
+    `psmux` binary automatically; no extra configuration is needed.
+
+    ```powershell
+    uv tool install psmux
+    ```
+
+    The `pywinpty` PTY layer ships as a dependency of `pylumbergh` on Windows
+    and installs automatically.
 
 ### git
 
@@ -71,7 +85,7 @@ For other methods, see the [uv installation docs](https://docs.astral.sh/uv/gett
 
 ## Development Only
 
-### Node.js 18+
+### Node.js 20.19+
 
 Only required if you're working on Lumbergh itself. Not needed for normal usage.
 

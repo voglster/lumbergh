@@ -6,9 +6,12 @@ Stores metadata in ~/.config/lumbergh/sessions.json
 import asyncio
 import logging
 import re
+import shutil
 import subprocess
+import time
 import uuid
 from collections.abc import Callable
+from http import HTTPStatus
 from pathlib import Path
 from typing import TypeVar
 
@@ -22,7 +25,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from tinydb import Query
 
-from lumbergh.constants import IGNORE_DIRS, REPO_SEARCH_SKIP_DIRS
+from lumbergh.constants import IGNORE_DIRS, REPO_SEARCH_SKIP_DIRS, SCRATCH_DIR, TMUX_CMD
 from lumbergh.db_utils import (
     get_project_db,
     get_session_data_db,
@@ -84,6 +87,7 @@ from lumbergh.models import (
     TodoMoveRequest,
 )
 from lumbergh.providers import get_launch_command
+from lumbergh.tmux_pty import IS_WINDOWS
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +95,9 @@ T = TypeVar("T")
 
 GIT_READ_TIMEOUT = 10  # seconds — status, diff, log, branches
 GIT_WRITE_TIMEOUT = 30  # seconds — push, pull, rebase, commit
+
+# Auto-cleanup gating: only check stale scratch sessions once per hour
+_last_scratch_cleanup: float = 0.0
 
 
 async def _run_git(fn: Callable[..., T], *args, timeout: float = GIT_READ_TIMEOUT, **kwargs) -> T:
@@ -184,9 +191,10 @@ def create_tmux_session(
         RuntimeError: If tmux session creation fails
     """
     result = subprocess.run(
-        ["tmux", "new-session", "-d", "-s", name, "-c", str(workdir)],
+        [TMUX_CMD, "new-session", "-d", "-s", name, "-c", str(workdir)],
         capture_output=True,
-        text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     if result.returncode != 0:
         raise RuntimeError(f"Failed to create session: {result.stderr}")
@@ -195,16 +203,18 @@ def create_tmux_session(
     venv_activate = find_venv_activate(workdir)
     if venv_activate:
         subprocess.run(
-            ["tmux", "send-keys", "-t", name, f"source {venv_activate}", "Enter"],
+            [TMUX_CMD, "send-keys", "-t", name, f"source {venv_activate}", "Enter"],
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+        errors="replace",
         )
 
     # Start the agent
     subprocess.run(
-        ["tmux", "send-keys", "-t", name, launch_command, "Enter"],
+        [TMUX_CMD, "send-keys", "-t", name, launch_command, "Enter"],
         capture_output=True,
-        text=True,
+        encoding="utf-8",
+        errors="replace",
     )
 
 
@@ -231,13 +241,55 @@ async def search_directories(query: str = ""):
 
 def get_tmux_server() -> tmux_provider.Server:
     """Get the tmux server instance."""
-    return tmux_provider.Server()
+    if IS_WINDOWS:
+        return tmux_provider.Server()
+    return tmux_provider.Server(tmux_bin=TMUX_CMD)
+
+
+def _get_live_sessions_psmux_fallback() -> dict[str, dict]:
+    """Parse `psmux list-sessions` text output (Windows path).
+
+    libtmux's `-F` format flags don't always work against psmux, so when
+    libtmux returns nothing on Windows we fall back to plain text parsing.
+    """
+    try:
+        result = subprocess.run(
+            [TMUX_CMD, "list-sessions"],
+            capture_output=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        if result.returncode != 0:
+            return {}
+        sessions: dict[str, dict] = {}
+        # Default format: "name: N windows (created ...)"
+        pattern = re.compile(r"^([^:]+):\s+(\d+)\s+windows")
+        for line in result.stdout.splitlines():
+            match = pattern.match(line)
+            if match:
+                name = match.group(1)
+                windows = int(match.group(2))
+                sessions[name] = {
+                    "name": name,
+                    "id": f"${len(sessions)}",  # synthetic id
+                    "windows": windows,
+                    "attached": False,
+                    "alive": True,
+                }
+        return sessions
+    except Exception:
+        return {}
 
 
 def get_live_sessions() -> dict[str, dict]:
     """Get live tmux sessions as a dict keyed by name."""
     try:
         server = get_tmux_server()
+        sessions_list = list(server.sessions)
+        if not sessions_list and IS_WINDOWS:
+            # libtmux can return [] under psmux even when sessions exist.
+            return _get_live_sessions_psmux_fallback()
         return {
             s.name: {
                 "name": s.name,
@@ -246,10 +298,12 @@ def get_live_sessions() -> dict[str, dict]:
                 "attached": bool(s.session_attached),
                 "alive": True,
             }
-            for s in server.sessions
+            for s in sessions_list
             if s.name is not None
         }
     except Exception:
+        if IS_WINDOWS:
+            return _get_live_sessions_psmux_fallback()
         return {}
 
 
@@ -288,9 +342,62 @@ def get_session_status(name: str) -> dict:
     return result
 
 
+def _remove_scratch_session(name: str, meta: dict, live: dict) -> None:
+    """Remove a single scratch session: kill tmux, delete dir, remove from DB."""
+    if name in live:
+        subprocess.run(
+            [TMUX_CMD, "kill-session", "-t", name],
+            capture_output=True,
+            encoding="utf-8",
+        errors="replace",
+        )
+    workdir = meta.get("workdir")
+    if workdir:
+        scratch_path = Path(workdir)
+        if scratch_path.is_relative_to(SCRATCH_DIR) and scratch_path.exists():
+            shutil.rmtree(scratch_path, ignore_errors=True)
+    sessions_table.remove(Query().name == name)
+
+
+def _cleanup_stale_scratch() -> None:
+    """Remove scratch sessions older than the configured max age."""
+    global _last_scratch_cleanup
+    now = time.time()
+    if now - _last_scratch_cleanup < 3600:
+        return
+    _last_scratch_cleanup = now
+
+    from lumbergh.routers.settings import get_settings
+
+    max_days = get_settings().get("scratchMaxAgeDays", 7)
+    if max_days <= 0:
+        return
+
+    from datetime import UTC, datetime
+
+    cutoff_ts = datetime.now(UTC).timestamp() - max_days * 86400
+    stored = get_stored_sessions()
+    live = get_live_sessions()
+
+    for name, meta in stored.items():
+        if meta.get("type") != "scratch":
+            continue
+        last_used = meta.get("lastUsedAt")
+        if last_used:
+            try:
+                session_ts = datetime.fromisoformat(last_used).timestamp()
+            except (ValueError, TypeError):
+                continue
+        else:
+            session_ts = 0
+        if session_ts < cutoff_ts:
+            _remove_scratch_session(name, meta, live)
+
+
 @router.get("")
 async def list_sessions():
     """List all sessions (merge TinyDB metadata + live tmux state)."""
+    _cleanup_stale_scratch()
     live = get_live_sessions()
     stored = get_stored_sessions()
 
@@ -321,6 +428,9 @@ async def list_sessions():
                 "paused": meta.get("paused", False),
                 "agentProvider": meta.get("agent_provider"),
                 "tabVisibility": meta.get("tab_visibility"),
+                "cloudEnabled": meta.get("cloud_enabled", False),
+                "theOne": meta.get("the_one", False),
+                "scratch": meta.get("type") == "scratch",
             }
         )
 
@@ -348,6 +458,7 @@ async def list_sessions():
                     "paused": False,
                     "agentProvider": None,
                     "tabVisibility": None,
+                    "theOne": False,
                 }
             )
 
@@ -376,6 +487,32 @@ async def touch_session(name: str):
     return {"ok": True}
 
 
+def _apply_session_updates(record: dict, body: SessionUpdate) -> None:
+    """Apply non-None fields from the update body to the record."""
+    field_map = {
+        "displayName": "displayName",
+        "description": "description",
+        "paused": "paused",
+        "agentProvider": "agent_provider",
+        "tabVisibility": "tab_visibility",
+        "cloudEnabled": "cloud_enabled",
+        "theOne": "the_one",
+    }
+    for attr, key in field_map.items():
+        value = getattr(body, attr)
+        if value is not None:
+            record[key] = value
+
+    # Promotion: update workdir and clear scratch type
+    if body.workdir is not None:
+        workdir = Path(body.workdir).expanduser().resolve()
+        if not workdir.is_dir():
+            raise HTTPException(status_code=400, detail=f"Directory does not exist: {body.workdir}")
+        record["workdir"] = str(workdir)
+    if body.scratch is False:
+        record["type"] = "direct"
+
+
 @router.patch("/{name}")
 async def update_session(name: str, body: SessionUpdate):
     """Update session metadata (e.g., displayName)."""
@@ -391,19 +528,15 @@ async def update_session(name: str, body: SessionUpdate):
         # Create a new record for the orphan session
         record = {"name": name}
 
-    # Update fields
-    if body.displayName is not None:
-        record["displayName"] = body.displayName
-    if body.description is not None:
-        record["description"] = body.description
-    if body.paused is not None:
-        record["paused"] = body.paused
-    if body.agentProvider is not None:
-        record["agent_provider"] = body.agentProvider
-    if body.tabVisibility is not None:
-        record["tab_visibility"] = body.tabVisibility
+    _apply_session_updates(record, body)
 
     sessions_table.upsert(record, session_q.name == name)
+
+    # Notify cloud tunnel if cloud state changed
+    if body.cloudEnabled is not None:
+        from lumbergh.tunnel import cloud_tunnel
+
+        cloud_tunnel.notify_session_change()
 
     return record
 
@@ -489,6 +622,22 @@ def _resolve_direct_workdir(body: CreateSessionRequest) -> Path:
     return workdir
 
 
+def _spawn_tmux_or_raise(body: CreateSessionRequest, workdir: Path) -> None:
+    """Spawn the tmux session, mapping exceptions to meaningful HTTP errors."""
+    launch_cmd = _resolve_launch_command(body.agent_provider)
+    try:
+        create_tmux_session(body.name, workdir, launch_command=launch_cmd)
+    except RuntimeError as e:
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=str(e))
+    except OSError as e:
+        # e.g. EMFILE "Too many open files" when the backend has leaked fds
+        raise HTTPException(
+            status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+            detail=f"Failed to spawn tmux ({e.__class__.__name__}: {e}). "
+            "The backend may have hit its file-descriptor limit; restart it and retry.",
+        )
+
+
 def _resolve_launch_command(agent_provider: str | None) -> str:
     """Resolve the agent launch command from provider + global settings."""
     from lumbergh.routers.settings import get_settings
@@ -547,12 +696,7 @@ async def create_session(body: CreateSessionRequest):
                 "worktreeBranch": meta.get("worktree_branch"),
             }
 
-    launch_cmd = _resolve_launch_command(body.agent_provider)
-
-    try:
-        create_tmux_session(body.name, workdir, launch_command=launch_cmd)
-    except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    _spawn_tmux_or_raise(body, workdir)
 
     session_q = Query()
     session_data: dict[str, object] = {
@@ -573,6 +717,11 @@ async def create_session(body: CreateSessionRequest):
     live = get_live_sessions()
     live_info = live.get(body.name, {})
 
+    # Notify cloud tunnel of session change
+    from lumbergh.tunnel import cloud_tunnel
+
+    cloud_tunnel.notify_session_change()
+
     return {
         "name": body.name,
         "workdir": str(workdir),
@@ -583,6 +732,57 @@ async def create_session(body: CreateSessionRequest):
         "type": session_type,
         "worktreeParentRepo": worktree_parent_repo,
         "worktreeBranch": worktree_branch,
+    }
+
+
+@router.post("/scratch")
+async def create_scratch_session():
+    """Create a one-click scratch session with no project directory."""
+    name = f"scratch-{uuid.uuid4().hex[:8]}"
+    workdir = SCRATCH_DIR / name
+    _init_repo(workdir)
+
+    launch_cmd = _resolve_launch_command(None)
+
+    try:
+        create_tmux_session(name, workdir, launch_command=launch_cmd)
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    session_q = Query()
+    sessions_table.upsert(
+        {
+            "name": name,
+            "workdir": str(workdir),
+            "description": "",
+            "type": "scratch",
+            "agent_provider": None,
+            "tab_visibility": {
+                "git": False,
+                "files": False,
+                "todos": False,
+                "prompts": True,
+                "shared": True,
+            },
+        },
+        session_q.name == name,
+    )
+
+    from lumbergh.tunnel import cloud_tunnel
+
+    cloud_tunnel.notify_session_change()
+
+    live = get_live_sessions()
+    live_info = live.get(name, {})
+
+    return {
+        "name": name,
+        "workdir": str(workdir),
+        "description": "",
+        "alive": live_info.get("alive", True),
+        "attached": live_info.get("attached", False),
+        "windows": live_info.get("windows", 1),
+        "type": "scratch",
     }
 
 
@@ -605,16 +805,18 @@ async def reset_session(name: str):
 
     # Kill all windows in the session
     subprocess.run(
-        ["tmux", "kill-window", "-t", f"{name}:", "-a"],
+        [TMUX_CMD, "kill-window", "-t", f"{name}:", "-a"],
         capture_output=True,
-        text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     # -a kills all windows except current, so also kill the remaining one
     # by respawning it instead
     subprocess.run(
-        ["tmux", "respawn-window", "-t", f"{name}:", "-k", "-c", str(workdir)],
+        [TMUX_CMD, "respawn-window", "-t", f"{name}:", "-k", "-c", str(workdir)],
         capture_output=True,
-        text=True,
+        encoding="utf-8",
+        errors="replace",
     )
 
     launch_cmd = _resolve_launch_command(session_meta.get("agent_provider"))
@@ -623,16 +825,18 @@ async def reset_session(name: str):
     venv_activate = find_venv_activate(workdir)
     if venv_activate:
         subprocess.run(
-            ["tmux", "send-keys", "-t", name, f"source {venv_activate}", "Enter"],
+            [TMUX_CMD, "send-keys", "-t", name, f"source {venv_activate}", "Enter"],
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+        errors="replace",
         )
 
     # Start the agent
     subprocess.run(
-        ["tmux", "send-keys", "-t", name, launch_cmd, "Enter"],
+        [TMUX_CMD, "send-keys", "-t", name, launch_cmd, "Enter"],
         capture_output=True,
-        text=True,
+        encoding="utf-8",
+        errors="replace",
     )
 
     return {
@@ -641,6 +845,196 @@ async def reset_session(name: str):
         "workdir": workdir_str,
         "venvActivated": venv_activate is not None,
     }
+
+
+def _get_pane_pid(name: str) -> str:
+    result = subprocess.run(
+        [TMUX_CMD, "display-message", "-t", name, "-p", "#{pane_pid}"],
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    return result.stdout.strip()
+
+
+def _list_pane_children(pane_pid: str) -> list[dict]:
+    """Return [{pid, command}] for direct children of the pane shell."""
+    if not pane_pid:
+        return []
+
+    if IS_WINDOWS:
+        try:
+            # Use PowerShell to find children of the shell process
+            cmd = [
+                "powershell",
+                "-Command",
+                f"Get-CimInstance Win32_Process -Filter 'ParentProcessId = {pane_pid}' | "
+                "Select-Object ProcessId, Caption | ConvertTo-Json",
+            ]
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+            )
+            if result.returncode != 0 or not result.stdout.strip():
+                return []
+
+            import json
+
+            data = json.loads(result.stdout)
+            if isinstance(data, dict):
+                data = [data]
+
+            return [{"pid": item["ProcessId"], "command": item["Caption"]} for item in data]
+        except Exception:
+            return []
+    else:
+        result = subprocess.run(
+            ["ps", "-o", "pid=,comm=", "--ppid", pane_pid],
+            capture_output=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        children: list[dict] = []
+        for line in result.stdout.strip().splitlines():
+            parts = line.strip().split(None, 1)
+            if len(parts) == 2 and parts[0].isdigit():
+                children.append({"pid": int(parts[0]), "command": parts[1]})
+        return children
+
+
+def _kill_pane_children(pane_pid: str) -> None:
+    if not pane_pid:
+        return
+
+    if IS_WINDOWS:
+        # Kill direct children of the shell
+        children = _list_pane_children(pane_pid)
+        for child in children:
+            subprocess.run(
+                ["taskkill", "/F", "/T", "/PID", str(child["pid"])],
+                capture_output=True,
+                encoding="utf-8",
+                errors="replace",
+            )
+    else:
+        subprocess.run(
+            ["pkill", "-TERM", "-P", pane_pid],
+            capture_output=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+
+
+@router.post("/{name}/pause")
+async def pause_session(name: str, force: bool = False):
+    """Pause a session by killing the Claude Code process (and its MCP children).
+
+    If the pane has more than one child process (e.g. extra shells the user
+    started), responds 409 with the list of extras so the UI can confirm.
+    Pass `?force=true` to skip the check.
+    """
+    live = get_live_sessions()
+
+    if name not in live:
+        raise HTTPException(status_code=404, detail=f"Session '{name}' is not running")
+
+    shell_pid = _get_pane_pid(name)
+    children = _list_pane_children(shell_pid)
+
+    if not force and len(children) > 1:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "extra_children",
+                "message": "Pane has extra processes that will also be killed.",
+                "children": children,
+            },
+        )
+
+    _kill_pane_children(shell_pid)
+    await asyncio.sleep(0.5)
+
+    # Mark as paused in TinyDB
+    session_q = Query()
+    doc = sessions_table.get(session_q.name == name)
+    record: dict = dict(doc) if isinstance(doc, dict) else {"name": name}
+    record["paused"] = True
+    sessions_table.upsert(record, session_q.name == name)
+
+    return {"status": "paused", "name": name}
+
+
+@router.post("/{name}/resume")
+async def resume_session(name: str, force: bool = False):
+    """Resume a paused session by restarting Claude Code with --continue.
+
+    If the pane has extra child processes, responds 409 with the list so the
+    UI can confirm before killing them. Pass `?force=true` to skip the check.
+    """
+    live = get_live_sessions()
+    stored = get_stored_sessions()
+
+    session_meta = stored.get(name, {})
+    if not session_meta:
+        raise HTTPException(status_code=404, detail=f"Session '{name}' not found")
+
+    workdir_str = session_meta.get("workdir")
+    if not workdir_str:
+        raise HTTPException(status_code=400, detail=f"Session '{name}' has no workdir configured")
+    workdir = Path(workdir_str)
+
+    launch_cmd = _resolve_launch_command(session_meta.get("agent_provider"))
+
+    if name in live:
+        shell_pid = _get_pane_pid(name)
+        children = _list_pane_children(shell_pid)
+
+        if not force and len(children) > 1:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "extra_children",
+                    "message": "Pane has extra processes that will also be killed.",
+                    "children": children,
+                },
+            )
+
+        if shell_pid:
+            _kill_pane_children(shell_pid)
+            await asyncio.sleep(0.5)
+
+        # Activate venv if found
+        venv_activate = find_venv_activate(workdir)
+        if venv_activate:
+            subprocess.run(
+                [TMUX_CMD, "send-keys", "-t", name, f"source {venv_activate}", "Enter"],
+                capture_output=True,
+                encoding="utf-8",
+        errors="replace",
+            )
+
+        # Start the agent
+        subprocess.run(
+            [TMUX_CMD, "send-keys", "-t", name, launch_cmd, "Enter"],
+            capture_output=True,
+            encoding="utf-8",
+        errors="replace",
+        )
+    else:
+        # Tmux session is dead — recreate it
+        create_tmux_session(name, workdir, launch_cmd)
+
+    # Mark as resumed in TinyDB
+    session_q = Query()
+    doc = sessions_table.get(session_q.name == name)
+    record: dict = dict(doc) if isinstance(doc, dict) else {"name": name}
+    record["paused"] = False
+    sessions_table.upsert(record, session_q.name == name)
+
+    return {"status": "resumed", "name": name}
 
 
 @router.delete("/{name}")
@@ -663,9 +1057,10 @@ async def delete_session(name: str, cleanup_worktree: bool = False):
     # Kill the tmux session first
     if name in live:
         result = subprocess.run(
-            ["tmux", "kill-session", "-t", name],
+            [TMUX_CMD, "kill-session", "-t", name],
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+        errors="replace",
         )
         if result.returncode != 0:
             raise HTTPException(status_code=500, detail=f"Failed to kill session: {result.stderr}")
@@ -676,8 +1071,19 @@ async def delete_session(name: str, cleanup_worktree: bool = False):
         wt_result = remove_worktree(Path(worktree_parent_repo), Path(workdir), force=True)
         worktree_removed = wt_result.get("status") == "removed"
 
+    # Clean up scratch directory
+    if session_type == "scratch" and workdir:
+        scratch_path = Path(workdir)
+        if scratch_path.is_relative_to(SCRATCH_DIR) and scratch_path.exists():
+            shutil.rmtree(scratch_path, ignore_errors=True)
+
     session_q = Query()
     sessions_table.remove(session_q.name == name)
+
+    # Notify cloud tunnel of session change
+    from lumbergh.tunnel import cloud_tunnel
+
+    cloud_tunnel.notify_session_change()
 
     return {
         "status": "deleted",
@@ -697,9 +1103,10 @@ def get_session_workdir(name: str) -> Path:
 
     try:
         result = subprocess.run(
-            ["tmux", "display-message", "-t", name, "-p", "#{pane_current_path}"],
+            [TMUX_CMD, "display-message", "-t", name, "-p", "#{pane_current_path}"],
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+        errors="replace",
         )
         if result.returncode == 0 and result.stdout.strip():
             path = Path(result.stdout.strip())
@@ -906,7 +1313,12 @@ async def session_git_delete_branch(name: str, body: DeleteBranchInput):
 
     try:
         result = await _run_git(
-            delete_branch, workdir, body.branch, body.delete_remote, timeout=GIT_WRITE_TIMEOUT
+            delete_branch,
+            workdir,
+            body.branch,
+            body.delete_remote,
+            body.remote_only,
+            timeout=GIT_WRITE_TIMEOUT,
         )
         if "error" in result:
             status_code = 409 if "current branch" in result["error"].lower() else 400
@@ -1585,3 +1997,38 @@ async def session_status_summary(name: str, body: StatusSummaryInput):
 
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"AI summary generation failed: {e}")
+
+
+@router.get("/{name}/summary")
+async def get_session_summary(name: str, force: bool = False):
+    """Get AI-generated summary of recent session activity.
+
+    Based on tmux scrollback buffer with recency bias.
+    Auto-generates on first request, then caches with a 3-minute cooldown.
+    Only regenerates when git state has changed AND cooldown has expired.
+    Pass force=true to bypass cooldown and regenerate immediately.
+    """
+    from lumbergh.ai.session_summary import get_or_generate_summary
+    from lumbergh.idle_monitor import idle_monitor
+    from lumbergh.routers.settings import get_settings
+
+    workdir = get_session_workdir(name)
+    state = idle_monitor.get_state(name)
+
+    settings = get_settings()
+    ai_settings = settings.get("ai", {})
+    provider_name = ai_settings.get("provider", "ollama")
+    providers_config = ai_settings.get("providers", {})
+    model = providers_config.get(provider_name, {}).get("model", "")
+
+    result = await get_or_generate_summary(
+        session_name=name,
+        workdir=workdir,
+        ai_settings=ai_settings,
+        settings=settings,
+        idle_state=state.value if hasattr(state, "value") else str(state),
+        force=force,
+    )
+    result["provider"] = provider_name
+    result["model"] = model
+    return result

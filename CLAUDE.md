@@ -102,6 +102,16 @@ Run `./lint.sh` before finishing any task. It auto-fixes what it can (ruff forma
 - E2E tests: `./test/e2e-vm.sh` (spins up QEMU VM, runs all E2E + UI tests)
 - Run E2E locally against running server: `cd test/e2e && pytest`
 
+## Debugging Event Loop Lag
+
+A permanent watchdog in `main.py` logs to `/tmp/lumbergh-lag.log` whenever the event loop is blocked >200ms, including thread stacks. If the terminal feels laggy:
+
+1. Check for entries: `cat /tmp/lumbergh-lag.log`
+2. The stacks show what was running on each thread at the time of the stall
+3. Common causes: synchronous TinyDB writes without `run_in_executor`, corrupt session JSON files (check `~/.config/lumbergh/session_data/`), or thread pool exhaustion from too many concurrent `capture_pane_content` calls
+
+To validate a fix, clear the log (`> /tmp/lumbergh-lag.log`) and watch for new entries.
+
 ## Conventions
 
 - Keep the backend simple - it's a thin layer over tmux/git subprocesses

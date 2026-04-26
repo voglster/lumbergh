@@ -3,6 +3,7 @@ Cloud connection router — device code flow for linking to lumbergh-cloud.
 """
 
 import logging
+import platform
 
 import httpx
 from fastapi import APIRouter, HTTPException
@@ -10,6 +11,7 @@ from pydantic import BaseModel
 
 from lumbergh import cloud_client
 from lumbergh.routers.settings import _is_ai_configured, deep_merge, get_settings, settings_table
+from lumbergh.telemetry import get_version
 
 logger = logging.getLogger(__name__)
 
@@ -72,46 +74,43 @@ async def poll(body: PollRequest):
         settings_table.truncate()
         settings_table.insert(merged)
 
-        # Send cloud_linked telemetry event (fire-and-forget)
-        _send_cloud_linked_event(current)
+        # Link this installation to the user's cloud account
+        await _link_instance(merged)
 
     return data
 
 
-def _send_cloud_linked_event(settings: dict) -> None:
-    """Fire-and-forget cloud_linked telemetry event."""
-    import asyncio
+@router.post("/relink")
+async def relink():
+    """Re-link this installation to the user's cloud account."""
+    settings = get_settings()
+    if not settings.get("cloudToken"):
+        raise HTTPException(status_code=400, detail="Not connected to cloud")
+    await _link_instance(settings)
+    return {"status": "ok"}
 
-    from lumbergh.telemetry import get_version
 
-    async def _send():
-        try:
-            install_id = settings.get("installationId", "")
-            if not install_id or not settings.get("telemetryConsent"):
-                return
-            resp = await cloud_client.request(
-                "POST",
-                "/api/telemetry/events",
-                json={
-                    "install_id": install_id,
-                    "version": get_version(),
-                    "events": [
-                        {
-                            "event": "cloud_linked",
-                            "properties": {
-                                "cloud_account_id": settings.get("cloudUsername", ""),
-                            },
-                        }
-                    ],
-                },
-                require_token=False,
-                timeout=5.0,
-            )
-            resp.raise_for_status()
-        except Exception:
-            logger.debug("cloud_linked telemetry failed", exc_info=True)
-
-    _task = asyncio.create_task(_send())  # noqa: RUF006
+async def _link_instance(settings: dict) -> None:
+    """Register this installation with the cloud account."""
+    install_id = settings.get("installationId", "")
+    if not install_id:
+        return
+    try:
+        resp = await cloud_client.request(
+            "POST",
+            "/api/user/dashboard/link-instance",
+            json={
+                "install_id": install_id,
+                "version": get_version(),
+                "os": platform.system(),
+                "arch": platform.machine(),
+                "hostname": platform.node(),
+            },
+            timeout=10.0,
+        )
+        resp.raise_for_status()
+    except Exception:
+        logger.debug("Failed to link instance with cloud", exc_info=True)
 
 
 # --- Shared prompts proxy ---
@@ -177,6 +176,14 @@ class LintPromptRequest(BaseModel):
 async def proxy_lint_prompt(body: LintPromptRequest):
     """Forward prompt lint request to cloud."""
     return await _cloud_json("POST", "/api/prompts/lint", json=body.model_dump(), timeout=90.0)
+
+
+@router.get("/plan")
+async def get_plan():
+    """Return cloud plan info from the tunnel's cached state."""
+    from lumbergh.tunnel import cloud_tunnel
+
+    return cloud_tunnel.get_plan_info()
 
 
 @router.post("/disconnect")

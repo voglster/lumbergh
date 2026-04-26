@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Sun,
   Moon,
@@ -11,6 +12,7 @@ import {
   BookOpen,
   Star,
   FolderOpen,
+  Zap,
 } from 'lucide-react'
 import { getApiBase } from '../config'
 import SessionCard from '../components/SessionCard'
@@ -18,25 +20,190 @@ import CreateSessionModal from '../components/CreateSessionModal'
 import SettingsModal from '../components/SettingsModal'
 import { useTheme } from '../hooks/useTheme'
 
-interface Session {
-  name: string
+import type { SessionBase } from '../utils/sessionStatus'
+
+interface Session extends SessionBase {
   workdir: string | null
   description: string | null
-  displayName: string | null
-  alive: boolean
   attached: boolean
   windows: number
   status?: string | null
   statusUpdatedAt?: string | null
-  idleState?: 'unknown' | 'idle' | 'working' | 'error' | 'stalled' | null
   idleStateUpdatedAt?: string | null
-  type?: 'direct' | 'worktree'
+  type?: 'direct' | 'worktree' | 'scratch'
   worktreeParentRepo?: string | null
   worktreeBranch?: string | null
   lastUsedAt?: string | null
-  paused?: boolean
   agentProvider?: string | null
   tabVisibility?: Record<string, boolean> | null
+  cloudEnabled?: boolean
+  theOne?: boolean
+  scratch?: boolean
+}
+
+interface PlanInfo {
+  plan: string
+  limit: number
+  used: number
+}
+
+function SessionGrid({
+  sessions,
+  cloudAtLimit,
+  onDelete,
+  onUpdate,
+  onReset,
+}: {
+  sessions: Session[]
+  cloudAtLimit: boolean
+  onDelete: (name: string, cleanupWorktree?: boolean) => void
+  onUpdate: (
+    name: string,
+    updates: {
+      displayName?: string
+      description?: string
+      paused?: boolean
+      agentProvider?: string
+      tabVisibility?: Record<string, boolean>
+      cloudEnabled?: boolean
+      theOne?: boolean
+    }
+  ) => void
+  onReset: (name: string) => void
+}) {
+  const sortSessions = (a: Session, b: Session) => {
+    if (a.theOne && !b.theOne) return -1
+    if (!a.theOne && b.theOne) return 1
+    return (b.lastUsedAt || '').localeCompare(a.lastUsedAt || '')
+  }
+  const alive = sessions.filter((s) => s.alive && !s.paused).sort(sortSessions)
+  const dead = sessions.filter((s) => !s.alive || s.paused).sort(sortSessions)
+
+  return (
+    <>
+      {alive.length > 0 && (
+        <section className="mb-8">
+          <h2 className="text-sm font-medium text-text-tertiary mb-3 uppercase tracking-wide">
+            Active Sessions
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {alive.map((session) => (
+              <div key={session.name} data-testid={`session-card-${session.name}`}>
+                <SessionCard
+                  session={session}
+                  onDelete={onDelete}
+                  onUpdate={onUpdate}
+                  onReset={onReset}
+                  cloudAtLimit={cloudAtLimit}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+      {dead.length > 0 && (
+        <section>
+          <h2 className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wide">
+            Inactive Sessions
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {dead.map((session) => (
+              <div key={session.name} data-testid={`session-card-${session.name}`}>
+                <SessionCard
+                  session={session}
+                  onDelete={onDelete}
+                  onUpdate={onUpdate}
+                  onReset={onReset}
+                  cloudAtLimit={cloudAtLimit}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </>
+  )
+}
+
+function DashboardContent({
+  loading,
+  error,
+  sessions,
+  cloudAtLimit,
+  onDelete,
+  onUpdate,
+  onReset,
+  onRetry,
+  onCreateNew,
+}: {
+  loading: boolean
+  error: string | null
+  sessions: Session[]
+  cloudAtLimit: boolean
+  onDelete: (name: string, cleanupWorktree?: boolean) => void
+  onUpdate: (
+    name: string,
+    updates: {
+      displayName?: string
+      description?: string
+      paused?: boolean
+      agentProvider?: string
+      tabVisibility?: Record<string, boolean>
+      cloudEnabled?: boolean
+      theOne?: boolean
+    }
+  ) => void
+  onReset: (name: string) => void
+  onRetry: () => void
+  onCreateNew: () => void
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <span className="text-text-muted">Loading sessions...</span>
+      </div>
+    )
+  }
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 gap-4">
+        <span className="text-red-400">{error}</span>
+        <button
+          onClick={onRetry}
+          className="px-4 py-2 bg-control-bg hover:bg-control-bg-hover rounded transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    )
+  }
+  if (sessions.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 gap-4 text-text-muted">
+        <Monitor size={64} strokeWidth={1} />
+        <p>No sessions yet</p>
+        <p className="text-sm">
+          Create a new session to get started, or existing tmux sessions will appear here
+        </p>
+        <button
+          onClick={onCreateNew}
+          className="mt-2 flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors text-base"
+        >
+          <Plus size={20} />
+          Create Your First Session
+        </button>
+      </div>
+    )
+  }
+  return (
+    <SessionGrid
+      sessions={sessions}
+      cloudAtLimit={cloudAtLimit}
+      onDelete={onDelete}
+      onUpdate={onUpdate}
+      onReset={onReset}
+    />
+  )
 }
 
 function DashboardBanners({
@@ -174,11 +341,13 @@ function DashboardBanners({
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate()
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [creatingScratch, setCreatingScratch] = useState(false)
   const [isFirstRun, setIsFirstRun] = useState<boolean | null>(null)
   const [defaultRepoDir, setDefaultRepoDir] = useState('')
   const [lbSharedInstalled, setLbSharedInstalled] = useState<boolean | null>(null)
@@ -190,6 +359,7 @@ export default function Dashboard() {
     latest: string
   } | null>(null)
   const [currentVersion, setCurrentVersion] = useState<string | null>(null)
+  const [planInfo, setPlanInfo] = useState<PlanInfo | null>(null)
   const { theme, setTheme } = useTheme()
 
   const UPDATE_MESSAGES = [
@@ -318,16 +488,38 @@ export default function Dashboard() {
     }
   }
 
+  const fetchPlanInfo = useCallback(async () => {
+    try {
+      const res = await fetch(`${getApiBase()}/cloud/plan`)
+      if (res.ok) {
+        setPlanInfo(await res.json())
+      }
+    } catch {
+      // Cloud plan info is optional
+    }
+  }, [])
+
   useEffect(() => {
     fetchSessions()
     checkFirstRun()
     checkLbSharedStatus()
     checkTmuxMouse()
     checkVersion()
+    fetchPlanInfo()
     // Poll for session updates every 10 seconds
-    const interval = setInterval(fetchSessions, 10000)
+    const interval = setInterval(() => {
+      fetchSessions()
+      fetchPlanInfo()
+    }, 10000)
     return () => clearInterval(interval)
-  }, [fetchSessions, checkFirstRun, checkLbSharedStatus, checkTmuxMouse, checkVersion])
+  }, [
+    fetchSessions,
+    fetchPlanInfo,
+    checkFirstRun,
+    checkLbSharedStatus,
+    checkTmuxMouse,
+    checkVersion,
+  ])
 
   const handleDelete = async (name: string, cleanupWorktree?: boolean) => {
     try {
@@ -349,6 +541,36 @@ export default function Dashboard() {
     }
   }
 
+  const handlePauseResume = async (name: string, paused: boolean): Promise<'ok' | 'cancelled'> => {
+    const endpoint = paused ? 'pause' : 'resume'
+    const callEndpoint = (force: boolean) =>
+      fetch(`${getApiBase()}/sessions/${name}/${endpoint}${force ? '?force=true' : ''}`, {
+        method: 'POST',
+      })
+
+    let res = await callEndpoint(false)
+    if (res.status === 409) {
+      const data = await res.json()
+      const children: { pid: number; command: string }[] = data.detail?.children || []
+      const list = children.map((c) => `  • ${c.command} (pid ${c.pid})`).join('\n')
+      const verb = paused ? 'pausing' : 'resuming'
+      const ok = window.confirm(
+        `This pane has extra processes that will be killed when ${verb}:\n\n${list}\n\nContinue?`
+      )
+      if (!ok) return 'cancelled'
+      res = await callEndpoint(true)
+    }
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      const message =
+        typeof data.detail === 'string'
+          ? data.detail
+          : data.detail?.message || `Failed to ${endpoint} session`
+      throw new Error(message)
+    }
+    return 'ok'
+  }
+
   const handleUpdate = async (
     name: string,
     updates: {
@@ -357,22 +579,35 @@ export default function Dashboard() {
       paused?: boolean
       agentProvider?: string
       tabVisibility?: Record<string, boolean>
+      cloudEnabled?: boolean
+      theOne?: boolean
     }
   ) => {
     try {
-      const res = await fetch(`${getApiBase()}/sessions/${name}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updates),
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.detail || 'Failed to update session')
+      if (updates.paused !== undefined) {
+        const result = await handlePauseResume(name, updates.paused)
+        if (result === 'cancelled') return
       }
+
+      // Send remaining (non-paused) updates via PATCH if any exist
+      const { paused: _, ...rest } = updates
+      if (Object.keys(rest).length > 0) {
+        const res = await fetch(`${getApiBase()}/sessions/${name}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(rest),
+        })
+        if (!res.ok) {
+          const data = await res.json()
+          throw new Error(data.detail || 'Failed to update session')
+        }
+      }
+
       // Refresh sessions list
       fetchSessions()
+      if (updates.cloudEnabled !== undefined) fetchPlanInfo()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to update session')
     }
@@ -394,20 +629,43 @@ export default function Dashboard() {
     }
   }
 
-  // Separate alive and dead sessions, sort by last used (most recent first)
-  const sortByLastUsed = (a: Session, b: Session) => {
-    const aTime = a.lastUsedAt || ''
-    const bTime = b.lastUsedAt || ''
-    return bTime.localeCompare(aTime)
+  const handleCreateScratch = async () => {
+    if (creatingScratch) return
+    setCreatingScratch(true)
+    try {
+      const res = await fetch(`${getApiBase()}/sessions/scratch`, { method: 'POST' })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.detail || 'Failed to create scratch session')
+      }
+      const data = await res.json()
+      navigate(`/session/${data.name}`)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to create scratch session')
+    } finally {
+      setCreatingScratch(false)
+    }
   }
-  const aliveSessions = sessions.filter((s) => s.alive).sort(sortByLastUsed)
-  const deadSessions = sessions.filter((s) => !s.alive).sort(sortByLastUsed)
+
+  const cloudAtLimit = planInfo ? planInfo.limit > 0 && planInfo.used >= planInfo.limit : false
 
   return (
     <div className="h-full flex flex-col bg-bg-sunken text-text-primary overflow-hidden">
       {/* Header */}
       <header className="flex items-center justify-between p-4 bg-bg-surface border-b border-border-default">
-        <h1 className="text-xl font-semibold text-text-secondary">Lumbergh</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-semibold text-text-secondary">Lumbergh</h1>
+          {planInfo && planInfo.limit > 0 && (
+            <span
+              className={`text-xs font-medium ${planInfo.used >= planInfo.limit ? 'text-yellow-500' : 'text-text-muted'}`}
+            >
+              Cloud: {planInfo.used}/{planInfo.limit}
+            </span>
+          )}
+          {planInfo && planInfo.limit === 0 && (
+            <span className="text-xs font-medium text-text-muted">Cloud: Pro</span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           {/* GitHub docs */}
           <a
@@ -434,6 +692,15 @@ export default function Dashboard() {
             className="p-2 text-text-tertiary hover:text-text-primary hover:bg-control-bg rounded transition-colors"
           >
             <Settings size={20} />
+          </button>
+          <button
+            onClick={handleCreateScratch}
+            disabled={creatingScratch}
+            title="Quick scratch session"
+            data-testid="scratch-session-btn"
+            className="p-2 text-amber-400 hover:bg-amber-600/20 hover:text-amber-300 disabled:opacity-50 rounded transition-colors"
+          >
+            <Zap size={16} />
           </button>
           <button
             onClick={() => setShowCreateModal(true)}
@@ -465,80 +732,17 @@ export default function Dashboard() {
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-4">
         <div className="max-w-6xl mx-auto">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <span className="text-text-muted">Loading sessions...</span>
-            </div>
-          ) : error ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-4">
-              <span className="text-red-400">{error}</span>
-              <button
-                onClick={fetchSessions}
-                className="px-4 py-2 bg-control-bg hover:bg-control-bg-hover rounded transition-colors"
-              >
-                Retry
-              </button>
-            </div>
-          ) : sessions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-4 text-text-muted">
-              <Monitor size={64} strokeWidth={1} />
-              <p>No sessions yet</p>
-              <p className="text-sm">
-                Create a new session to get started, or existing tmux sessions will appear here
-              </p>
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="mt-2 flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors text-base"
-              >
-                <Plus size={20} />
-                Create Your First Session
-              </button>
-            </div>
-          ) : (
-            <>
-              {/* Active sessions */}
-              {aliveSessions.length > 0 && (
-                <section className="mb-8">
-                  <h2 className="text-sm font-medium text-text-tertiary mb-3 uppercase tracking-wide">
-                    Active Sessions
-                  </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {aliveSessions.map((session) => (
-                      <div key={session.name} data-testid={`session-card-${session.name}`}>
-                        <SessionCard
-                          session={session}
-                          onDelete={handleDelete}
-                          onUpdate={handleUpdate}
-                          onReset={handleReset}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* Dead sessions (stored but not running) */}
-              {deadSessions.length > 0 && (
-                <section>
-                  <h2 className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wide">
-                    Inactive Sessions
-                  </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {deadSessions.map((session) => (
-                      <div key={session.name} data-testid={`session-card-${session.name}`}>
-                        <SessionCard
-                          session={session}
-                          onDelete={handleDelete}
-                          onUpdate={handleUpdate}
-                          onReset={handleReset}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-            </>
-          )}
+          <DashboardContent
+            loading={loading}
+            error={error}
+            sessions={sessions}
+            cloudAtLimit={cloudAtLimit}
+            onDelete={handleDelete}
+            onUpdate={handleUpdate}
+            onReset={handleReset}
+            onRetry={fetchSessions}
+            onCreateNew={() => setShowCreateModal(true)}
+          />
         </div>
       </main>
 

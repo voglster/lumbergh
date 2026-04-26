@@ -11,7 +11,11 @@ import Scratchpad from '../components/Scratchpad'
 import PromptTemplates from '../components/PromptTemplates'
 import SharedFiles from '../components/SharedFiles'
 import TelemetryOptIn from '../components/TelemetryOptIn'
+import SessionSummaryOverlay from '../components/SessionSummaryBanner'
+import ScratchPromoteBanner from '../components/ScratchPromoteBanner'
+import { isSummaryDismissed, dismissSummary, enableSummary } from '../hooks/useSessionSummary'
 import GitTab from '../components/graph/GitTab'
+import SessionNavigatorDots from '../components/SessionNavigatorDots'
 import { useIsDesktop } from '../hooks/useMediaQuery'
 
 type RightPanel = 'git' | 'files' | 'todos' | 'prompts' | 'shared'
@@ -84,10 +88,13 @@ export default function SessionDetail() {
   const [mobileTab, setMobileTab] = useState<MobileTab>('terminal')
   const [diffData, setDiffData] = useState<DiffData | null>(null)
   const [showTelemetryOptIn, setShowTelemetryOptIn] = useState(false)
+  const [showSessionDots, setShowSessionDots] = useState(true)
   const [globalTabVisibility, setGlobalTabVisibility] =
     useState<TabVisibility>(DEFAULT_TAB_VISIBILITY)
   const [sessionTabVisibility, setSessionTabVisibility] = useState<TabVisibility | null>(null)
   const [showTabSettings, setShowTabSettings] = useState(false)
+  const [showSummary, setShowSummary] = useState(false)
+  const [isScratch, setIsScratch] = useState(false)
   const tabSettingsRef = useRef<HTMLDivElement>(null)
   const focusFnRef = useRef<(() => void) | null>(null)
 
@@ -109,19 +116,30 @@ export default function SessionDetail() {
       .then((data) => {
         if (data.telemetryConsent == null) setShowTelemetryOptIn(true)
         if (data.tabVisibility) setGlobalTabVisibility(data.tabVisibility)
+        if (data.showSessionDots != null) setShowSessionDots(data.showSessionDots)
       })
       .catch(() => {})
   }, [])
 
-  // Fetch session metadata for per-session tab visibility
+  // Fetch session metadata for per-session tab visibility + summary auto-show
   useEffect(() => {
     if (!name) return
     fetch(`${getApiBase()}/sessions`)
       .then((res) => res.json())
       .then((data) => {
         const session = (data.sessions || []).find((s: { name: string }) => s.name === name)
-        if (session?.tabVisibility) {
-          setSessionTabVisibility(session.tabVisibility)
+        if (session) {
+          setSessionTabVisibility(session.tabVisibility || null)
+          setIsScratch(session.type === 'scratch')
+          // Auto-show summary if: not dismissed, active session, untouched for 30+ min
+          if (!isSummaryDismissed() && session.alive && !session.paused) {
+            const STALE_MINUTES = 30
+            const lastUsed = session.lastUsedAt ? new Date(session.lastUsedAt).getTime() : 0
+            const minutesSinceTouch = (Date.now() - lastUsed) / 60_000
+            if (minutesSinceTouch >= STALE_MINUTES) {
+              setShowSummary(true)
+            }
+          }
         }
       })
       .catch(() => {})
@@ -210,6 +228,33 @@ export default function SessionDetail() {
     [name]
   )
 
+  const saveShowSessionDots = useCallback(async (value: boolean) => {
+    setShowSessionDots(value)
+    try {
+      await fetch(`${getApiBase()}/settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ showSessionDots: value }),
+      })
+    } catch (err) {
+      console.error('Failed to save session dots setting:', err)
+    }
+  }, [])
+
+  const handleDismissSummary = useCallback(() => {
+    dismissSummary()
+    setShowSummary(false)
+  }, [])
+
+  const handleTempHideSummary = useCallback(() => {
+    setShowSummary(false)
+  }, [])
+
+  const handleShowSummary = useCallback(() => {
+    enableSummary()
+    setShowSummary(true)
+  }, [])
+
   const handleFocusReady = useCallback((fn: () => void) => {
     focusFnRef.current = fn
   }, [])
@@ -253,19 +298,43 @@ export default function SessionDetail() {
         const data = await res.json()
         const active = (data.sessions || [])
           .filter((s: { alive: boolean; paused?: boolean }) => s.alive && !s.paused)
-          .map((s: { name: string }) => s.name)
-          .sort()
+          .sort((a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name))
         if (active.length <= 1) return
-        const currentIdx = active.indexOf(name)
+        const currentIdx = active.findIndex((s: { name: string }) => s.name === name)
+
+        // On forward cycle, check starred sessions first — visit the first idle one
+        if (direction === 'next') {
+          const starredIdle = active.filter(
+            (s: { name: string; theOne?: boolean; idleState?: string }) =>
+              s.theOne && s.name !== name && s.idleState === 'idle'
+          )
+          if (starredIdle.length > 0) {
+            navigate(`/session/${starredIdle[0].name}`)
+            return
+          }
+        }
+
         const step = direction === 'next' ? 1 : active.length - 1
         const nextIdx = (currentIdx + step) % active.length
-        navigate(`/session/${active[nextIdx]}`)
+        navigate(`/session/${active[nextIdx].name}`)
       } catch {
         // Ignore errors
       }
     },
     [name, navigate]
   )
+
+  // Ctrl+[ / Ctrl+] to cycle sessions
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && (e.key === '[' || e.key === ']')) {
+        e.preventDefault()
+        handleCycleSession(e.key === ']' ? 'next' : 'prev')
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [handleCycleSession])
 
   const handleBack = useCallback(() => {
     navigate('/')
@@ -406,7 +475,7 @@ export default function SessionDetail() {
   // mobileTabs is now computed as visibleMobileTabs above
 
   const renderTerminal = () => (
-    <div className="h-full" data-testid="terminal-container">
+    <div className="h-full relative" data-testid="terminal-container">
       {name ? (
         <Terminal
           sessionName={name}
@@ -414,12 +483,22 @@ export default function SessionDetail() {
           onBack={isDesktop ? handleBack : undefined}
           onReset={handleReset}
           onCycleSession={handleCycleSession}
+          showSessionDots={showSessionDots}
           isVisible={isDesktop || mobileTab === 'terminal'}
+          showSummary={showSummary}
+          onShowSummary={handleShowSummary}
         />
       ) : (
         <div className="flex items-center justify-center h-full text-text-muted">
           No session selected
         </div>
+      )}
+      {showSummary && name && (
+        <SessionSummaryOverlay
+          sessionName={name}
+          onDismiss={handleDismissSummary}
+          onTempHide={handleTempHideSummary}
+        />
       )}
     </div>
   )
@@ -503,6 +582,15 @@ export default function SessionDetail() {
                   </label>
                 )
               })}
+              <label className="flex items-center gap-2 py-1 text-sm border-t border-border-default mt-1 pt-2">
+                <input
+                  type="checkbox"
+                  checked={showSessionDots}
+                  onChange={() => saveShowSessionDots(!showSessionDots)}
+                  className="rounded border-input-border bg-input-bg"
+                />
+                <span className="text-text-secondary">Session Dots</span>
+              </label>
             </div>
           )}
         </div>
@@ -575,6 +663,11 @@ export default function SessionDetail() {
 
   return (
     <div className="h-full flex flex-col bg-bg-sunken text-text-primary">
+      <ScratchPromoteBanner
+        sessionName={name!}
+        isScratch={isScratch}
+        onPromoted={() => setIsScratch(false)}
+      />
       {showTelemetryOptIn && <TelemetryOptIn onClose={() => setShowTelemetryOptIn(false)} />}
 
       {/* Conditionally render only desktop OR mobile layout (not both) */}
@@ -616,6 +709,12 @@ export default function SessionDetail() {
             </button>
             {/* Separator */}
             <div className="w-px shrink-0 bg-border-default my-1" />
+            {showSessionDots && name && (
+              <>
+                <SessionNavigatorDots compact currentSessionName={name} />
+                <div className="w-px shrink-0 bg-border-default my-1" />
+              </>
+            )}
             {visibleMobileTabs.map((tab) => (
               <button
                 key={tab.id}

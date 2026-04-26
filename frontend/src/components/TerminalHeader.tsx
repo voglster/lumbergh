@@ -6,7 +6,9 @@ import {
   Plus,
   MoreHorizontal,
   Eraser,
+  Brain,
 } from 'lucide-react'
+import SessionNavigatorDots from './SessionNavigatorDots'
 
 interface Props {
   sessionName: string
@@ -25,6 +27,9 @@ interface Props {
   onBack?: () => void
   onReset?: () => void
   onCycleSession?: (direction: 'next' | 'prev') => void
+  showSessionDots?: boolean
+  showSummary?: boolean
+  onShowSummary?: () => void
 }
 
 export default function TerminalHeader({
@@ -44,6 +49,9 @@ export default function TerminalHeader({
   onBack,
   onReset,
   onCycleSession,
+  showSessionDots = true,
+  showSummary = false,
+  onShowSummary,
 }: Props) {
   return (
     <div className="bg-bg-surface border-b border-border-default">
@@ -65,7 +73,7 @@ export default function TerminalHeader({
         </div>
         <span
           onClick={onCycleSession ? (e) => onCycleSession(e.shiftKey ? 'prev' : 'next') : undefined}
-          className={`flex-1 min-w-0 flex items-center gap-1 text-sm font-semibold text-text-secondary ${onCycleSession ? 'cursor-pointer group hover:text-text-primary transition-colors' : 'pointer-events-none'}`}
+          className={`shrink-0 flex items-center gap-1 text-sm font-semibold text-text-secondary ${onCycleSession ? 'cursor-pointer group hover:text-text-primary transition-colors' : 'pointer-events-none'}`}
           title={onCycleSession ? 'Click: next session · Shift+click: previous' : undefined}
         >
           {onCycleSession && (
@@ -80,61 +88,23 @@ export default function TerminalHeader({
             </span>
           )}
         </span>
-        <div className="flex items-center gap-2 shrink-0">
-          {isTouchDevice && (
-            <button
-              onClick={onToggleScrollMode}
-              disabled={!isConnected}
-              className={`px-2 py-1 text-xs rounded ${
-                scrollMode
-                  ? 'bg-yellow-600 hover:bg-yellow-500'
-                  : 'bg-control-bg hover:bg-control-bg-hover'
-              } disabled:bg-control-bg-hover disabled:opacity-50`}
-              title={scrollMode ? 'Exit scroll mode (q)' : 'Enter scroll mode (copy-mode)'}
-            >
-              {scrollMode ? 'Exit' : 'Scroll'}
-            </button>
-          )}
-          <button
-            onClick={() => onSendRaw('\x1b')}
-            disabled={!isConnected}
-            className="px-2 py-1 text-xs bg-red-700 hover:bg-red-600 disabled:bg-control-bg-hover disabled:opacity-50 rounded"
-            title="Send Escape key"
-          >
-            Esc
-          </button>
-          <button
-            onClick={() => onSendRaw('\x1b[Z')}
-            disabled={!isConnected}
-            className="px-2 py-1 text-xs bg-blue-700 hover:bg-blue-600 disabled:bg-control-bg-hover disabled:opacity-50 rounded"
-            title="Toggle Plan/Accept Edits mode (Shift+Tab)"
-          >
-            Mode
-          </button>
-          <button
-            onClick={() => onSendViaApi('1')}
-            disabled={!isConnected}
-            className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover disabled:opacity-50 rounded"
-            title="Send 1"
-          >
-            1
-          </button>
-          <button
-            onClick={() => onSendViaApi('/clear')}
-            disabled={!isConnected}
-            className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover disabled:opacity-50 rounded"
-            title="Send /clear"
-          >
-            <Eraser size={16} />
-          </button>
-          <button
-            onClick={() => onHeaderExpandedChange(!headerExpanded)}
-            className={`px-2 py-1 text-xs rounded ${headerExpanded ? 'bg-control-bg-hover' : 'bg-control-bg hover:bg-control-bg-hover'}`}
-            title="More options"
-          >
-            <MoreHorizontal size={16} />
-          </button>
-        </div>
+        {showSessionDots ? (
+          <SessionNavigatorDots currentSessionName={sessionName} />
+        ) : (
+          <div className="flex-1" />
+        )}
+        <QuickActions
+          isConnected={isConnected}
+          isTouchDevice={isTouchDevice}
+          scrollMode={scrollMode}
+          headerExpanded={headerExpanded}
+          showSummary={showSummary}
+          onToggleScrollMode={onToggleScrollMode}
+          onSendRaw={onSendRaw}
+          onSendViaApi={onSendViaApi}
+          onHeaderExpandedChange={onHeaderExpandedChange}
+          onShowSummary={onShowSummary}
+        />
       </div>
       {/* Expanded row */}
       {headerExpanded && (
@@ -151,6 +121,97 @@ export default function TerminalHeader({
           onCollapse={() => onHeaderExpandedChange(false)}
         />
       )}
+    </div>
+  )
+}
+
+function QuickActions({
+  isConnected,
+  isTouchDevice,
+  scrollMode,
+  headerExpanded,
+  showSummary,
+  onToggleScrollMode,
+  onSendRaw,
+  onSendViaApi,
+  onHeaderExpandedChange,
+  onShowSummary,
+}: {
+  isConnected: boolean
+  isTouchDevice: boolean
+  scrollMode: boolean
+  headerExpanded: boolean
+  showSummary?: boolean
+  onToggleScrollMode: () => void
+  onSendRaw: (data: string) => void
+  onSendViaApi: (text: string) => void
+  onHeaderExpandedChange: (expanded: boolean) => void
+  onShowSummary?: () => void
+}) {
+  return (
+    <div className="flex items-center gap-2 shrink-0">
+      {onShowSummary && !showSummary && (
+        <button
+          onClick={onShowSummary}
+          className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover rounded"
+          title="What happened? (AI summary)"
+        >
+          <Brain size={14} className="text-purple-400" />
+        </button>
+      )}
+      {isTouchDevice && (
+        <button
+          onClick={onToggleScrollMode}
+          disabled={!isConnected}
+          className={`px-2 py-1 text-xs rounded ${
+            scrollMode
+              ? 'bg-yellow-600 hover:bg-yellow-500'
+              : 'bg-control-bg hover:bg-control-bg-hover'
+          } disabled:bg-control-bg-hover disabled:opacity-50`}
+          title={scrollMode ? 'Exit scroll mode (q)' : 'Enter scroll mode (copy-mode)'}
+        >
+          {scrollMode ? 'Exit' : 'Scroll'}
+        </button>
+      )}
+      <button
+        onClick={() => onSendRaw('\x1b')}
+        disabled={!isConnected}
+        className="px-2 py-1 text-xs bg-red-700 hover:bg-red-600 disabled:bg-control-bg-hover disabled:opacity-50 rounded"
+        title="Send Escape key"
+      >
+        Esc
+      </button>
+      <button
+        onClick={() => onSendRaw('\x1b[Z')}
+        disabled={!isConnected}
+        className="px-2 py-1 text-xs bg-blue-700 hover:bg-blue-600 disabled:bg-control-bg-hover disabled:opacity-50 rounded"
+        title="Toggle Plan/Accept Edits mode (Shift+Tab)"
+      >
+        Mode
+      </button>
+      <button
+        onClick={() => onSendViaApi('1')}
+        disabled={!isConnected}
+        className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover disabled:opacity-50 rounded"
+        title="Send 1"
+      >
+        1
+      </button>
+      <button
+        onClick={() => onSendViaApi('/clear')}
+        disabled={!isConnected}
+        className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover disabled:opacity-50 rounded"
+        title="Send /clear"
+      >
+        <Eraser size={16} />
+      </button>
+      <button
+        onClick={() => onHeaderExpandedChange(!headerExpanded)}
+        className={`px-2 py-1 text-xs rounded ${headerExpanded ? 'bg-control-bg-hover' : 'bg-control-bg hover:bg-control-bg-hover'}`}
+        title="More options"
+      >
+        <MoreHorizontal size={16} />
+      </button>
     </div>
   )
 }

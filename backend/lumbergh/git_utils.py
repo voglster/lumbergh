@@ -22,6 +22,26 @@ def _sanitize(text: str) -> str:
     return text.encode("utf-8", errors="surrogateescape").decode("utf-8", errors="replace")
 
 
+# Safety limits for diff generation — prevents blocking on huge untracked
+# files (e.g. node_modules, binaries, model weights).
+MAX_DIFF_FILE_BYTES = 1_000_000  # 1 MB
+MAX_DIFF_TOTAL_FILES = 500
+
+
+def _read_if_small(path: Path) -> str | None:
+    """Read a file's text content, returning None if it's too large or unreadable."""
+    try:
+        size = path.stat().st_size
+    except OSError:
+        return None
+    if size > MAX_DIFF_FILE_BYTES:
+        return None
+    try:
+        return path.read_text(errors="replace")
+    except Exception:
+        return None
+
+
 def gravatar_url(email: str, size: int = 40) -> str:
     """Generate a Gravatar URL for an email address. Uses d=blank so missing gravatars return a transparent PNG."""
     md5 = hashlib.md5(email.strip().lower().encode()).hexdigest()
@@ -158,24 +178,23 @@ def generate_untracked_file_diff(workdir: Path, path: str) -> tuple[FileDiff | N
     if not full_path.is_file():
         return None, stats
 
-    try:
-        content = full_path.read_text(errors="replace")
-        lines = content.split("\n")
-
-        diff_lines = [
-            f"diff --git a/{path} b/{path}",
-            "new file mode 100644",
-            "--- /dev/null",
-            f"+++ b/{path}",
-            f"@@ -0,0 +1,{len(lines)} @@",
-        ]
-        for content_line in lines:
-            diff_lines.append(f"+{content_line}")
-            stats.additions += 1
-
-        return FileDiff(path=path, diff="\n".join(diff_lines)), stats
-    except Exception:
+    content = _read_if_small(full_path)
+    if content is None:
         return None, stats
+
+    lines = content.split("\n")
+    diff_lines = [
+        f"diff --git a/{path} b/{path}",
+        "new file mode 100644",
+        "--- /dev/null",
+        f"+++ b/{path}",
+        f"@@ -0,0 +1,{len(lines)} @@",
+    ]
+    for content_line in lines:
+        diff_lines.append(f"+{content_line}")
+        stats.additions += 1
+
+    return FileDiff(path=path, diff="\n".join(diff_lines)), stats
 
 
 def get_file_content_at_ref(repo: Repo, ref: str, path: str) -> str | None:
@@ -198,7 +217,7 @@ def get_full_diff_with_untracked(cwd: Path) -> dict:
     except InvalidGitRepositoryError:
         return {"files": [], "stats": {"additions": 0, "deletions": 0}}
 
-    files = []
+    files: list[dict] = []
     total_stats = DiffStats()
     workdir = Path(repo.working_dir)
 
@@ -209,13 +228,10 @@ def get_full_diff_with_untracked(cwd: Path) -> dict:
             if diff_text:
                 parsed_files, stats = parse_diff_output(diff_text)
                 for f in parsed_files:
-                    # Get old content from HEAD
+                    if len(files) >= MAX_DIFF_TOTAL_FILES:
+                        break
                     old_content = get_file_content_at_ref(repo, "HEAD", f.path)
-                    # Get new content from working directory
-                    try:
-                        new_content = (workdir / f.path).read_text(errors="replace")
-                    except Exception:
-                        new_content = None
+                    new_content = _read_if_small(workdir / f.path)
                     files.append(
                         {
                             "path": f.path,
@@ -231,12 +247,11 @@ def get_full_diff_with_untracked(cwd: Path) -> dict:
 
     # Add untracked files (new files - no old content)
     for untracked_path in repo.untracked_files:
+        if len(files) >= MAX_DIFF_TOTAL_FILES:
+            break
         file_diff, stats = generate_untracked_file_diff(workdir, untracked_path)
         if file_diff:
-            try:
-                new_content = (workdir / untracked_path).read_text(errors="replace")
-            except Exception:
-                new_content = None
+            new_content = _read_if_small(workdir / untracked_path)
             files.append(
                 {
                     "path": file_diff.path,
@@ -932,16 +947,34 @@ def checkout_branch(cwd: Path, branch: str, reset_to: str | None = None) -> dict
         return {"error": str(e)}
 
 
-def delete_branch(cwd: Path, branch: str, delete_remote: bool = False) -> dict:
+def delete_branch(
+    cwd: Path,
+    branch: str,
+    delete_remote: bool = False,
+    remote_only: bool = False,
+) -> dict:
     """
-    Delete a local branch (and optionally its remote tracking branch).
+    Delete a branch locally and/or on the remote.
 
     Refuses to delete the currently checked-out branch.
+    When remote_only=True, only the remote tracking branch is deleted.
     """
     try:
         repo = get_repo(cwd)
     except InvalidGitRepositoryError:
         return {"error": "Not a git repository"}
+
+    message = ""
+
+    if remote_only:
+        # Strip origin/ prefix if present for the push --delete command
+        remote_name = branch.removeprefix("origin/")
+        try:
+            repo.git.push("origin", "--delete", remote_name)
+            message = f"Deleted remote branch 'origin/{remote_name}'"
+        except GitCommandError as e:
+            return {"error": f"Failed to delete remote branch: {e}"}
+        return {"status": "success", "message": message}
 
     current = get_current_branch(cwd)
     if branch == current:

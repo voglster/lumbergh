@@ -7,6 +7,8 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from lumbergh.constants import TMUX_CMD
+
 router = APIRouter(prefix="/api/tmux", tags=["tmux"])
 
 TMUX_CONF = Path.home() / ".tmux.conf"
@@ -26,7 +28,7 @@ async def mouse_status():
     # Check live tmux setting
     try:
         result = subprocess.run(
-            ["tmux", "show-option", "-gv", "mouse"],
+            [TMUX_CMD, "show-option", "-gv", "mouse"],
             capture_output=True,
             text=True,
             timeout=5,
@@ -79,7 +81,7 @@ async def enable_mouse(body: EnableMouseRequest):
 
     # Apply immediately
     subprocess.run(
-        ["tmux", "source-file", str(TMUX_CONF)],
+        [TMUX_CMD, "source-file", str(TMUX_CONF)],
         capture_output=True,
         text=True,
         timeout=5,

@@ -1,6 +1,6 @@
 # Lumbergh Documentation
 
-Welcome to the Lumbergh docs — a self-hosted web dashboard for supervising multiple AI coding agent sessions (Claude Code, Cursor, Aider, and more) running in tmux.
+Welcome to the Lumbergh docs — a self-hosted web dashboard for supervising multiple AI coding agent sessions (Claude Code, Cursor, Aider, and more) running in tmux on Linux/macOS or [psmux](https://pypi.org/project/psmux/) on Windows.
 
 Watch diffs roll in, fire off prompts, check todos, and keep your AI workers on task — all from your browser or phone.
 
@@ -54,6 +54,7 @@ Watch diffs roll in, fire off prompts, check todos, and keep your AI workers on 
 - **Todos & scratchpad** — per-project notes and task tracking with cross-session todo moves
 - **Shared files** — share context (including images) across sessions
 - **AI status summaries** — AI-generated labels for what each session is doing
+- **Cloud sync** — optional cloud backup, prompt sharing, and community prompt discovery via Lumbergh Cloud
 - **Optional authentication** — password protection with signed cookie sessions
 - **Mobile-first + PWA** — responsive design, installable on your phone or tablet
 - **Tailscale integration** — auto-detects Tailscale for secure remote access with HTTPS/TLS support
@@ -71,7 +72,7 @@ lumbergh
 # open http://localhost:8420
 ```
 
-Requires **tmux** and **git**. See [Prerequisites](getting-started/prerequisites.md) for details.
+Requires **tmux** (or **psmux** on Windows) and **git**. See [Prerequisites](getting-started/prerequisites.md) for details.
 
 !!! tip "Need uv?"
     [uv](https://docs.astral.sh/uv/) is a fast Python package manager that installs tools in isolated environments. Get it with:

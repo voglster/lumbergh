@@ -22,6 +22,11 @@ It's published on PyPI as `pylumbergh`, running on Tailscale for real users. The
 - Multi-agent support (Claude Code, Cursor, OpenCode, Gemini CLI, Aider, Codex)
 - Version check endpoint with PyPI update detection
 - Tmux mouse mode configuration
+- Lumbergh Cloud integration (device code auth, free AI provider)
+- Cloud backup with optional AES-256 encryption (auto-backup every 5 minutes)
+- Prompt sharing via short codes with auto-update support
+- Community prompt discovery and installation
+- Telemetry (opt-in, throttled heartbeats)
 - E2E test suite (97 API tests + 13 UI tests in QEMU VM)
 
 ---
@@ -45,7 +50,7 @@ The manager watches and comments. It doesn't drive sessions or make autonomous d
 
 **Why:** The daily-driver experience needs to feel fast and complete before going public.
 
-- **Notifications & alerts** — PWA push notifications for "needs input" / "errored" / "idle too long". Leverage existing idle_detector states.
+- ~~**Notifications & alerts**~~ — handled by Lumbergh Cloud (push notifications via cloud relay)
 - **Session orchestration** — task queue with dependencies, auto-assign to sessions, visual board showing what's running where
 - **Command palette** — Cmd+K to jump to any session, file, todo, prompt. Keyboard-driven workflow.
 - **Keyboard shortcuts** — navigate sessions, switch tabs, trigger actions without touching the mouse
@@ -59,10 +64,10 @@ The manager watches and comments. It doesn't drive sessions or make autonomous d
 
 **Why:** Open-source growth requires making Lumbergh easy to adopt, configure, and contribute to.
 
-- Prompt template export/import/sync — share prompt packs as JSON
+- ~~Prompt template export/import/sync — share prompt packs as JSON~~ ✓ shipped (cloud prompt sharing + community browse)
 - CLAUDE.md template editor — AI-assisted "generate a CLAUDE.md from this repo"
 - Plugin/hook system — user-defined hooks ("on idle, run tests"), plugin API for custom widgets
-- Docker image — one-command deployment
+- ~~Docker image~~ — removed; Lumbergh requires native tmux/PTYs, Docker doesn't make sense
 - ~~Onboarding flow — first-run wizard, example sessions, getting-started guide~~ ✓ shipped
 - GitHub presence — issue templates, contributing guide, release automation
 
@@ -75,7 +80,7 @@ The manager watches and comments. It doesn't drive sessions or make autonomous d
 - **Free tier:** Everything self-hosted — terminal, diffs, todos, prompts, manager AI (BYO API key)
 - **Paid cloud sync:** Prompt library sync, session history across machines, shared team workspaces
 - **Team features:** Multi-user auth, role-based access, shared dashboards, audit logs
-- **Explore hosted option:** Managed Lumbergh instance (no tmux setup required) — only if demand justifies it
+- ~~**Explore hosted option**~~ — removed; Lumbergh requires native tmux/PTYs, hosting doesn't make sense
 
 ---
 
@@ -90,9 +95,9 @@ The manager watches and comments. It doesn't drive sessions or make autonomous d
 
 ## Build Order
 
-1. **Auth** — non-negotiable with real users on the network
-2. **Manager AI** — completes the core vision, code reviewer first
-3. **Notifications** — people need to walk away and get pinged
+1. ~~**Auth**~~ ✅ shipped
+2. **Manager AI** — completes the core vision, code reviewer first. Includes "what happened while I was gone?" session summaries.
+3. ~~**Notifications**~~ — handled by Lumbergh Cloud
 
 Everything else is sequenced by user demand.
 
@@ -104,4 +109,4 @@ Everything else is sequenced by user demand.
 - Don't build a full IDE — file browser and diffs are for monitoring, not editing
 - Don't over-invest in AI autonomy before the reviewer model is solid — reactive first, proactive later
 - Don't add complexity for hypothetical scale — single-user password gate before multi-tenant auth
-- Don't over-invest in AI chat before notifications — people need alerts before they need a conversation
+- Notifications are a cloud feature — don't duplicate in the open-source app

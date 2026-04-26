@@ -39,7 +39,9 @@ def _get_defaults() -> dict:
             "prompts": True,
             "shared": True,
         },
-        "cloudUrl": "https://lumbergh.jc.turbo.inc",
+        "showSessionDots": True,
+        "scratchMaxAgeDays": 7,
+        "cloudUrl": "https://app.lumbergh.dev",
         "ai": {
             "provider": "ollama",
             "providers": {
@@ -105,6 +107,8 @@ class SettingsUpdate(BaseModel):
     backupEnabled: bool | None = None  # noqa: N815 - API field name
     backupIncludeApiKeys: bool | None = None  # noqa: N815 - API field name
     backupPassphrase: str | None = None  # noqa: N815 - API field name
+    showSessionDots: bool | None = None  # noqa: N815 - API field name
+    scratchMaxAgeDays: int | None = None  # noqa: N815 - API field name
 
 
 def deep_merge(base: dict, override: dict) -> dict:
@@ -209,6 +213,7 @@ _OPTIONAL_FIELDS = (
     "backupEnabled",
     "backupIncludeApiKeys",
     "backupPassphrase",
+    "showSessionDots",
 )
 
 

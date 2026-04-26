@@ -213,7 +213,7 @@ const FileDiff = memo(function FileDiff({
         <div className="flex-1 overflow-auto flex items-center justify-center gap-8 p-4 bg-[repeating-conic-gradient(#80808018_0%_25%,transparent_0%_50%)] bg-[length:20px_20px]">
           {sessionName && (
             <img
-              src={`${getApiBase()}/sessions/${sessionName}/files/${encodeURIComponent(file.path)}/raw`}
+              src={`${getApiBase()}/sessions/${sessionName}/files/${file.path}?raw=1`}
               alt={file.path}
               className="max-w-full max-h-full object-contain"
             />

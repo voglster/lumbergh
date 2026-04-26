@@ -1,4 +1,4 @@
-import { GitBranch, Bot } from 'lucide-react'
+import { GitBranch, Bot, Zap } from 'lucide-react'
 
 const PROVIDER_LABELS: Record<string, string> = {
   'claude-code': 'Claude Code',
@@ -10,7 +10,7 @@ const PROVIDER_LABELS: Record<string, string> = {
 }
 
 interface Props {
-  type?: 'direct' | 'worktree'
+  type?: 'direct' | 'worktree' | 'scratch'
   worktreeBranch?: string | null
   worktreeParentRepo?: string | null
   agentProvider?: string | null
@@ -30,6 +30,13 @@ export default function SessionCardBadges({
 }: Props) {
   return (
     <>
+      {type === 'scratch' && (
+        <div className="flex items-center gap-1.5 mb-1">
+          <Zap size={14} className="text-amber-400" />
+          <span className="text-xs text-amber-400 font-medium">Scratch</span>
+        </div>
+      )}
+
       {type === 'worktree' && worktreeBranch && (
         <div className="flex items-center gap-1.5 mb-1">
           <GitBranch size={14} className="text-purple-400" />

@@ -70,6 +70,63 @@ def test_session_patch_paused(client, test_session):
     assert r3.json()["paused"] is False
 
 
+def test_session_pause_kills_process(client, test_session):
+    """POST /sessions/{name}/pause should kill the agent and set paused flag."""
+    # Ensure session is not paused
+    client.patch(f"/api/sessions/{test_session}", json={"paused": False})
+
+    # Pause via new endpoint
+    r = client.post(f"/api/sessions/{test_session}/pause")
+    assert r.status_code == 200
+    assert r.json()["status"] == "paused"
+
+    # Verify paused flag is set
+    r2 = client.get("/api/sessions")
+    session = next(s for s in r2.json()["sessions"] if s["name"] == test_session)
+    assert session.get("paused") is True
+
+    # Session should still be alive (tmux session exists)
+    assert session.get("alive") is True
+
+
+def test_session_resume_restarts_process(client, test_session):
+    """POST /sessions/{name}/resume should restart the agent and clear paused flag."""
+    # Ensure session is paused first
+    client.post(f"/api/sessions/{test_session}/pause")
+
+    # Resume
+    r = client.post(f"/api/sessions/{test_session}/resume")
+    assert r.status_code == 200
+    assert r.json()["status"] == "resumed"
+
+    # Verify paused flag is cleared
+    r2 = client.get("/api/sessions")
+    session = next(s for s in r2.json()["sessions"] if s["name"] == test_session)
+    assert session.get("paused") is False
+
+
+def test_session_resume_idempotent(client, test_session):
+    """POST /sessions/{name}/resume should succeed even if not paused (idempotent)."""
+    # Ensure not paused
+    client.patch(f"/api/sessions/{test_session}", json={"paused": False})
+
+    r = client.post(f"/api/sessions/{test_session}/resume")
+    assert r.status_code == 200
+    assert r.json()["status"] == "resumed"
+
+
+def test_session_pause_not_found(client):
+    """POST /sessions/{name}/pause should 404 for non-existent session."""
+    r = client.post("/api/sessions/nonexistent-session-xyz/pause")
+    assert r.status_code == 404
+
+
+def test_session_resume_not_found(client):
+    """POST /sessions/{name}/resume should 404 for non-existent session."""
+    r = client.post("/api/sessions/nonexistent-session-xyz/resume")
+    assert r.status_code == 404
+
+
 def test_session_agent_provider(client, repo_dir):
     """Create a session with agentProvider, verify in metadata."""
     name = f"e2e-agent-{uuid.uuid4().hex[:8]}"

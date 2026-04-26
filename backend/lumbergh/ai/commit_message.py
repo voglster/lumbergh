@@ -31,6 +31,41 @@ GENERATED_PATTERNS = [
     re.compile(r"\.bundle\.js$"),
 ]
 
+BINARY_EXTENSIONS = {
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".ico",
+    ".webp",
+    ".bmp",
+    ".tiff",
+    ".svg",
+    ".pdf",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".eot",
+    ".otf",
+    ".mp3",
+    ".mp4",
+    ".wav",
+    ".ogg",
+    ".webm",
+    ".mov",
+    ".avi",
+    ".zip",
+    ".tar",
+    ".gz",
+    ".br",
+    ".zst",
+    ".wasm",
+    ".pyc",
+    ".so",
+    ".dll",
+    ".dylib",
+}
+
 SOURCE_EXTENSIONS = {
     ".py",
     ".ts",
@@ -80,6 +115,18 @@ def preprocess_diff(diff: str, max_chars: int) -> str:
 
     # Filter generated/minified files
     hunks = [(f, t) for f, t in hunks if not any(p.search(f) for p in GENERATED_PATTERNS)]
+
+    # Replace binary/asset file diffs with a short note
+    def _maybe_summarize(filename: str, text: str) -> tuple[str, str]:
+        ext = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+        if ext in BINARY_EXTENSIONS:
+            return (
+                filename,
+                f"diff --git a/{filename} b/{filename}\n[binary/asset file changed]\n",
+            )
+        return (filename, text)
+
+    hunks = [_maybe_summarize(f, t) for f, t in hunks]
 
     # Prioritize source code first
     source = []

@@ -7,6 +7,7 @@ Run with: uv run python main.py
 import asyncio
 import hashlib
 import logging
+import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -18,6 +19,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from lumbergh.auth import AuthMiddleware
 from lumbergh.auth import router as auth_router
+from lumbergh.constants import TMUX_CMD
 from lumbergh.file_utils import get_file_language, list_project_files, validate_path_within_root
 from lumbergh.git_utils import (
     get_commit_diff,
@@ -50,6 +52,30 @@ async def lifespan(app: FastAPI):  # noqa: ARG001 - required by FastAPI
     if orphaned:
         logger.info(f"Found {len(orphaned)} stored session(s) without tmux: {orphaned}")
 
+    # Event loop lag watchdog — writes stacks to /tmp/lumbergh-lag.log
+    # when the loop is blocked >200ms.  Cheap (one sleep per 50ms tick).
+    lag_log = Path(tempfile.gettempdir()) / "lumbergh-lag.log"
+
+    async def _lag_watchdog(threshold_ms: float = 200):
+        import sys
+        import time
+        import traceback
+
+        while True:
+            t0 = time.monotonic()
+            await asyncio.sleep(0.05)
+            lag_ms = (time.monotonic() - t0 - 0.05) * 1000
+            if lag_ms > threshold_ms:
+                with open(lag_log, "a") as f:
+                    f.write(
+                        f"\n{'=' * 60}\nBlocked {lag_ms:.0f}ms at {time.strftime('%H:%M:%S')}\n"
+                    )
+                    for tid, frame in sys._current_frames().items():
+                        f.write(f"\n--- Thread {tid} ---\n")
+                        traceback.print_stack(frame, file=f)
+
+    _lag_task = asyncio.create_task(_lag_watchdog())  # noqa: RUF006
+
     # Start background services
     idle_monitor.start()
     diff_cache.start()
@@ -64,11 +90,19 @@ async def lifespan(app: FastAPI):  # noqa: ARG001 - required by FastAPI
     _telemetry_task = asyncio.create_task(send_startup())  # noqa: RUF006
     _heartbeat_task = asyncio.create_task(heartbeat_loop())
 
+    # Start cloud tunnel for remote session access (if cloud is configured)
+    from lumbergh.routers.settings import get_settings
+    from lumbergh.tunnel import cloud_tunnel
+
+    if get_settings().get("cloudToken"):
+        cloud_tunnel.start()
+
     yield
 
     _heartbeat_task.cancel()
 
     # Stop background services
+    cloud_tunnel.stop()
     backup_scheduler.stop()
     diff_cache.stop()
     idle_monitor.stop()
@@ -332,7 +366,7 @@ async def _run_tmux(*args: str, input_data: str | None = None, timeout: float = 
     Raises HTTPException on failure or timeout (e.g. tmux stuck in copy-mode).
     """
     proc = await asyncio.create_subprocess_exec(
-        "tmux",
+        TMUX_CMD,
         *args,
         stdin=asyncio.subprocess.PIPE if input_data else None,
         stdout=asyncio.subprocess.PIPE,
@@ -362,16 +396,18 @@ async def send_to_session(session_name: str, body: SendInput):
 
     if len(text) > 128:
         # For large text, use load-buffer + paste-buffer (much faster than send-keys
-        # which processes each character individually through tmux's key pipeline)
-        await _run_tmux("load-buffer", "-", input_data=text)
+        # which processes each character individually through tmux's key pipeline).
+        # Include trailing newline in the buffer itself so the Enter is delivered
+        # atomically with the text — a separate send-keys Enter can race.
+        buf = text + "\n" if body.send_enter else text
+        await _run_tmux("load-buffer", "-", input_data=buf)
         await _run_tmux("paste-buffer", "-t", session_name, "-d", "-p")
     else:
         # For short text, send-keys -l is fine
         await _run_tmux("send-keys", "-t", session_name, "-l", text)
-
-    # Send Enter key separately (without -l so it's interpreted as a key)
-    if body.send_enter:
-        await _run_tmux("send-keys", "-t", session_name, "Enter")
+        # Send Enter key separately (without -l so it's interpreted as a key)
+        if body.send_enter:
+            await _run_tmux("send-keys", "-t", session_name, "Enter")
 
     # Buffer the message for AI commit context
     if body.send_enter:

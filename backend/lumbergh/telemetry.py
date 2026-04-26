@@ -25,16 +25,20 @@ _STAMP_FILE = Path("~/.local/state/lumbergh/last_startup_telemetry").expanduser(
 
 
 def get_version() -> str:
-    """Get version string. In dev mode, use git describe for full detail."""
+    """Get version string. In dev mode, use git describe for full detail.
+
+    Release builds cache permanently. Dev mode re-evaluates every call
+    so version stays current after tagging new releases.
+    """
     global _version_cache
-    if _version_cache is not None:
-        return _version_cache
 
     if not __version__.startswith("0.0.0"):
-        _version_cache = __version__
+        # Release build — cache permanently
+        if _version_cache is None:
+            _version_cache = __version__
         return _version_cache
 
-    # Dev mode — try git describe for base tag + commit count
+    # Dev mode — always re-evaluate from git
     try:
         repo_root = Path(__file__).parent.parent.parent
         result = subprocess.run(
@@ -47,13 +51,11 @@ def get_version() -> str:
         if result.returncode == 0:
             desc = result.stdout.strip().lstrip("v")
             if desc:
-                _version_cache = desc
-                return _version_cache
+                return desc
     except Exception:
         logger.debug("git describe failed for version", exc_info=True)
 
-    _version_cache = __version__
-    return _version_cache
+    return __version__
 
 
 def _was_recently_sent() -> bool:
@@ -91,7 +93,7 @@ async def send_startup() -> None:
         if _was_recently_sent():
             return
 
-        cloud_url = settings.get("cloudUrl", "https://lumbergh.jc.turbo.inc")
+        cloud_url = settings.get("cloudUrl", "https://app.lumbergh.dev")
         install_id = settings.get("installationId", "")
         if not install_id:
             return
@@ -100,6 +102,7 @@ async def send_startup() -> None:
             "version": get_version(),
             "os": platform.system(),
             "arch": platform.machine(),
+            "hostname": platform.node(),
             "default_agent": settings.get("defaultAgent", ""),
         }
 
@@ -131,7 +134,7 @@ async def _send_event(event: str, extra_props: dict | None = None) -> None:
     if not settings.get("telemetryConsent"):
         return
 
-    cloud_url = settings.get("cloudUrl", "https://lumbergh.jc.turbo.inc")
+    cloud_url = settings.get("cloudUrl", "https://app.lumbergh.dev")
     install_id = settings.get("installationId", "")
     if not install_id:
         return

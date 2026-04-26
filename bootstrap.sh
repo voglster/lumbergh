@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 
 # Check required dependencies
 has_missing=false
-for cmd in tmux git uv npm; do
+for cmd in tmux git uv node; do
     if ! command -v "$cmd" &>/dev/null; then
         has_missing=true
         echo "Missing: $cmd"
@@ -21,7 +21,7 @@ for cmd in tmux git uv npm; do
                 echo "  Install: curl -LsSf https://astral.sh/uv/install.sh | sh"
                 echo "  More info: https://docs.astral.sh/uv/"
                 ;;
-            npm)
+            node)
                 echo "  Recommended: install via nvm (Node Version Manager)"
                 echo "  Install nvm: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash"
                 echo "  Then: nvm install --lts"
@@ -36,6 +36,9 @@ if [ "$has_missing" = true ]; then
     echo "and re-run this script."
     exit 1
 fi
+
+# Check Node.js version meets minimum requirements
+source "$(dirname "$0")/scripts/check-node.sh"
 
 if tmux has-session -t lumbergh 2>/dev/null; then
     echo "Session 'lumbergh' already exists. Attach with: tmux at -t lumbergh"

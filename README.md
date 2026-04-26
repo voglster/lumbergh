@@ -24,6 +24,18 @@ lumbergh
 
 Open **http://localhost:8420**. Done.
 
+### Windows
+
+Lumbergh runs natively on Windows using [`psmux`](https://pypi.org/project/psmux/) (a PowerShell-based tmux clone) in place of tmux. WSL is not required.
+
+```powershell
+uv tool install psmux
+uv tool install pylumbergh
+lumbergh
+```
+
+`pywinpty` is installed automatically as a dependency.
+
 > **What's uv?** [uv](https://docs.astral.sh/uv/) is a fast Python package manager from [Astral](https://astral.sh/). It handles installing Python tools in isolated environments so they don't conflict with anything else on your system. Install it with:
 >
 > ```bash

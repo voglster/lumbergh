@@ -88,6 +88,17 @@ body,
   font-size: 11px !important;
 }
 
+/* ── Session dot alert pulse ── */
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
 /* ── Todo highlight flash ── */
 @keyframes todo-highlight {
   0% {

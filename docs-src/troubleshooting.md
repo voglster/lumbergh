@@ -95,3 +95,50 @@ PWA installation requires HTTPS. Use Tailscale Serve for automatic TLS certifica
 ```bash
 tailscale serve --bg 8420
 ```
+
+---
+
+### Windows: `psmux` not found?
+
+Lumbergh checks for `tmux` (Linux/macOS) or `psmux` (Windows) on startup and
+exits with a hint if it's missing. Install psmux:
+
+```powershell
+uv tool install psmux
+```
+
+Then re-run `lumbergh`. If `psmux` is installed but still not found, make sure
+the `uv` shims directory is on your `PATH` (run `uv tool dir --bin`).
+
+---
+
+### Windows: terminal session never appears?
+
+If you see "Session not found" inside the dashboard but the session was just
+created, this usually means `psmux`'s session listing returned an unexpected
+format. Try:
+
+1. Stop Lumbergh
+2. Run `psmux kill-server` to clear any stale state
+3. Restart Lumbergh and re-create the session
+
+If it persists, check the backend log for a `psmux fallback` warning and
+[file an issue](https://github.com/voglster/lumbergh/issues) with the
+`psmux list-sessions` output.
+
+---
+
+### Terminal feels laggy?
+
+Lumbergh runs a permanent watchdog that records any time the asyncio event
+loop is blocked for more than 200ms. If the UI feels janky:
+
+```bash
+cat /tmp/lumbergh-lag.log
+```
+
+Each entry shows the offending thread stacks at the time of the stall.
+Common causes: synchronous TinyDB writes, corrupt session JSON files in
+`~/.config/lumbergh/session_data/`, or thread-pool exhaustion from too many
+concurrent pane captures. Clear the log with `> /tmp/lumbergh-lag.log` to
+validate a fix.

@@ -16,7 +16,10 @@ interface TerminalProps {
   onBack?: () => void
   onReset?: () => void
   onCycleSession?: (direction: 'next' | 'prev') => void
+  showSessionDots?: boolean
   isVisible?: boolean
+  showSummary?: boolean
+  onShowSummary?: () => void
 }
 
 export default memo(function Terminal({
@@ -26,7 +29,10 @@ export default memo(function Terminal({
   onBack,
   onReset,
   onCycleSession,
+  showSessionDots = true,
   isVisible = true,
+  showSummary = false,
+  onShowSummary,
 }: TerminalProps) {
   const { theme } = useTheme()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -284,6 +290,10 @@ export default memo(function Terminal({
     // When the custom handler blocks only keydown, xterm.js doesn't call preventDefault(),
     // so the browser fires keypress which leaks through and sends \r to the terminal.
     term.attachCustomKeyEventHandler((event) => {
+      // Ctrl+[ / Ctrl+] cycles sessions — let the window handler deal with it
+      if (event.ctrlKey && (event.key === '[' || event.key === ']')) {
+        return false
+      }
       if (event.key === 'Enter' && event.shiftKey) {
         if (event.type === 'keydown') {
           // Send newline character instead of carriage return
@@ -391,7 +401,10 @@ export default memo(function Terminal({
           return
         }
         fakeShift(e)
-      } else if (e.button === 2) {
+      } else if (e.button === 1 || e.button === 2) {
+        // Middle-click (1): prevent tmux from seeing it so only the browser's
+        // native X11 PRIMARY paste fires (avoids double-paste on Linux).
+        // Right-click (2): let browser show context menu instead of tmux handling it.
         fakeShift(e)
       }
     }
@@ -569,6 +582,9 @@ export default memo(function Terminal({
         onBack={onBack}
         onReset={onReset}
         onCycleSession={onCycleSession}
+        showSessionDots={showSessionDots}
+        showSummary={showSummary}
+        onShowSummary={onShowSummary}
       />
 
       {/* Error display (only show if session is not dead - dead sessions have their own overlay) */}
