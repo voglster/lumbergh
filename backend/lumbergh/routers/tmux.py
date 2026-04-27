@@ -30,7 +30,8 @@ async def mouse_status():
         result = subprocess.run(
             [TMUX_CMD, "show-option", "-gv", "mouse"],
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=5,
         )
         if result.returncode == 0:
@@ -83,7 +84,8 @@ async def enable_mouse(body: EnableMouseRequest):
     subprocess.run(
         [TMUX_CMD, "source-file", str(TMUX_CONF)],
         capture_output=True,
-        text=True,
+        encoding="utf-8",
+        errors="replace",
         timeout=5,
     )
 

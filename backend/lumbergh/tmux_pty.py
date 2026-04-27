@@ -23,9 +23,9 @@ from lumbergh.constants import TMUX_CMD
 IS_WINDOWS = sys.platform == "win32"
 
 if not IS_WINDOWS:
-    import fcntl
-    import pty
-    import termios
+    import fcntl  # type: ignore
+    import pty  # type: ignore
+    import termios  # type: ignore
 
 
 def _tmux_server() -> libtmux.Server:
@@ -71,7 +71,8 @@ def get_session_pane_id(session_name: str) -> str:
             result = subprocess.run(
                 [TMUX_CMD, "display-message", "-t", session_name, "-p", "#{pane_id}"],
                 capture_output=True,
-                text=True,
+                encoding="utf-8",
+                errors="replace",
                 check=False,
             )
             if result.returncode == 0 and result.stdout.strip():
@@ -103,7 +104,8 @@ def capture_pane_content(session_name: str) -> str:
                 "-",  # start of scrollback
             ],
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=5,
         )
         if result.returncode != 0:
@@ -130,7 +132,8 @@ def capture_scrollback(session_name: str, max_lines: int = 500) -> str:
                 str(-max_lines),  # N lines before visible area
             ],
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=5,
         )
         if result.returncode != 0:
@@ -158,7 +161,8 @@ def _session_exists(session_name: str) -> bool:
             result = subprocess.run(
                 [TMUX_CMD, "has-session", "-t", session_name],
                 capture_output=True,
-                text=True,
+                encoding="utf-8",
+                errors="replace",
                 check=False,
             )
             if result.returncode == 0:
@@ -169,7 +173,8 @@ def _session_exists(session_name: str) -> bool:
             result = subprocess.run(
                 [TMUX_CMD, "list-sessions"],
                 capture_output=True,
-                text=True,
+                encoding="utf-8",
+                errors="replace",
                 check=False,
             )
             if result.returncode == 0:
@@ -210,7 +215,7 @@ class TmuxPtySession:
             self._spawn_unix()
 
     def _spawn_unix(self) -> None:
-        pid, fd = pty.fork()
+        pid, fd = pty.fork()  # type: ignore
 
         if pid == 0:
             # Child process - exec tmux attach
@@ -224,8 +229,8 @@ class TmuxPtySession:
         else:
             self.pid = pid
             self.master_fd = fd
-            flags = fcntl.fcntl(fd, fcntl.F_GETFL)
-            fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+            flags = fcntl.fcntl(fd, fcntl.F_GETFL)  # type: ignore
+            fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)  # type: ignore
             self._set_winsize(self.cols, self.rows)
 
     def _spawn_windows(self) -> None:
@@ -255,7 +260,7 @@ class TmuxPtySession:
         if self.master_fd is None:
             return
         winsize = struct.pack("HHHH", rows, cols, 0, 0)
-        fcntl.ioctl(self.master_fd, termios.TIOCSWINSZ, winsize)
+        fcntl.ioctl(self.master_fd, termios.TIOCSWINSZ, winsize)  # type: ignore
 
     def resize(self, cols: int, rows: int) -> None:
         """Resize the terminal."""

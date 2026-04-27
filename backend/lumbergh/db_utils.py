@@ -108,7 +108,8 @@ def _resolve_main_repo(project_path: Path) -> Path:
         common_dir = Path(
             subprocess.check_output(
                 ["git", "-C", str(resolved), "rev-parse", "--git-common-dir"],
-                text=True,
+                encoding="utf-8",
+                errors="replace",
                 stderr=subprocess.DEVNULL,
             ).strip()
         )

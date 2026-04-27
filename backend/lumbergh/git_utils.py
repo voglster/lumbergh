@@ -1827,7 +1827,8 @@ def _reword_via_rebase(cwd: Path, repo: Repo, commit_hash: str, message: str) ->
             ["git", "rebase", "-i", f"{commit_hash}^"],
             cwd=str(cwd),
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+            errors="replace",
             env={**os.environ, **env},
             timeout=30,
         )
