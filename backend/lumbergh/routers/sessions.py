@@ -854,8 +854,49 @@ def _list_pane_children(pane_pid: str) -> list[dict]:
     """Return [{pid, command}] for direct children of the pane shell."""
     if not pane_pid:
         return []
+
+    try:
+        pid_int = int(pane_pid)
+    except (ValueError, TypeError):
+        return []
+
+    if IS_WINDOWS:
+        try:
+            # Use PowerShell to find children of the shell process.
+            # We validate pid_int above to prevent command injection.
+            cmd = [
+                "powershell",
+                "-Command",
+                f"Get-CimInstance Win32_Process -Filter 'ParentProcessId = {pid_int}' | "
+                "Select-Object ProcessId, Caption | ConvertTo-Json",
+            ]
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+            )
+            if result.returncode != 0 or not result.stdout.strip():
+                return []
+
+            import json
+
+            try:
+                data = json.loads(result.stdout)
+            except json.JSONDecodeError:
+                return []
+
+            # PowerShell's ConvertTo-Json returns a dict for 1 item, list for 2+
+            if isinstance(data, dict):
+                data = [data]
+
+            return [{"pid": item["ProcessId"], "command": item["Caption"]} for item in data]
+        except Exception:
+            return []
+
     result = subprocess.run(
-        ["ps", "-o", "pid=,comm=", "--ppid", pane_pid],
+        ["ps", "-o", "pid=,comm=", "--ppid", str(pid_int)],
         capture_output=True,
         encoding="utf-8",
         errors="replace",
@@ -871,12 +912,30 @@ def _list_pane_children(pane_pid: str) -> list[dict]:
 def _kill_pane_children(pane_pid: str) -> None:
     if not pane_pid:
         return
-    subprocess.run(
-        ["pkill", "-TERM", "-P", pane_pid],
-        capture_output=True,
-        encoding="utf-8",
-        errors="replace",
-    )
+
+    try:
+        pid_int = int(pane_pid)
+    except (ValueError, TypeError):
+        return
+
+    if IS_WINDOWS:
+        # On Windows, taskkill /T kills the entire process tree rooted at pid_int.
+        # This is more efficient than manually walking the tree with Get-CimInstance.
+        subprocess.run(
+            ["taskkill", "/F", "/T", "/PID", str(pid_int)],
+            capture_output=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+    else:
+        subprocess.run(
+            ["pkill", "-TERM", "-P", str(pid_int)],
+            capture_output=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
 
 
 @router.post("/{name}/pause")
