@@ -549,13 +549,12 @@ export default function Dashboard() {
       })
 
     let res = await callEndpoint(false)
-    if (res.status === 409) {
+    if (paused && res.status === 409) {
       const data = await res.json()
       const children: { pid: number; command: string }[] = data.detail?.children || []
       const list = children.map((c) => `  • ${c.command} (pid ${c.pid})`).join('\n')
-      const verb = paused ? 'pausing' : 'resuming'
       const ok = window.confirm(
-        `This pane has extra processes that will be killed when ${verb}:\n\n${list}\n\nContinue?`
+        `This pane has extra processes that will be killed when pausing:\n\n${list}\n\nContinue?`
       )
       if (!ok) return 'cancelled'
       res = await callEndpoint(true)

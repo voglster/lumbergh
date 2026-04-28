@@ -919,11 +919,12 @@ async def pause_session(name: str, force: bool = False):
 
 
 @router.post("/{name}/resume")
-async def resume_session(name: str, force: bool = False):
+async def resume_session(name: str):
     """Resume a paused session by restarting Claude Code with --continue.
 
-    If the pane has extra child processes, responds 409 with the list so the
-    UI can confirm before killing them. Pass `?force=true` to skip the check.
+    Any lingering child processes from the previous run are killed before the
+    agent is relaunched — the user has already chosen to resume, so there's
+    nothing to confirm.
     """
     live = get_live_sessions()
     stored = get_stored_sessions()
@@ -941,17 +942,6 @@ async def resume_session(name: str, force: bool = False):
 
     if name in live:
         shell_pid = _get_pane_pid(name)
-        children = _list_pane_children(shell_pid)
-
-        if not force and len(children) > 1:
-            raise HTTPException(
-                status_code=409,
-                detail={
-                    "code": "extra_children",
-                    "message": "Pane has extra processes that will also be killed.",
-                    "children": children,
-                },
-            )
 
         if shell_pid:
             _kill_pane_children(shell_pid)
