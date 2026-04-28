@@ -17,6 +17,8 @@
   "dependencies": {
     "@git-diff-view/core": "^0.0.39",
     "@git-diff-view/react": "^0.0.39",
+    "@tanstack/react-virtual": "^3.13.24",
+    "@types/papaparse": "^5.5.2",
     "@uiw/react-markdown-preview": "^5.1.5",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-web-links": "^0.12.0",
@@ -25,6 +27,7 @@
     "highlight.js": "^11.11.1",
     "lucide-react": "^0.576.0",
     "mermaid": "^11.4.0",
+    "papaparse": "^5.5.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.0"

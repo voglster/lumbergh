@@ -50,6 +50,8 @@ EXT_TO_LANGUAGE = {
     ".yaml": "yaml",
     ".yml": "yaml",
     ".toml": "toml",
+    ".csv": "csv",
+    ".tsv": "tsv",
 }
 
 # Directories to ignore when listing/searching files
