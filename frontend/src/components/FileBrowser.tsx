@@ -4,6 +4,7 @@ import hljsDarkUrl from 'highlight.js/styles/github-dark.css?url'
 import hljsLightUrl from 'highlight.js/styles/github.css?url'
 import MarkdownPreview from '@uiw/react-markdown-preview'
 import mermaid from 'mermaid'
+import CsvViewer from './CsvViewer'
 import {
   ChevronDown,
   ChevronRight,
@@ -124,31 +125,112 @@ function isImagePath(path: string): boolean {
   return IMAGE_EXTENSIONS.has(ext)
 }
 
+function isCsvPath(path: string): boolean {
+  const ext = path.slice(path.lastIndexOf('.')).toLowerCase()
+  return ext === '.csv' || ext === '.tsv'
+}
+
+function csvDelimiter(path: string): string {
+  return path.toLowerCase().endsWith('.tsv') ? '\t' : ''
+}
+
+function FileContentBody({
+  selectedFile,
+  sessionName,
+  showMarkdownPreview,
+  showCsvPreview,
+  theme,
+  contentRef,
+  getHighlightedCode,
+}: {
+  selectedFile: FileContent
+  sessionName?: string
+  showMarkdownPreview: boolean
+  showCsvPreview: boolean
+  theme: 'dark' | 'light'
+  contentRef: React.RefObject<HTMLPreElement | null>
+  getHighlightedCode: (content: string, language: string) => string
+}) {
+  if (isImagePath(selectedFile.path)) {
+    return (
+      <div className="flex-1 overflow-auto flex items-center justify-center p-4 bg-[repeating-conic-gradient(#80808018_0%_25%,transparent_0%_50%)] bg-[length:20px_20px]">
+        <img
+          src={`${getApiBase()}${sessionName ? `/sessions/${sessionName}/files/${selectedFile.path}` : `/files/${selectedFile.path}`}?raw=1`}
+          alt={selectedFile.path}
+          crossOrigin="anonymous"
+          className="max-w-full max-h-full object-contain"
+        />
+      </div>
+    )
+  }
+
+  if (isCsvPath(selectedFile.path) && showCsvPreview) {
+    return <CsvViewer content={selectedFile.content} delimiter={csvDelimiter(selectedFile.path)} />
+  }
+
+  if (showMarkdownPreview && selectedFile.path.endsWith('.md')) {
+    return (
+      <div className="flex-1 overflow-auto p-4 md:p-8">
+        <div className="max-w-4xl mx-auto">
+          <MarkdownPreview
+            source={selectedFile.content}
+            style={{
+              backgroundColor: 'transparent',
+              color: theme === 'dark' ? '#e5e7eb' : '#073642',
+            }}
+            wrapperElement={{
+              'data-color-mode': theme,
+            }}
+            components={{
+              code: Code,
+            }}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <pre className="flex-1 p-4 overflow-auto text-sm font-mono" ref={contentRef}>
+      <HighlightedCode
+        content={selectedFile.content}
+        language={selectedFile.language}
+        getHighlightedCode={getHighlightedCode}
+      />
+    </pre>
+  )
+}
+
 function FileContentView({
   selectedFile,
   sessionName,
   sidebarCollapsed,
   showMarkdownPreview,
+  showCsvPreview,
   theme,
   contentRef,
   getHighlightedCode,
   onSendPathToTerminal,
   onToggleSidebar,
   onTogglePreview,
+  onToggleCsvPreview,
   renderBreadcrumb,
 }: {
   selectedFile: FileContent
   sessionName?: string
   sidebarCollapsed: boolean
   showMarkdownPreview: boolean
+  showCsvPreview: boolean
   theme: 'dark' | 'light'
   contentRef: React.RefObject<HTMLPreElement | null>
   getHighlightedCode: (content: string, language: string) => string
   onSendPathToTerminal: () => void
   onToggleSidebar: () => void
   onTogglePreview: () => void
+  onToggleCsvPreview: () => void
   renderBreadcrumb: (path: string) => React.ReactNode
 }) {
+  const isCsv = isCsvPath(selectedFile.path)
   return (
     <div className="h-full flex flex-col">
       <div className="p-2 bg-bg-surface border-b border-border-default flex items-center justify-between">
@@ -183,45 +265,27 @@ function FileContentView({
               {showMarkdownPreview ? 'Code' : 'Preview'}
             </button>
           )}
+          {isCsv && (
+            <button
+              onClick={onToggleCsvPreview}
+              className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-white"
+              title={showCsvPreview ? 'Show raw text' : 'Show as table'}
+            >
+              {showCsvPreview ? 'Raw' : 'Table'}
+            </button>
+          )}
           <span className="text-text-muted text-xs">{selectedFile.language}</span>
         </div>
       </div>
-      {isImagePath(selectedFile.path) ? (
-        <div className="flex-1 overflow-auto flex items-center justify-center p-4 bg-[repeating-conic-gradient(#80808018_0%_25%,transparent_0%_50%)] bg-[length:20px_20px]">
-          <img
-            src={`${getApiBase()}${sessionName ? `/sessions/${sessionName}/files/${selectedFile.path}` : `/files/${selectedFile.path}`}?raw=1`}
-            alt={selectedFile.path}
-            crossOrigin="anonymous"
-            className="max-w-full max-h-full object-contain"
-          />
-        </div>
-      ) : showMarkdownPreview && selectedFile.path.endsWith('.md') ? (
-        <div className="flex-1 overflow-auto p-4 md:p-8">
-          <div className="max-w-4xl mx-auto">
-            <MarkdownPreview
-              source={selectedFile.content}
-              style={{
-                backgroundColor: 'transparent',
-                color: theme === 'dark' ? '#e5e7eb' : '#073642',
-              }}
-              wrapperElement={{
-                'data-color-mode': theme,
-              }}
-              components={{
-                code: Code,
-              }}
-            />
-          </div>
-        </div>
-      ) : (
-        <pre className="flex-1 p-4 overflow-auto text-sm font-mono" ref={contentRef}>
-          <HighlightedCode
-            content={selectedFile.content}
-            language={selectedFile.language}
-            getHighlightedCode={getHighlightedCode}
-          />
-        </pre>
-      )}
+      <FileContentBody
+        selectedFile={selectedFile}
+        sessionName={sessionName}
+        showMarkdownPreview={showMarkdownPreview}
+        showCsvPreview={showCsvPreview}
+        theme={theme}
+        contentRef={contentRef}
+        getHighlightedCode={getHighlightedCode}
+      />
     </div>
   )
 }
@@ -242,6 +306,7 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [rootDir, setRootDir] = useState('')
   const [showMarkdownPreview, setShowMarkdownPreview] = useState(false)
+  const [showCsvPreview, setShowCsvPreview] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
   const [buttonPos, setButtonPos] = useState({ top: 0, right: 0 })
   const selectedTextRef = useRef('')
@@ -400,6 +465,7 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
   const fetchFileContent = async (path: string) => {
     setLoadingFile(true)
     setShowMarkdownPreview(path.endsWith('.md'))
+    setShowCsvPreview(isCsvPath(path))
     setHasSelection(false)
 
     // Auto-collapse sidebar on mobile when selecting a file
@@ -649,12 +715,14 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
             sessionName={sessionName}
             sidebarCollapsed={sidebarCollapsed}
             showMarkdownPreview={showMarkdownPreview}
+            showCsvPreview={showCsvPreview}
             theme={theme}
             contentRef={contentRef}
             getHighlightedCode={getHighlightedCode}
             onSendPathToTerminal={handleSendPathToTerminal}
             onToggleSidebar={() => setSidebarCollapsed(false)}
             onTogglePreview={() => setShowMarkdownPreview(!showMarkdownPreview)}
+            onToggleCsvPreview={() => setShowCsvPreview(!showCsvPreview)}
             renderBreadcrumb={renderBreadcrumb}
           />
         ) : (
