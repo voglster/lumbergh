@@ -240,6 +240,16 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
   const [loadingFile, setLoadingFile] = useState(false)
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const saved = localStorage.getItem('lumbergh:fileBrowserSidebarWidth')
+    if (saved) {
+      const parsed = parseInt(saved, 10)
+      if (!isNaN(parsed) && parsed >= 160 && parsed <= 800) return parsed
+    }
+    return 256
+  })
+  const [isResizing, setIsResizing] = useState(false)
+  const sidebarRef = useRef<HTMLDivElement>(null)
   const [rootDir, setRootDir] = useState('')
   const [showMarkdownPreview, setShowMarkdownPreview] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
@@ -277,6 +287,37 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
     document.addEventListener('selectionchange', handleSelectionChange)
     return () => document.removeEventListener('selectionchange', handleSelectionChange)
   }, [handleSelectionChange])
+
+  useEffect(() => {
+    if (!isResizing) return
+    const onMove = (clientX: number) => {
+      if (!sidebarRef.current) return
+      const left = sidebarRef.current.getBoundingClientRect().left
+      const width = Math.min(Math.max(clientX - left, 160), 800)
+      setSidebarWidth(width)
+    }
+    const onMouseMove = (e: MouseEvent) => onMove(e.clientX)
+    const onTouchMove = (e: TouchEvent) => onMove(e.touches[0].clientX)
+    const onEnd = () => setIsResizing(false)
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onEnd)
+    document.addEventListener('touchmove', onTouchMove)
+    document.addEventListener('touchend', onEnd)
+    document.body.style.userSelect = 'none'
+    document.body.style.cursor = 'col-resize'
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onEnd)
+      document.removeEventListener('touchmove', onTouchMove)
+      document.removeEventListener('touchend', onEnd)
+      document.body.style.userSelect = ''
+      document.body.style.cursor = ''
+    }
+  }, [isResizing])
+
+  useEffect(() => {
+    localStorage.setItem('lumbergh:fileBrowserSidebarWidth', sidebarWidth.toString())
+  }, [sidebarWidth])
 
   // Re-initialize mermaid when theme changes
   useEffect(() => {
@@ -482,11 +523,11 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
               style={{ paddingLeft: `${depth * 16 + 8}px` }}
             >
               {isExpanded ? (
-                <ChevronDown size={14} className="text-text-muted" />
+                <ChevronDown size={14} className="text-text-muted flex-shrink-0" />
               ) : (
-                <ChevronRight size={14} className="text-text-muted" />
+                <ChevronRight size={14} className="text-text-muted flex-shrink-0" />
               )}
-              <Folder size={16} className="text-yellow-400" />
+              <Folder size={16} className="text-yellow-400 flex-shrink-0" />
               <span className="text-text-secondary truncate">{name}</span>
             </button>
             {isExpanded && renderTree(tree, entry.path, depth + 1)}
@@ -504,11 +545,13 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
           }`}
           style={{ paddingLeft: `${depth * 16 + 8}px` }}
         >
-          <span className="text-text-muted text-xs opacity-0 w-3.5" />
-          <FileText size={16} className="text-text-muted" />
+          <span className="text-text-muted text-xs opacity-0 w-3.5 flex-shrink-0" />
+          <FileText size={16} className="text-text-muted flex-shrink-0" />
           <span className="text-text-secondary truncate">{name}</span>
           {entry.size !== null && (
-            <span className="text-text-muted text-xs ml-auto">{formatSize(entry.size)}</span>
+            <span className="text-text-muted text-xs ml-auto flex-shrink-0">
+              {formatSize(entry.size)}
+            </span>
           )}
         </button>
       )
@@ -613,28 +656,48 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
     <div className="h-full flex">
       {/* File tree sidebar */}
       {!sidebarCollapsed && (
-        <div className="w-64 flex-shrink-0 border-r border-border-default overflow-auto">
-          <div className="p-2 bg-bg-surface border-b border-border-default flex justify-between items-center">
-            <span className="text-sm text-text-tertiary">Files</span>
-            <div className="flex gap-1">
-              <button
-                onClick={() => fetchFiles()}
-                className="text-xs px-2 py-1 bg-control-bg hover:bg-control-bg-hover rounded"
-                title="Refresh"
-              >
-                <RefreshCw size={14} />
-              </button>
-              <button
-                onClick={() => setSidebarCollapsed(true)}
-                className="text-xs px-2 py-1 bg-control-bg hover:bg-control-bg-hover rounded"
-                title="Collapse sidebar"
-              >
-                <PanelLeftClose size={14} />
-              </button>
+        <>
+          <div
+            ref={sidebarRef}
+            className="flex-shrink-0 overflow-auto"
+            style={{ width: `${sidebarWidth}px` }}
+          >
+            <div className="p-2 bg-bg-surface border-b border-border-default flex justify-between items-center">
+              <span className="text-sm text-text-tertiary">Files</span>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => fetchFiles()}
+                  className="text-xs px-2 py-1 bg-control-bg hover:bg-control-bg-hover rounded"
+                  title="Refresh"
+                >
+                  <RefreshCw size={14} />
+                </button>
+                <button
+                  onClick={() => setSidebarCollapsed(true)}
+                  className="text-xs px-2 py-1 bg-control-bg hover:bg-control-bg-hover rounded"
+                  title="Collapse sidebar"
+                >
+                  <PanelLeftClose size={14} />
+                </button>
+              </div>
             </div>
+            <div className="py-1">{renderTree(tree, '', 0)}</div>
           </div>
-          <div className="py-1">{renderTree(tree, '', 0)}</div>
-        </div>
+          <div
+            onMouseDown={(e) => {
+              e.preventDefault()
+              setIsResizing(true)
+            }}
+            onTouchStart={(e) => {
+              e.preventDefault()
+              setIsResizing(true)
+            }}
+            className={`w-1 cursor-col-resize flex-shrink-0 touch-none border-r border-border-default hover:bg-blue-500 transition-colors ${
+              isResizing ? 'bg-blue-500' : ''
+            }`}
+            title="Drag to resize"
+          />
+        </>
       )}
 
       {/* File content viewer */}
