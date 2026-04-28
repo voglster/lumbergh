@@ -289,9 +289,42 @@ export default memo(function Terminal({
     // xterm.js's _keyPress handler from also sending \r (carriage return/submit).
     // When the custom handler blocks only keydown, xterm.js doesn't call preventDefault(),
     // so the browser fires keypress which leaks through and sends \r to the terminal.
+    // Ctrl+V / Cmd+V (without Shift): treat as paste so clipboard-injection
+    // tools like Wispr Flow work. xterm.js would otherwise send literal ^V
+    // to the PTY, since browsers reserve Ctrl+Shift+V for terminal paste.
+    // Use Ctrl+Alt+V as the escape hatch to send a literal ^V byte.
+    const isPasteShortcut = (event: KeyboardEvent) =>
+      event.type === 'keydown' &&
+      (event.ctrlKey || event.metaKey) &&
+      !event.shiftKey &&
+      !event.altKey &&
+      (event.key === 'v' || event.key === 'V')
+
+    const handlePasteShortcut = () => {
+      navigator.clipboard
+        .readText()
+        .then((text) => {
+          if (!text) return
+          const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+          if (normalized.includes('\n')) {
+            sendViaApi(normalized, false)
+          } else {
+            sendRef.current(normalized)
+          }
+        })
+        .catch(() => {
+          // Clipboard read denied (insecure context or permission) — silently ignore
+        })
+    }
+
     term.attachCustomKeyEventHandler((event) => {
       // Ctrl+[ / Ctrl+] cycles sessions — let the window handler deal with it
       if (event.ctrlKey && (event.key === '[' || event.key === ']')) {
+        return false
+      }
+      if (isPasteShortcut(event)) {
+        event.preventDefault()
+        handlePasteShortcut()
         return false
       }
       if (event.key === 'Enter' && event.shiftKey) {
