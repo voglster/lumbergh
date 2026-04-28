@@ -149,6 +149,9 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset, clou
 
   const handleClick = () => {
     if (!isEditing) {
+      if (session.paused) {
+        onUpdate(session.name, { paused: false })
+      }
       navigate(`/session/${session.name}`)
     }
   }
