@@ -91,6 +91,14 @@ def capture_pane_content(session_name: str) -> str:
     libtmux (which spawns 4+ subprocesses per call for session/window/pane
     resolution and can cause GIL contention when called concurrently).
     """
+    # Capture only the visible pane (no scrollback). Then re-emit each line
+    # with explicit absolute cursor positioning into a freshly cleared
+    # screen. The naive ``\n``-joined dump that capture-pane returns has no
+    # row anchoring — when xterm.js writes it sequentially, any extra
+    # newlines (or a buffer that's already mid-scroll from a prior session)
+    # offsets every row by one and the visible state never recovers until a
+    # manual refit. Positioning each line absolutely makes the snapshot
+    # idempotent regardless of the receiving xterm's cursor state.
     try:
         result = subprocess.run(
             [
@@ -100,8 +108,6 @@ def capture_pane_content(session_name: str) -> str:
                 session_name,
                 "-p",  # print to stdout
                 "-e",  # include escape sequences (ANSI colors)
-                "-S",
-                "-",  # start of scrollback
             ],
             capture_output=True,
             encoding="utf-8",
@@ -110,7 +116,12 @@ def capture_pane_content(session_name: str) -> str:
         )
         if result.returncode != 0:
             return ""
-        return result.stdout
+        lines = result.stdout.splitlines()
+        # Reset attributes, clear screen, home cursor, then absolute-position each line
+        parts = ["\x1b[0m\x1b[H\x1b[2J"]
+        for i, line in enumerate(lines):
+            parts.append(f"\x1b[{i + 1};1H{line}\x1b[0m")
+        return "".join(parts)
     except Exception:
         return ""
 

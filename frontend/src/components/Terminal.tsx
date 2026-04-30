@@ -140,8 +140,31 @@ export default memo(function Terminal({
       fitAddonRef.current.fit()
       // Force canvas repaint - needed on mobile after layout changes
       termRef.current.refresh(0, termRef.current.rows - 1)
-      sendResizeRef.current(termRef.current.cols, termRef.current.rows)
+      const cols = termRef.current.cols
+      const rows = termRef.current.rows
+      // Cache for the next session-switch attach so the backend can spawn the
+      // new PTY at the correct size up-front (avoids the 80x24 reflow flash).
+      try {
+        localStorage.setItem('terminal-last-cols', String(cols))
+        localStorage.setItem('terminal-last-rows', String(rows))
+      } catch {
+        // localStorage unavailable - non-critical
+      }
+      sendResizeRef.current(cols, rows)
     }
+  }, [])
+
+  // Provide cached dimensions to the WebSocket so the backend can size the
+  // PTY before tmux attach. Uses last-fit values; safe fallback if missing.
+  const getInitialSize = useCallback(() => {
+    try {
+      const cols = parseInt(localStorage.getItem('terminal-last-cols') || '', 10)
+      const rows = parseInt(localStorage.getItem('terminal-last-rows') || '', 10)
+      if (cols > 0 && rows > 0) return { cols, rows }
+    } catch {
+      // localStorage unavailable
+    }
+    return null
   }, [])
 
   // Handle resize sync from another client (e.g., mobile resized while desktop is open)
@@ -172,6 +195,7 @@ export default memo(function Terminal({
     onResizeSync: handleResizeSync,
     onCopyMode: handleCopyMode,
     onConnect: handleConnect,
+    getInitialSize,
   })
 
   // Keep scrollModeRef in sync with state
@@ -207,12 +231,19 @@ export default memo(function Terminal({
     const termBg = style.getPropertyValue('--terminal-bg').trim()
     const termFg = style.getPropertyValue('--terminal-fg').trim()
 
+    // Initial xterm size must match the size we passed to the WebSocket so
+    // the backend's first capture-pane snapshot lands in a correctly-sized
+    // buffer. Without this, xterm starts at 80x24 default, the snapshot
+    // wraps/clips, and the visible state stays mangled until manual refit.
+    const cachedSize = getInitialSize()
     const term = new XTerm({
       cursorBlink: true,
       fontSize: initialFontSizeRef.current,
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-      scrollback: 10000, // Enable native scrollback for touch scrolling
+      scrollback: 0, // No xterm scrollback — tmux owns history (copy-mode); avoids buffer-overflow scroll quirks on session switch
       macOptionClickForcesSelection: true,
+      cols: cachedSize?.cols,
+      rows: cachedSize?.rows,
       theme: {
         background: termBg,
         foreground: termFg,

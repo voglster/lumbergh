@@ -451,12 +451,21 @@ async def get_copy_mode(session_name: str):
 
 
 @app.websocket("/api/session/{session_name}/stream")
-async def session_stream(websocket: WebSocket, session_name: str):
+async def session_stream(
+    websocket: WebSocket,
+    session_name: str,
+    cols: int | None = None,
+    rows: int | None = None,
+):
     """
     WebSocket endpoint for bidirectional terminal I/O with a tmux session.
 
     Uses session pooling to ensure one PTY per tmux session, even with
     multiple WebSocket clients (e.g., React StrictMode double-mounts).
+
+    Query params ``cols`` / ``rows`` (optional) hint the initial PTY size so
+    the first ``tmux attach`` doesn't land at 80x24 and reflow the agent's
+    UI before the client's first resize message arrives.
 
     Messages from client:
     - {"type": "input", "data": "..."} - Send keystrokes to terminal
@@ -472,9 +481,14 @@ async def session_stream(websocket: WebSocket, session_name: str):
 
     await websocket.accept()
 
+    initial_cols = cols if cols and 20 <= cols <= 500 else None
+    initial_rows = rows if rows and 5 <= rows <= 200 else None
+
     try:
         # Register this client with the session manager
-        await session_manager.register_client(session_name, websocket)
+        await session_manager.register_client(
+            session_name, websocket, initial_cols=initial_cols, initial_rows=initial_rows
+        )
 
         # Read messages from client and forward to PTY
         while True:
