@@ -570,13 +570,26 @@ def _init_repo(workdir: Path) -> None:
     """Create directory, git init, and make an initial commit."""
     workdir.mkdir(parents=True, exist_ok=True)
     (workdir / "README.md").write_text("")
-    subprocess.run(["git", "init"], cwd=workdir, capture_output=True, check=True)
-    subprocess.run(["git", "add", "README.md"], cwd=workdir, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "init"],
+        cwd=workdir,
+        capture_output=True,
+        encoding="utf-8",
+        check=True,
+    )
+    subprocess.run(
+        ["git", "add", "README.md"],
+        cwd=workdir,
+        capture_output=True,
+        encoding="utf-8",
+        check=True,
+    )
     # Try with user's git config first, fall back to defaults if not configured
     result = subprocess.run(
         ["git", "commit", "-m", "Initial commit"],
         cwd=workdir,
         capture_output=True,
+        encoding="utf-8",
     )
     if result.returncode != 0:
         subprocess.run(
@@ -592,6 +605,7 @@ def _init_repo(workdir: Path) -> None:
             ],
             cwd=workdir,
             capture_output=True,
+            encoding="utf-8",
             check=True,
         )
 
@@ -912,7 +926,6 @@ def _list_pane_children(pane_pid: str) -> list[dict]:
 def _kill_pane_children(pane_pid: str) -> None:
     if not pane_pid:
         return
-
     try:
         pid_int = int(pane_pid)
     except (ValueError, TypeError):
@@ -978,11 +991,12 @@ async def pause_session(name: str, force: bool = False):
 
 
 @router.post("/{name}/resume")
-async def resume_session(name: str, force: bool = False):
+async def resume_session(name: str):
     """Resume a paused session by restarting Claude Code with --continue.
 
-    If the pane has extra child processes, responds 409 with the list so the
-    UI can confirm before killing them. Pass `?force=true` to skip the check.
+    Any lingering child processes from the previous run are killed before the
+    agent is relaunched — the user has already chosen to resume, so there's
+    nothing to confirm.
     """
     live = get_live_sessions()
     stored = get_stored_sessions()
@@ -1000,17 +1014,6 @@ async def resume_session(name: str, force: bool = False):
 
     if name in live:
         shell_pid = _get_pane_pid(name)
-        children = _list_pane_children(shell_pid)
-
-        if not force and len(children) > 1:
-            raise HTTPException(
-                status_code=409,
-                detail={
-                    "code": "extra_children",
-                    "message": "Pane has extra processes that will also be killed.",
-                    "children": children,
-                },
-            )
 
         if shell_pid:
             _kill_pane_children(shell_pid)

@@ -8,6 +8,9 @@ interface UseTerminalSocketOptions {
   onCopyMode?: (active: boolean) => void
   onConnect?: () => void
   onDisconnect?: () => void
+  // Hint for the backend so the new PTY spawns at the right size and tmux
+  // doesn't reflow the agent UI through 80x24 on every session switch.
+  getInitialSize?: () => { cols: number; rows: number } | null
 }
 
 interface UseTerminalSocketResult {
@@ -25,7 +28,12 @@ export function useTerminalSocket({
   onCopyMode,
   onConnect,
   onDisconnect,
+  getInitialSize,
 }: UseTerminalSocketOptions): UseTerminalSocketResult {
+  const getInitialSizeRef = useRef(getInitialSize)
+  useEffect(() => {
+    getInitialSizeRef.current = getInitialSize
+  }, [getInitialSize])
   const wsRef = useRef<WebSocket | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -54,7 +62,10 @@ export function useTerminalSocket({
       return
     }
 
-    const wsUrl = `${getWsBase()}/session/${encodeURIComponent(sessionName)}/stream`
+    const size = getInitialSizeRef.current?.()
+    const sizeQuery =
+      size && size.cols > 0 && size.rows > 0 ? `?cols=${size.cols}&rows=${size.rows}` : ''
+    const wsUrl = `${getWsBase()}/session/${encodeURIComponent(sessionName)}/stream${sizeQuery}`
     const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
