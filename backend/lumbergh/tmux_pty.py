@@ -23,9 +23,9 @@ from lumbergh.constants import TMUX_CMD
 IS_WINDOWS = sys.platform == "win32"
 
 if not IS_WINDOWS:
-    import fcntl
-    import pty
-    import termios
+    import fcntl  # type: ignore
+    import pty  # type: ignore
+    import termios  # type: ignore
 
 
 def _tmux_server() -> libtmux.Server:
@@ -226,7 +226,7 @@ class TmuxPtySession:
             self._spawn_unix()
 
     def _spawn_unix(self) -> None:
-        pid, fd = pty.fork()
+        pid, fd = pty.fork()  # type: ignore
 
         if pid == 0:
             # Child process - exec tmux attach
@@ -240,8 +240,8 @@ class TmuxPtySession:
         else:
             self.pid = pid
             self.master_fd = fd
-            flags = fcntl.fcntl(fd, fcntl.F_GETFL)
-            fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+            flags = fcntl.fcntl(fd, fcntl.F_GETFL)  # type: ignore
+            fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)  # type: ignore
             self._set_winsize(self.cols, self.rows)
 
     def _spawn_windows(self) -> None:
@@ -271,7 +271,7 @@ class TmuxPtySession:
         if self.master_fd is None:
             return
         winsize = struct.pack("HHHH", rows, cols, 0, 0)
-        fcntl.ioctl(self.master_fd, termios.TIOCSWINSZ, winsize)
+        fcntl.ioctl(self.master_fd, termios.TIOCSWINSZ, winsize)  # type: ignore
 
     def resize(self, cols: int, rows: int) -> None:
         """Resize the terminal."""

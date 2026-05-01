@@ -1803,7 +1803,13 @@ def _reword_head(repo: Repo, message: str) -> dict:
 
 def _abort_rebase(cwd: Path) -> None:
     """Attempt to abort an in-progress rebase."""
-    subprocess.run(["git", "rebase", "--abort"], cwd=str(cwd), capture_output=True, timeout=10)
+    subprocess.run(
+        ["git", "rebase", "--abort"],
+        cwd=str(cwd),
+        capture_output=True,
+        encoding="utf-8",
+        timeout=10,
+    )
 
 
 def _reword_via_rebase(cwd: Path, repo: Repo, commit_hash: str, message: str) -> dict:
@@ -1827,7 +1833,8 @@ def _reword_via_rebase(cwd: Path, repo: Repo, commit_hash: str, message: str) ->
             ["git", "rebase", "-i", f"{commit_hash}^"],
             cwd=str(cwd),
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+            errors="replace",
             env={**os.environ, **env},
             timeout=30,
         )
