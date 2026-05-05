@@ -19,15 +19,13 @@ export default function SessionCardActions({
 }: Props) {
   return (
     <div className="flex items-center gap-1 flex-shrink-0">
-      {(alive || paused) && (
-        <button
-          onClick={onTogglePaused}
-          className={`transition-colors p-1 ${paused ? 'text-yellow-400 hover:text-green-400' : 'text-text-muted hover:text-yellow-400'}`}
-          title={paused ? 'Resume session' : 'Pause session'}
-        >
-          {paused ? <Play size={16} /> : <Pause size={16} />}
-        </button>
-      )}
+      <button
+        onClick={onTogglePaused}
+        className={`transition-colors p-1 ${paused || !alive ? 'text-yellow-400 hover:text-green-400' : 'text-text-muted hover:text-yellow-400'}`}
+        title={!alive ? 'Restart session' : paused ? 'Resume session' : 'Pause session'}
+      >
+        {paused || !alive ? <Play size={16} /> : <Pause size={16} />}
+      </button>
       <button
         onClick={onEdit}
         data-testid="session-edit-btn"

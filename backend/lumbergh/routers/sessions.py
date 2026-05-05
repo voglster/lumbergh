@@ -965,7 +965,13 @@ async def resume_session(name: str):
             errors="replace",
         )
     else:
-        # Tmux session is dead — recreate it
+        # Tmux session is dead — drop any cached PTY tied to the old tmux
+        # instance, then recreate. Without the eviction, the next websocket
+        # attach would reuse the stale PTY (closed master_fd) and silently
+        # drop all keyboard input.
+        from lumbergh.session_manager import session_manager
+
+        await session_manager.evict(name)
         create_tmux_session(name, workdir, launch_cmd)
 
     # Mark as resumed in TinyDB

@@ -195,6 +195,7 @@ class SessionManager:
         if not is_alive:
             logger.warning(f"Session {session_name} died, notifying clients")
             await self._notify_session_dead(session_name)
+            await self.evict(session_name)
             return consecutive_eof, True
         return consecutive_eof, False
 
@@ -439,6 +440,28 @@ class SessionManager:
     def get_session(self, session_name: str) -> ManagedSession | None:
         """Get a managed session by name."""
         return self._sessions.get(session_name)
+
+    async def evict(self, session_name: str) -> None:
+        """Drop a cached PTY without disturbing connected clients.
+
+        Used when the underlying tmux session is gone (died, killed, or about
+        to be recreated by /resume). Clients keep their websockets — they'll
+        receive ``session_dead`` separately and reload — but subsequent
+        register_client() calls will create a fresh PTY for the new tmux
+        session instead of reusing the dead one.
+        """
+        async with self._lock:
+            managed = self._sessions.pop(session_name, None)
+            if managed is None:
+                return
+            if managed.read_task:
+                managed.read_task.cancel()
+            if managed.copy_mode_task:
+                managed.copy_mode_task.cancel()
+            try:
+                managed.pty.close()
+            except Exception as e:
+                logger.warning(f"Error closing PTY for {session_name}: {e}")
 
 
 # Global singleton instance
