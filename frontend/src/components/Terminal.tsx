@@ -20,8 +20,10 @@ interface TerminalProps {
   isVisible?: boolean
   showSummary?: boolean
   onShowSummary?: () => void
+  hideHeader?: boolean
 }
 
+// eslint-disable-next-line complexity
 export default memo(function Terminal({
   sessionName,
   onSendReady,
@@ -33,6 +35,7 @@ export default memo(function Terminal({
   isVisible = true,
   showSummary = false,
   onShowSummary,
+  hideHeader = false,
 }: TerminalProps) {
   const { theme } = useTheme()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -593,30 +596,32 @@ export default memo(function Terminal({
 
   return (
     <div className="h-full w-full relative flex flex-col">
-      <TerminalHeader
-        sessionName={sessionName}
-        isConnected={isConnected}
-        fontSize={fontSize}
-        onFontSizeChange={setFontSize}
-        headerExpanded={headerExpanded}
-        onHeaderExpandedChange={setHeaderExpanded}
-        isTouchDevice={isTouchDevice}
-        scrollMode={scrollMode}
-        onToggleScrollMode={toggleScrollMode}
-        onSendRaw={(data) => {
-          sendRef.current(data)
-          termRef.current?.focus()
-        }}
-        onSendViaApi={sendViaApi}
-        onSendTmuxCommand={sendTmuxCommand}
-        onFit={handleFit}
-        onBack={onBack}
-        onReset={onReset}
-        onCycleSession={onCycleSession}
-        showSessionDots={showSessionDots}
-        showSummary={showSummary}
-        onShowSummary={onShowSummary}
-      />
+      {!hideHeader && (
+        <TerminalHeader
+          sessionName={sessionName}
+          isConnected={isConnected}
+          fontSize={fontSize}
+          onFontSizeChange={setFontSize}
+          headerExpanded={headerExpanded}
+          onHeaderExpandedChange={setHeaderExpanded}
+          isTouchDevice={isTouchDevice}
+          scrollMode={scrollMode}
+          onToggleScrollMode={toggleScrollMode}
+          onSendRaw={(data) => {
+            sendRef.current(data)
+            termRef.current?.focus()
+          }}
+          onSendViaApi={sendViaApi}
+          onSendTmuxCommand={sendTmuxCommand}
+          onFit={handleFit}
+          onBack={onBack}
+          onReset={onReset}
+          onCycleSession={onCycleSession}
+          showSessionDots={showSessionDots}
+          showSummary={showSummary}
+          onShowSummary={onShowSummary}
+        />
+      )}
 
       {/* Error display (only show if session is not dead - dead sessions have their own overlay) */}
       {error && !sessionDead && (

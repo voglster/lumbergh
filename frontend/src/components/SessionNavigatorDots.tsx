@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { getApiBase } from '../config'
 import { useIsDesktop } from '../hooks/useMediaQuery'
 import type { SessionBase } from '../utils/sessionStatus'
@@ -20,6 +20,8 @@ interface Props {
 export default function SessionNavigatorDots({ currentSessionName, compact = false }: Props) {
   const isDesktop = useIsDesktop()
   const navigate = useNavigate()
+  const location = useLocation()
+  const routeSuffix = location.pathname.endsWith('/term') ? '/term' : ''
   const [sessions, setSessions] = useState<SessionBase[]>([])
   const prevStates = useRef<Record<string, string>>({})
   const [alerting, setAlerting] = useState<Record<string, boolean>>({})
@@ -94,7 +96,7 @@ export default function SessionNavigatorDots({ currentSessionName, compact = fal
       return (
         <div key={s.name} className="group relative shrink-0">
           <button
-            onClick={() => navigate(`/session/${s.name}`)}
+            onClick={() => navigate(`/session/${s.name}${routeSuffix}`)}
             className={`shrink-0 rounded-full transition-all ${colors.dot} flex items-center justify-center font-bold text-black/60 text-[8px] ${
               isCurrent
                 ? `w-6 h-6 ring-2 ${s.theOne ? 'ring-blue-400' : statusRingClasses[status.color]} ring-offset-1 ring-offset-[var(--bg-surface)]`
@@ -113,7 +115,7 @@ export default function SessionNavigatorDots({ currentSessionName, compact = fal
     return (
       <div key={s.name} className="group relative">
         <button
-          onClick={() => navigate(`/session/${s.name}`)}
+          onClick={() => navigate(`/session/${s.name}${routeSuffix}`)}
           className={`rounded-full transition-all ${colors.dot} flex items-center justify-center font-bold text-black/60 ${
             isCurrent
               ? `w-7 h-7 text-sm ring-2 ${s.theOne ? 'ring-blue-400' : statusRingClasses[status.color]} ring-offset-1 ring-offset-[var(--bg-surface)]`

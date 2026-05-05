@@ -7,6 +7,7 @@ import {
   MoreHorizontal,
   Eraser,
   Brain,
+  ExternalLink,
 } from 'lucide-react'
 import SessionNavigatorDots from './SessionNavigatorDots'
 
@@ -94,6 +95,7 @@ export default function TerminalHeader({
           <div className="flex-1" />
         )}
         <QuickActions
+          sessionName={sessionName}
           isConnected={isConnected}
           isTouchDevice={isTouchDevice}
           scrollMode={scrollMode}
@@ -126,6 +128,7 @@ export default function TerminalHeader({
 }
 
 function QuickActions({
+  sessionName,
   isConnected,
   isTouchDevice,
   scrollMode,
@@ -137,6 +140,7 @@ function QuickActions({
   onHeaderExpandedChange,
   onShowSummary,
 }: {
+  sessionName: string
   isConnected: boolean
   isTouchDevice: boolean
   scrollMode: boolean
@@ -148,8 +152,24 @@ function QuickActions({
   onHeaderExpandedChange: (expanded: boolean) => void
   onShowSummary?: () => void
 }) {
+  const popOut = () => {
+    window.open(
+      `/session/${encodeURIComponent(sessionName)}/term`,
+      `lumbergh-term-${sessionName}`,
+      'width=900,height=600,menubar=no,toolbar=no,location=no,status=no'
+    )
+  }
   return (
     <div className="flex items-center gap-2 shrink-0">
+      {!isTouchDevice && (
+        <button
+          onClick={popOut}
+          className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover rounded"
+          title="Pop out terminal to new window"
+        >
+          <ExternalLink size={14} />
+        </button>
+      )}
       {onShowSummary && !showSummary && (
         <button
           onClick={onShowSummary}
