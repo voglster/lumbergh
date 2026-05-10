@@ -22,37 +22,64 @@ jobs:
           python-version: "3.11"
       - name: Build
         run: VERSION="${GITHUB_REF_NAME#v}" ./build.sh
-      - name: Generate AI release notes
+      - name: Generate release notes
         env:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
           LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          TAG: ${{ github.ref_name }}
         run: |
           PREV=$(git tag -l 'v*' --sort=-v:refname | sed -n '2p')
           PREV="${PREV:-$(git rev-list --max-parents=0 HEAD)}"
           COMMITS="$(git log --oneline ${PREV}..HEAD)"
           STATS="$(git diff --stat ${PREV}..HEAD)"
-          python3 -c "
-          import json, urllib.request, os
-          base = os.environ['LLM_BASE_URL'].rstrip('/')
-          body = json.dumps({
-            'model': os.environ['LLM_MODEL'],
-            'max_tokens': 1024,
-            'messages': [{'role': 'user', 'content': '''Generate concise release notes for Lumbergh ${{ github.ref_name }}.
-          Lumbergh is a web dashboard for supervising Claude Code AI sessions in tmux.
-          Commits since last release:
-          ${COMMITS}
-          Diff stats:
-          ${STATS}
-          Format: brief intro, then bulleted list grouped by category (Features, Fixes, Other). Keep it short.'''}]
-          }).encode()
-          req = urllib.request.Request(f'{base}/chat/completions',
-            data=body,
-            headers={'Authorization': f\"Bearer {os.environ['LLM_API_KEY']}\",
-                     'Content-Type': 'application/json'})
-          resp = json.loads(urllib.request.urlopen(req).read())
-          print(resp['choices'][0]['message']['content'])
-          " > RELEASE_NOTES.md
+          export PREV COMMITS STATS
+          python3 <<'PY'
+          import json, os, sys, urllib.request, urllib.error
+
+          tag = os.environ['TAG']
+          commits = os.environ.get('COMMITS', '')
+          stats = os.environ.get('STATS', '')
+
+          fallback = f"## {tag}\n\n### Changes\n\n"
+          if commits.strip():
+              fallback += "\n".join(f"- {line}" for line in commits.splitlines()) + "\n"
+          else:
+              fallback += "_No commits since previous release._\n"
+
+          notes = None
+          try:
+              base = os.environ['LLM_BASE_URL'].rstrip('/')
+              prompt = (
+                  f"Generate concise release notes for Lumbergh {tag}.\n"
+                  "Lumbergh is a web dashboard for supervising Claude Code AI sessions in tmux.\n"
+                  f"Commits since last release:\n{commits}\n"
+                  f"Diff stats:\n{stats}\n"
+                  "Format: brief intro, then bulleted list grouped by category "
+                  "(Features, Fixes, Other). Keep it short."
+              )
+              body = json.dumps({
+                  'model': os.environ['LLM_MODEL'],
+                  'max_tokens': 1024,
+                  'messages': [{'role': 'user', 'content': prompt}],
+              }).encode()
+              req = urllib.request.Request(
+                  f'{base}/chat/completions',
+                  data=body,
+                  headers={
+                      'Authorization': f"Bearer {os.environ['LLM_API_KEY']}",
+                      'Content-Type': 'application/json',
+                  },
+              )
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  payload = json.loads(resp.read())
+              notes = payload['choices'][0]['message']['content'].strip() or None
+          except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError, KeyError, ValueError) as e:
+              print(f"::warning::AI release notes unavailable ({e!r}); using commit-log fallback", file=sys.stderr)
+
+          with open('RELEASE_NOTES.md', 'w') as fh:
+              fh.write(notes if notes else fallback)
+          PY
       - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
