@@ -23,12 +23,16 @@ export default function Scratchpad({ sessionName, onFocusTerminal }: ScratchpadP
     setLoading(true)
   }
 
-  // Fetch content on session change - localStorage draft takes priority over backend
+  // Fetch content on session change - localStorage draft takes priority over backend.
+  // The cancelled flag prevents a stale fetch (from a previous session) from
+  // calling setContent after the user has switched sessions, which would otherwise
+  // poison the new session's localStorage draft and persist into its backend.
   useEffect(() => {
+    let cancelled = false
     fetch(`${getApiBase()}/sessions/${sessionName}/scratchpad`)
       .then((res) => res.json())
       .then((data) => {
-        // Only use backend content if we don't have a localStorage draft for this session
+        if (cancelled) return
         const draftKey = `lumbergh-draft:scratchpad:${sessionName}`
         const hasDraft = localStorage.getItem(draftKey) !== null
         if (!hasDraft) {
@@ -37,9 +41,13 @@ export default function Scratchpad({ sessionName, onFocusTerminal }: ScratchpadP
         setLoading(false)
       })
       .catch((err) => {
+        if (cancelled) return
         console.error('Failed to fetch scratchpad:', err)
         setLoading(false)
       })
+    return () => {
+      cancelled = true
+    }
   }, [sessionName, setContent])
 
   const saveContent = useCallback(
