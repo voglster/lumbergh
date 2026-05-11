@@ -1,0 +1,52 @@
+# systemd service unit for lumbergh. Runs as the unprivileged %i user.
+#
+# Install:
+#   sudo cp contrib/systemd/lumbergh.service /etc/systemd/system/lumbergh@.service
+#   sudo cp contrib/systemd/lumbergh.env.example /etc/default/lumbergh   # optional
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now lumbergh@<your-username>.service
+#
+# Out of the box this binds lumbergh to 0.0.0.0:8420. To restrict it to your
+# Tailscale interface (or pass any other CLI flag), edit /etc/default/lumbergh
+# and set LUMBERGH_ARGS=--tailscale-only — see lumbergh.env.example.
+#
+# Logs:    journalctl -u lumbergh@<your-username>.service -f
+# Data:    ~<user>/.config/lumbergh/ (override with LUMBERGH_DATA_DIR=)
+#
+# Requires `lumbergh` on PATH for the target user (e.g. via `uv tool install
+# pylumbergh`, which symlinks into ~/.local/bin), plus tmux and git. Tailscale
+# is only needed if you pass --tailscale-only.
+
+[Unit]
+Description=Lumbergh AI session supervisor (user %i)
+Documentation=https://voglster.github.io/lumbergh/
+After=network-online.target tailscaled.service
+Wants=network-online.target tailscaled.service
+
+[Service]
+Type=simple
+User=%i
+Group=%i
+WorkingDirectory=/home/%i
+Environment=PATH=/home/%i/.local/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=-/etc/default/lumbergh
+ExecStart=/home/%i/.local/bin/lumbergh $LUMBERGH_ARGS
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=15
+
+# Hardening. Lumbergh needs to write project files throughout $HOME (it
+# supervises agents that edit code) and must share /tmp with the user's
+# interactive shells so tmux sockets at /tmp/tmux-<uid> are visible, so
+# ProtectHome and PrivateTmp are deliberately left off.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

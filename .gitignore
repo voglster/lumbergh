@@ -54,3 +54,6 @@ data/
 # Lumbergh package build artifacts
 backend/lumbergh/frontend_dist/
 !backend/lumbergh/frontend_dist/.gitkeep
+
+# Working artifact for /bpe:commit-message
+commit-msg.md
