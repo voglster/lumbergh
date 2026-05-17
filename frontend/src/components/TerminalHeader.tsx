@@ -8,6 +8,7 @@ import {
   Eraser,
   Brain,
   ExternalLink,
+  RefreshCw,
 } from 'lucide-react'
 import SessionNavigatorDots from './SessionNavigatorDots'
 
@@ -299,6 +300,14 @@ function ExpandedRow({
             Reset
           </button>
         )}
+        <button
+          onClick={() => window.location.reload()}
+          className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover rounded flex items-center gap-1"
+          title="Force reload the page (useful if the connection is stuck)"
+        >
+          <RefreshCw size={14} />
+          Reload
+        </button>
       </div>
       {/* Quick buttons - right aligned */}
       <div className="flex items-center gap-2 shrink-0">

@@ -153,7 +153,34 @@ export function useTerminalSocket({
   useEffect(() => {
     connect()
 
+    // When the PWA/tab resumes (iOS standalone aggressively suspends background
+    // tabs and may kill the underlying socket without firing onclose), probe
+    // and reconnect if needed. Backgrounded setTimeouts may also be paused, so
+    // we can't rely on the 2s onclose reconnect alone.
+    const ensureConnected = () => {
+      if (sessionDeadRef.current) return
+      const ws = wsRef.current
+      if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current)
+          reconnectTimeoutRef.current = null
+        }
+        connectRef.current()
+      }
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') ensureConnected()
+    }
+    const onPageShow = () => ensureConnected()
+    const onOnline = () => ensureConnected()
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pageshow', onPageShow)
+    window.addEventListener('online', onOnline)
+
     return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pageshow', onPageShow)
+      window.removeEventListener('online', onOnline)
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current)
         reconnectTimeoutRef.current = null

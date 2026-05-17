@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard'
 import LoginPage from './pages/LoginPage'
 import SessionDetail from './pages/SessionDetail'
 import TerminalWindow from './pages/TerminalWindow'
+import PWAUpdatePrompt from './components/PWAUpdatePrompt'
 
 function App() {
   const { loading, authenticated } = useAuth()
@@ -12,11 +13,14 @@ function App() {
   if (!authenticated) return <LoginPage />
 
   return (
-    <Routes>
-      <Route path="/" element={<Dashboard />} />
-      <Route path="/session/:name" element={<SessionDetail />} />
-      <Route path="/session/:name/term" element={<TerminalWindow />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/session/:name" element={<SessionDetail />} />
+        <Route path="/session/:name/term" element={<TerminalWindow />} />
+      </Routes>
+      <PWAUpdatePrompt />
+    </>
   )
 }
 
