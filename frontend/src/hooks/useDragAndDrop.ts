@@ -57,7 +57,7 @@ export function useDragAndDrop<T>({
       onDragStart: () => handleDragStart(index),
       onDragOver: (e: React.DragEvent) => handleDragOver(e, index),
       onDragEnd: handleDragEnd,
-      className: `${dragIndex === index ? 'opacity-50' : ''} ${dragOverIndex === index ? 'border-t-2 border-blue-500' : ''}`,
+      className: `${dragIndex === index ? 'opacity-50' : ''} ${dragOverIndex === index ? 'border-t-2 border-action' : ''}`,
     }),
     [dragIndex, dragOverIndex, handleDragStart, handleDragOver, handleDragEnd]
   )
@@ -148,7 +148,7 @@ export function useScopedDragAndDrop<T, S extends string>({
       onDragStart: () => handleDragStart(index, scope),
       onDragOver: (e: React.DragEvent) => handleDragOver(e, index, scope),
       onDragEnd: handleDragEnd,
-      className: `${dragScope === scope && dragIndex === index ? 'opacity-50' : ''} ${dragScope === scope && dragOverIndex === index ? 'border-t-2 border-blue-500' : ''}`,
+      className: `${dragScope === scope && dragIndex === index ? 'opacity-50' : ''} ${dragScope === scope && dragOverIndex === index ? 'border-t-2 border-action' : ''}`,
     }),
     [dragIndex, dragOverIndex, dragScope, handleDragStart, handleDragOver, handleDragEnd]
   )

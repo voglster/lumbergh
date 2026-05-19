@@ -83,7 +83,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (value: boolean) => v
       aria-checked={on}
       onClick={() => onChange(!on)}
       className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
-        on ? 'bg-blue-600' : 'bg-control-bg-hover'
+        on ? 'bg-action' : 'bg-control-bg-hover'
       }`}
     >
       <span
@@ -122,7 +122,7 @@ export default function GeneralSettings({
     <>
       {guiltTrip && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
-          <div className="bg-bg-surface rounded-lg w-full max-w-sm border border-border-default p-6 space-y-4 text-center">
+          <div className="bg-bg-surface rounded-[var(--radius-xl)] w-full max-w-sm border border-border-default p-6 space-y-4 text-center">
             <div className="text-4xl leading-none">
               {guiltTrip.isMilton ? (
                 <span className="font-mono tracking-tighter">-_-</span>
@@ -148,7 +148,7 @@ export default function GeneralSettings({
               <button
                 type="button"
                 onClick={() => setGuiltTrip(null)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors text-sm"
+                className="px-4 py-2 bg-action hover:bg-action/80 text-white rounded-[var(--radius-md)] transition-colors text-sm"
               >
                 Fine, keep it on
               </button>
@@ -167,7 +167,7 @@ export default function GeneralSettings({
             value={repoSearchDir}
             onChange={(e) => onRepoSearchDirChange(e.target.value)}
             placeholder="e.g., ~/src or /home/user/projects"
-            className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-sm"
+            className="w-full px-3 py-2 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50 font-mono text-sm"
           />
           <p className="text-xs text-text-muted mt-1">Directory to search for git repositories</p>
         </div>
@@ -180,7 +180,7 @@ export default function GeneralSettings({
             step={10}
             value={gitGraphCommits}
             onChange={(e) => onGitGraphCommitsChange(e.target.value)}
-            className="w-32 px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-sm"
+            className="w-32 px-3 py-2 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50 font-mono text-sm"
           />
           <p className="text-xs text-text-muted mt-1">
             Number of commits to show in the git graph (10-1000)
@@ -192,7 +192,7 @@ export default function GeneralSettings({
             <select
               value={defaultAgent}
               onChange={(e) => onDefaultAgentChange(e.target.value)}
-              className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 text-sm"
+              className="w-full px-3 py-2 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50 text-sm"
             >
               {Object.entries(agentProviders).map(([key, provider]) => (
                 <option key={key} value={key}>
@@ -252,7 +252,7 @@ export default function GeneralSettings({
             min="0"
             value={scratchMaxAgeDays}
             onChange={(e) => onScratchMaxAgeDaysChange(e.target.value)}
-            className="w-24 px-2 py-1 text-sm bg-bg-base border border-border-default rounded focus:border-blue-500 focus:outline-none"
+            className="w-24 px-2 py-1 text-sm bg-bg-base border border-border-default rounded-[var(--radius-lg)] focus:border-action/50 focus:outline-none"
           />
         </div>
         <div className="flex items-center justify-between">
@@ -264,7 +264,7 @@ export default function GeneralSettings({
                 href="https://app.lumbergh.dev/privacy"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300"
+                className="text-action hover:text-action/80"
               >
                 What we collect
               </a>

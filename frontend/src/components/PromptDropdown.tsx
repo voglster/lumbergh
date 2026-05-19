@@ -51,7 +51,7 @@ export default function PromptDropdown({
           onMouseEnter={() => onHighlight(index)}
           className={`w-full px-3 py-2 text-left transition-colors flex items-center gap-2 ${
             index === highlightedIndex
-              ? 'bg-blue-600 text-text-primary'
+              ? 'bg-action text-text-primary'
               : 'text-text-primary hover:bg-control-bg-hover'
           }`}
         >
@@ -59,10 +59,10 @@ export default function PromptDropdown({
           <span
             className={`text-xs px-1.5 py-0.5 rounded ${
               index === highlightedIndex
-                ? 'bg-blue-700 text-blue-200'
+                ? 'bg-action/80 text-action/80'
                 : prompt.scope === 'project'
-                  ? 'bg-green-900 text-green-300'
-                  : 'bg-purple-900 text-purple-300'
+                  ? 'bg-success/20 text-success'
+                  : 'bg-purple/20 text-purple'
             }`}
           >
             {prompt.scope === 'project' ? 'P' : 'G'}

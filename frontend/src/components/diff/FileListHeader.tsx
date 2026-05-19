@@ -61,7 +61,7 @@ function RemoteButtons({
       <button
         onClick={onPull}
         disabled={isPulling}
-        className="flex items-center gap-1 px-2 py-1 bg-yellow-600/80 hover:bg-yellow-500/80 disabled:bg-control-bg-hover disabled:cursor-not-allowed rounded text-sm text-white transition-colors"
+        className="flex items-center gap-1 px-2 py-1 bg-warning/80 hover:bg-warning/80 disabled:bg-control-bg-hover disabled:cursor-not-allowed rounded text-sm text-white transition-colors"
         title={`${remoteStatus.behind} commit${remoteStatus.behind > 1 ? 's' : ''} behind ${remoteStatus.remote || 'origin'} — click to pull`}
       >
         <ArrowDown size={14} />
@@ -96,7 +96,7 @@ function CommitInfo({
     <>
       <span className="text-sm text-text-secondary truncate">
         <span
-          className="text-blue-400 font-mono cursor-pointer hover:underline"
+          className="text-action font-mono cursor-pointer hover:underline"
           title="Click to copy SHA"
           onClick={(e) => {
             e.stopPropagation()
@@ -107,7 +107,7 @@ function CommitInfo({
         >
           {commit.shortHash}
         </span>
-        {copiedSha && <span className="ml-1 text-xs text-green-400">Copied!</span>}
+        {copiedSha && <span className="ml-1 text-xs text-success">Copied!</span>}
         <span className="text-text-muted">: </span>
         <span className="text-text-tertiary">{commit.message}</span>
       </span>
@@ -119,7 +119,7 @@ function CommitInfo({
               false
             )
           }
-          className="text-sm text-text-muted hover:text-yellow-400 transition-colors shrink-0"
+          className="text-sm text-text-muted hover:text-warning transition-colors shrink-0"
           title="Send commit info to terminal"
         >
           <Play size={16} />
@@ -188,8 +188,8 @@ const FileListHeader = memo(function FileListHeader({
         )}
       </div>
       <div className="flex items-center gap-3 shrink-0 ml-2">
-        <span className="text-green-400 text-sm">+{data.stats.additions}</span>
-        <span className="text-red-400 text-sm">-{data.stats.deletions}</span>
+        <span className="text-success text-sm">+{data.stats.additions}</span>
+        <span className="text-danger text-sm">-{data.stats.deletions}</span>
         {isWorkingChanges && (
           <RemoteButtons
             remoteStatus={remoteStatus}
@@ -209,7 +209,7 @@ const FileListHeader = memo(function FileListHeader({
           <button
             onClick={onReset}
             disabled={isResetting || isCommitting || isGenerating}
-            className="px-2 py-1 text-text-tertiary hover:text-red-400 disabled:text-text-muted disabled:cursor-not-allowed text-sm transition-colors"
+            className="px-2 py-1 text-text-tertiary hover:text-danger disabled:text-text-muted disabled:cursor-not-allowed text-sm transition-colors"
             title="Revert all changes"
           >
             {isResetting ? '...' : <Undo2 size={16} />}

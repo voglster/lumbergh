@@ -116,7 +116,7 @@ export default function CsvViewer({ content, delimiter = '' }: Props) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Filter rows…"
-          className="text-xs px-2 py-1 rounded bg-control-bg border border-border-default text-text-secondary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-blue-500 w-56"
+          className="text-xs px-2 py-1 rounded bg-control-bg border border-border-default text-text-secondary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-action w-56"
         />
         <span className="text-xs text-text-muted">
           {debouncedQuery ? `${matched.toLocaleString()} of ` : ''}
@@ -127,7 +127,7 @@ export default function CsvViewer({ content, delimiter = '' }: Props) {
         </span>
       </div>
       {errors.length > 0 && (
-        <div className="px-3 py-1 text-xs border-b border-border-default bg-bg-surface text-yellow-500">
+        <div className="px-3 py-1 text-xs border-b border-border-default bg-bg-surface text-warning">
           {errors.length} parse warning{errors.length === 1 ? '' : 's'}: {errors[0].message}
         </div>
       )}
@@ -150,7 +150,7 @@ export default function CsvViewer({ content, delimiter = '' }: Props) {
                       type="button"
                       onClick={() => cycleSort(i)}
                       className={`w-full text-left px-3 py-1 hover:bg-control-bg-hover ${
-                        active ? 'text-blue-400' : 'text-text-secondary'
+                        active ? 'text-action' : 'text-text-secondary'
                       }`}
                       title="Click to sort"
                     >
@@ -181,7 +181,7 @@ export default function CsvViewer({ content, delimiter = '' }: Props) {
                       className="w-full h-full px-2 py-1 text-right text-text-muted hover:text-text-secondary hover:bg-control-bg-hover select-none flex items-center justify-end gap-1"
                       title="Copy row as TSV"
                     >
-                      {isCopied ? <Check size={12} className="text-green-500" /> : rowIdx + 1}
+                      {isCopied ? <Check size={12} className="text-success" /> : rowIdx + 1}
                     </button>
                   </td>
                   {headers.map((_, cIdx) => (

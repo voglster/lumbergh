@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
+import Button from './ui/Button'
 import { getApiBase } from '../config'
 import ModeToggle from './create-session/ModeToggle'
 import ExistingRepoForm from './create-session/ExistingRepoForm'
@@ -234,16 +235,16 @@ export default function CreateSessionModal({ onClose, onCreated }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 bg-bg-overlay flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-bg-overlay backdrop-blur-[8px] flex items-center justify-center z-50 p-4">
       <div
-        className="bg-bg-surface rounded-lg w-full max-w-md border border-border-default"
+        className="bg-bg-surface rounded-[var(--radius-2xl)] shadow-[var(--shadow-high)] w-full max-w-md border border-border-default"
         data-testid="create-session-modal"
       >
         <div className="flex items-center justify-between p-4 border-b border-border-default">
           <h2 className="text-lg font-semibold text-text-primary">New Session</h2>
           <button
             onClick={onClose}
-            className="text-text-tertiary hover:text-text-primary transition-colors"
+            className="w-7 h-7 rounded-full bg-control-bg hover:bg-control-bg-hover flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
           >
             <X size={20} />
           </button>
@@ -268,7 +269,7 @@ export default function CreateSessionModal({ onClose, onCreated }: Props) {
                     : 'auto from directory'
                 }
                 data-testid="session-name-input"
-                className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50"
               />
               {slug && (
                 <p className="text-xs text-text-muted mt-1">
@@ -318,7 +319,7 @@ export default function CreateSessionModal({ onClose, onCreated }: Props) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="e.g., Working on user authentication"
-              className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50"
             />
           </div>
 
@@ -395,7 +396,7 @@ export default function CreateSessionModal({ onClose, onCreated }: Props) {
             )}
           </div>
 
-          {error && <div className="text-red-400 text-sm">{error}</div>}
+          {error && <div className="text-danger text-sm">{error}</div>}
 
           <div className="flex justify-end gap-3 pt-2">
             <button
@@ -405,14 +406,14 @@ export default function CreateSessionModal({ onClose, onCreated }: Props) {
             >
               Cancel
             </button>
-            <button
+            <Button
               type="submit"
               disabled={isCreating || !isValid()}
               data-testid="create-session-submit"
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-white rounded transition-colors"
+              variant="primary"
             >
               {isCreating ? 'Creating...' : 'Create Session'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

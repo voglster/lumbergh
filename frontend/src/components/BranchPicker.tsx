@@ -68,7 +68,7 @@ export default function BranchPicker({
   }
 
   if (error) {
-    return <div className="text-sm text-red-400 py-2">{error}</div>
+    return <div className="text-sm text-danger py-2">{error}</div>
   }
 
   return (
@@ -78,9 +78,9 @@ export default function BranchPicker({
         <button
           type="button"
           onClick={() => onCreateNewBranchChange(false)}
-          className={`px-3 py-1.5 text-sm rounded transition-colors ${
+          className={`px-3 py-1.5 text-sm rounded-[var(--radius-md)] transition-colors ${
             !createNewBranch
-              ? 'bg-blue-600 text-text-primary'
+              ? 'bg-action text-text-primary'
               : 'bg-control-bg text-text-tertiary hover:text-text-primary'
           }`}
         >
@@ -89,9 +89,9 @@ export default function BranchPicker({
         <button
           type="button"
           onClick={() => onCreateNewBranchChange(true)}
-          className={`px-3 py-1.5 text-sm rounded transition-colors ${
+          className={`px-3 py-1.5 text-sm rounded-[var(--radius-md)] transition-colors ${
             createNewBranch
-              ? 'bg-blue-600 text-text-primary'
+              ? 'bg-action text-text-primary'
               : 'bg-control-bg text-text-tertiary hover:text-text-primary'
           }`}
         >
@@ -109,7 +109,7 @@ export default function BranchPicker({
               onCreateNew(e.target.value)
             }}
             placeholder="e.g., feat/new-feature"
-            className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-sm"
+            className="w-full px-3 py-2 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50 font-mono text-sm"
           />
           <p className="text-xs text-text-muted mt-1">Branch will be created from current HEAD</p>
         </div>
@@ -118,7 +118,7 @@ export default function BranchPicker({
           <select
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500"
+            className="w-full px-3 py-2 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50"
           >
             <option value="">Select a branch...</option>
             {availableBranches.length > 0 && (
@@ -146,7 +146,7 @@ export default function BranchPicker({
             </p>
           )}
           {availableBranches.length === 0 && branches.length > 0 && (
-            <p className="text-xs text-yellow-500 mt-1">
+            <p className="text-xs text-warning mt-1">
               All branches are in use. Create a new branch instead.
             </p>
           )}

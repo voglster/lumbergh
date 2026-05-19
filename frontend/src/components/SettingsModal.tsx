@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { X } from 'lucide-react'
+import Button from './ui/Button'
 import CloudSettings from './CloudSettings'
 import SecuritySettings from './SecuritySettings'
 import GeneralSettings from './GeneralSettings'
@@ -169,13 +170,13 @@ export default function SettingsModal({ onClose }: Props) {
   ]
 
   return (
-    <div className="fixed inset-0 bg-bg-overlay flex items-center justify-center z-50 p-4">
-      <div className="bg-bg-surface rounded-lg w-full max-w-lg border border-border-default">
+    <div className="fixed inset-0 bg-bg-overlay backdrop-blur-[8px] flex items-center justify-center z-50 p-4">
+      <div className="bg-bg-surface rounded-[var(--radius-2xl)] shadow-[var(--shadow-high)] w-full max-w-lg border border-border-default">
         <div className="flex items-center justify-between p-4 border-b border-border-default">
           <h2 className="text-lg font-semibold text-text-primary">Settings</h2>
           <button
             onClick={onClose}
-            className="text-text-tertiary hover:text-text-primary transition-colors"
+            className="w-7 h-7 rounded-full bg-control-bg hover:bg-control-bg-hover flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
           >
             <X size={20} />
           </button>
@@ -189,7 +190,7 @@ export default function SettingsModal({ onClose }: Props) {
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2 text-sm font-medium transition-colors ${
                 activeTab === tab.id
-                  ? 'text-blue-400 border-b-2 border-blue-400'
+                  ? 'text-action border-b-2 border-action'
                   : 'text-text-tertiary hover:text-text-primary'
               }`}
             >
@@ -247,7 +248,7 @@ export default function SettingsModal({ onClose }: Props) {
               />
             )}
 
-            {error && <div className="text-red-400 text-sm">{error}</div>}
+            {error && <div className="text-danger text-sm">{error}</div>}
 
             <div className="flex justify-end gap-3 pt-2">
               <button
@@ -257,13 +258,9 @@ export default function SettingsModal({ onClose }: Props) {
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                disabled={isSaving}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-white rounded transition-colors"
-              >
+              <Button type="submit" disabled={isSaving} variant="primary">
                 {isSaving ? 'Saving...' : 'Save'}
-              </button>
+              </Button>
             </div>
           </form>
         )}

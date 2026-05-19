@@ -16,7 +16,7 @@ export default function SecuritySettings({
   if (restartNeeded) {
     return (
       <div className="space-y-4">
-        <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded text-sm text-yellow-300">
+        <div className="p-3 bg-warning/10 border border-warning/30 rounded text-sm text-warning">
           Password updated. Restart Lumbergh for the change to take effect.
         </div>
       </div>
@@ -43,7 +43,7 @@ export default function SecuritySettings({
           value={password}
           onChange={(e) => onPasswordChange(e.target.value)}
           placeholder={passwordSet ? '(unchanged)' : 'Set a password to enable auth'}
-          className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-sm"
+          className="w-full px-3 py-2 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50 font-mono text-sm"
         />
         <p className="text-xs text-text-muted mt-1">
           {passwordSet
@@ -55,7 +55,7 @@ export default function SecuritySettings({
         <button
           type="button"
           onClick={() => onPasswordChange('')}
-          className="text-sm text-red-400 hover:text-red-300 transition-colors"
+          className="text-sm text-danger hover:text-danger/80 transition-colors"
         >
           Remove password
         </button>

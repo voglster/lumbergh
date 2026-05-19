@@ -112,7 +112,7 @@ function CloudBadgePopover({
   return (
     <div
       ref={ref}
-      className="absolute top-full mt-1 right-0 z-50 w-52 p-3 bg-bg-surface rounded-lg border border-border-default shadow-lg"
+      className="absolute top-full mt-1 right-0 z-50 w-52 p-3 bg-bg-surface rounded-[var(--radius-xl)] border border-border-default shadow-lg"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Share code */}
@@ -120,13 +120,13 @@ function CloudBadgePopover({
         <div className="text-xs text-text-muted mb-1">Share code</div>
         <button
           onClick={handleCopyCode}
-          className="w-full flex items-center gap-2 px-2 py-1.5 bg-bg-base rounded border border-border-default hover:border-blue-500/50 transition-colors"
+          className="w-full flex items-center gap-2 px-2 py-1.5 bg-bg-base rounded border border-border-default hover:border-action/50 transition-colors"
         >
           <span className="flex-1 text-xs font-mono text-text-primary truncate text-left">
             {template.source_code}
           </span>
           {codeCopied ? (
-            <Check size={12} className="text-green-400 shrink-0" />
+            <Check size={12} className="text-success shrink-0" />
           ) : (
             <Copy size={12} className="text-text-muted shrink-0" />
           )}
@@ -139,7 +139,7 @@ function CloudBadgePopover({
         <button
           onClick={onToggleAutoUpdate}
           className={`relative w-8 h-4.5 rounded-full transition-colors ${
-            template.auto_update ? 'bg-blue-600' : 'bg-bg-base border border-border-default'
+            template.auto_update ? 'bg-action' : 'bg-bg-base border border-border-default'
           }`}
         >
           <span
@@ -153,7 +153,7 @@ function CloudBadgePopover({
       {/* Detach link */}
       <button
         onClick={onDetach}
-        className="w-full flex items-center gap-1.5 text-xs text-orange-400 hover:text-orange-300 transition-colors"
+        className="w-full flex items-center gap-1.5 text-xs text-warning hover:text-warning/80 transition-colors"
       >
         <Unlink size={12} />
         <span>Detach from cloud</span>
@@ -253,7 +253,7 @@ function ContextMenu({
   return (
     <div
       ref={ref}
-      className="fixed z-[100] w-52 py-1 bg-bg-surface rounded-lg border border-border-default shadow-xl"
+      className="fixed z-[100] w-52 py-1 bg-bg-surface rounded-[var(--radius-xl)] border border-border-default shadow-xl"
       style={{ top: position.y, left: position.x }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -277,7 +277,7 @@ function ContextMenu({
                 icon={Unlink}
                 label="Detach"
                 onClick={close(onDetach)}
-                className="text-orange-400 hover:text-orange-300"
+                className="text-warning hover:text-warning/80"
               />
             </>
           ) : (
@@ -297,7 +297,7 @@ function ContextMenu({
         icon={Trash2}
         label="Delete"
         onClick={close(onDelete)}
-        className="text-red-400 hover:text-red-300"
+        className="text-danger hover:text-danger/80"
       />
     </div>
   )
@@ -356,7 +356,7 @@ function ViewModeActions({
               e.stopPropagation()
               setShowBadgePopover(!showBadgePopover)
             }}
-            className="flex items-center gap-1 bg-blue-500/10 text-blue-400 text-xs px-1.5 py-0.5 rounded-full hover:bg-blue-500/20 transition-colors"
+            className="flex items-center gap-1 bg-action/12 text-action text-xs px-1.5 py-0.5 rounded-full hover:bg-action/20 transition-colors"
             title={`Cloud linked: ${template.source_code}`}
           >
             <Cloud size={12} />
@@ -384,7 +384,7 @@ function ViewModeActions({
             onShare(template)
           }}
           disabled={isSharing}
-          className="text-text-muted/30 hover:text-blue-400 md:opacity-0 md:group-hover:opacity-100 transition-all px-1 disabled:opacity-50"
+          className="text-text-muted/30 hover:text-action md:opacity-0 md:group-hover:opacity-100 transition-all px-1 disabled:opacity-50"
           title="Share to cloud"
         >
           {isSharing ? <RefreshCw size={14} className="animate-spin" /> : <Upload size={14} />}
@@ -398,7 +398,7 @@ function ViewModeActions({
             e.stopPropagation()
             onUpdate(template, updateAvailable)
           }}
-          className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 transition-colors px-1"
+          className="flex items-center gap-1 text-xs text-amber hover:text-amber/80 transition-colors px-1"
           title={`Update available: v${updateAvailable.version}`}
         >
           <RefreshCw size={14} />
@@ -502,14 +502,14 @@ function TemplateItem({
       onClick={editMode ? () => onEdit(template, scope) : undefined}
       onContextMenu={!editMode ? handleContextMenu : undefined}
       className={`flex items-center gap-2 p-3 bg-bg-surface rounded border border-border-default group ${
-        editMode ? 'cursor-pointer hover:border-blue-500/50' : ''
-      } ${isDragging ? 'opacity-50' : ''} ${isDragOver ? 'border-blue-500' : ''}`}
+        editMode ? 'cursor-pointer hover:border-action/50' : ''
+      } ${isDragging ? 'opacity-50' : ''} ${isDragOver ? 'border-action' : ''}`}
     >
       {editMode && <GripVertical size={16} className="text-text-muted select-none" />}
       {!editMode && sessionName && (
         <button
           onClick={() => onSendToTerminal(template, false)}
-          className="text-text-muted hover:text-yellow-400 transition-colors px-1"
+          className="text-text-muted hover:text-warning transition-colors px-1"
           title="Send text (no Enter)"
         >
           <Play size={18} />
@@ -546,7 +546,7 @@ function TemplateItem({
                 e.stopPropagation()
                 onCopyToGlobal(template)
               }}
-              className="text-sm text-text-muted hover:text-green-400 transition-colors px-1"
+              className="text-sm text-text-muted hover:text-success transition-colors px-1"
               title="Move to Global"
             >
               <ArrowUp size={16} />
@@ -557,7 +557,7 @@ function TemplateItem({
                 e.stopPropagation()
                 onCopyToProject(template)
               }}
-              className="text-sm text-text-muted hover:text-green-400 transition-colors px-1"
+              className="text-sm text-text-muted hover:text-success transition-colors px-1"
               title="Copy to Project"
             >
               <ArrowDown size={16} />
@@ -568,7 +568,7 @@ function TemplateItem({
               e.stopPropagation()
               onDelete(template.id, scope)
             }}
-            className="text-sm text-text-muted hover:text-red-400 transition-colors px-1"
+            className="text-sm text-text-muted hover:text-danger transition-colors px-1"
             title="Delete"
           >
             <X size={16} />
@@ -674,13 +674,13 @@ function CommunitySection({
             value={importCode}
             onChange={(e) => onImportCodeChange(e.target.value)}
             placeholder="Enter share code..."
-            className="flex-1 px-3 py-1.5 text-sm bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500"
+            className="flex-1 px-3 py-1.5 text-sm bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action"
             onKeyDown={(e) => e.key === 'Enter' && onImportFetch()}
           />
           <button
             onClick={onImportFetch}
             disabled={importLoading || !importCode.trim()}
-            className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-500 disabled:opacity-50 transition-colors"
+            className="px-3 py-1.5 text-sm bg-action text-white rounded hover:brightness-110 disabled:opacity-50 transition-colors"
           >
             {importLoading ? '...' : 'Fetch'}
           </button>
@@ -696,13 +696,13 @@ function CommunitySection({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => onImportAdd(false)}
-                className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-500 transition-colors"
+                className="px-3 py-1 text-sm bg-success text-white rounded hover:brightness-110 transition-colors"
               >
                 Add to Global
               </button>
               <button
                 onClick={() => onImportAdd(true)}
-                className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-500 transition-colors"
+                className="px-3 py-1 text-sm bg-action text-white rounded hover:brightness-110 transition-colors"
                 title="Add and automatically update when new versions are published"
               >
                 Add + Auto-update
@@ -724,7 +724,7 @@ function CommunitySection({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search prompts..."
-            className="w-full pl-8 pr-3 py-1.5 text-sm bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500"
+            className="w-full pl-8 pr-3 py-1.5 text-sm bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action"
           />
         </div>
         {loading ? (
@@ -749,18 +749,18 @@ function CommunitySection({
                     <span className="text-xs text-text-muted">v{p.version}</span>
                     <span className="text-xs text-text-muted">@{p.author_username}</span>
                     {p.is_own && (
-                      <span className="text-xs px-1.5 py-0.5 bg-blue-500/15 text-blue-400 rounded">
+                      <span className="text-xs px-1.5 py-0.5 bg-action/15 text-action rounded">
                         You
                       </span>
                     )}
                     {isInstalled ? (
-                      <span className="text-green-400 px-1" title="Already installed">
+                      <span className="text-success px-1" title="Already installed">
                         <Check size={16} />
                       </span>
                     ) : (
                       <button
                         onClick={() => onInstall(p)}
-                        className="text-text-muted hover:text-green-400 transition-colors px-1"
+                        className="text-text-muted hover:text-success transition-colors px-1"
                         title="Add to Global"
                       >
                         <Download size={16} />
@@ -772,7 +772,7 @@ function CommunitySection({
                       {p.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="text-xs px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded"
+                          className="text-xs px-1.5 py-0.5 bg-action/12 text-action rounded"
                         >
                           {tag}
                         </span>
@@ -809,7 +809,7 @@ function CloudConnectCTA() {
           // Open settings modal by dispatching custom event
           window.dispatchEvent(new CustomEvent('open-settings'))
         }}
-        className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-500 transition-colors"
+        className="flex items-center gap-1.5 px-4 py-2 bg-action text-white text-sm rounded hover:brightness-110 transition-colors"
       >
         <Settings size={14} />
         <span>Connect to Cloud</span>
@@ -1509,7 +1509,7 @@ export default function PromptTemplates({ sessionName, onFocusTerminal }: Prompt
       <div
         key={template.id}
         ref={editFormRef}
-        className="p-3 bg-bg-surface rounded border border-blue-500"
+        className="p-3 bg-bg-surface rounded border border-action"
       >
         <div className="mb-2">
           <input
@@ -1518,7 +1518,7 @@ export default function PromptTemplates({ sessionName, onFocusTerminal }: Prompt
             onChange={(e) => setFormName(e.target.value)}
             placeholder="Template name"
             autoFocus
-            className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500"
+            className="w-full px-3 py-2 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action"
           />
         </div>
         <div className="mb-2">
@@ -1526,11 +1526,11 @@ export default function PromptTemplates({ sessionName, onFocusTerminal }: Prompt
             value={formPrompt}
             onChange={(e) => setFormPrompt(e.target.value)}
             placeholder="Prompt text..."
-            className="w-full min-h-[120px] px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 resize-vertical"
+            className="w-full min-h-[120px] px-3 py-2 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action resize-vertical"
           />
         </div>
         {isLinkedEdit && (
-          <div className="mb-2 flex items-center gap-1.5 text-xs text-amber-400">
+          <div className="mb-2 flex items-center gap-1.5 text-xs text-amber">
             <CloudOff size={12} />
             <span>Editing content will detach this prompt from its cloud source</span>
           </div>
@@ -1542,10 +1542,10 @@ export default function PromptTemplates({ sessionName, onFocusTerminal }: Prompt
                 <span
                   className={`text-lg font-bold ${
                     lintResult.score >= 7
-                      ? 'text-green-400'
+                      ? 'text-success'
                       : lintResult.score >= 4
-                        ? 'text-yellow-400'
-                        : 'text-red-400'
+                        ? 'text-warning'
+                        : 'text-danger'
                   }`}
                 >
                   {lintResult.score}/{lintResult.max_score}
@@ -1566,19 +1566,19 @@ export default function PromptTemplates({ sessionName, onFocusTerminal }: Prompt
                 .map((c, i) => (
                   <div key={i} className="flex items-start gap-1.5 text-xs">
                     {c.level === 'error' ? (
-                      <AlertCircle size={13} className="text-red-400 mt-0.5 shrink-0" />
+                      <AlertCircle size={13} className="text-danger mt-0.5 shrink-0" />
                     ) : c.level === 'warning' ? (
-                      <AlertTriangle size={13} className="text-amber-400 mt-0.5 shrink-0" />
+                      <AlertTriangle size={13} className="text-amber mt-0.5 shrink-0" />
                     ) : (
-                      <Info size={13} className="text-blue-400 mt-0.5 shrink-0" />
+                      <Info size={13} className="text-action mt-0.5 shrink-0" />
                     )}
                     <span
                       className={
                         c.level === 'error'
-                          ? 'text-red-400'
+                          ? 'text-danger'
                           : c.level === 'warning'
-                            ? 'text-amber-400'
-                            : 'text-blue-400'
+                            ? 'text-amber'
+                            : 'text-action'
                       }
                     >
                       {c.message}
@@ -1613,7 +1613,7 @@ export default function PromptTemplates({ sessionName, onFocusTerminal }: Prompt
             type="button"
             onClick={handleSaveTemplate}
             disabled={!formName.trim() || !formPrompt.trim()}
-            className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-3 py-1.5 bg-action text-white text-sm rounded hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Save
           </button>
@@ -1623,7 +1623,7 @@ export default function PromptTemplates({ sessionName, onFocusTerminal }: Prompt
                 type="button"
                 onClick={handleAnalyzePrompt}
                 disabled={!formPrompt.trim() || lintLoading}
-                className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 bg-purple text-white text-sm rounded hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
               >
                 {lintLoading ? (
                   <Loader2 size={14} className="animate-spin" />
@@ -1635,7 +1635,7 @@ export default function PromptTemplates({ sessionName, onFocusTerminal }: Prompt
               <select
                 value={lintMode}
                 onChange={(e) => setLintMode(e.target.value as 'quick' | 'deep')}
-                className="px-1.5 py-1.5 bg-control-bg text-text-tertiary text-xs rounded border border-input-border focus:outline-none"
+                className="px-1.5 py-1.5 bg-control-bg text-text-tertiary text-xs rounded-[var(--radius-lg)] border border-input-border focus:outline-none"
               >
                 <option value="quick">Quick</option>
                 <option value="deep">Deep</option>
@@ -1706,7 +1706,7 @@ export default function PromptTemplates({ sessionName, onFocusTerminal }: Prompt
           }}
           className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
             editMode
-              ? 'bg-blue-600 text-white hover:bg-blue-500'
+              ? 'bg-action text-white hover:brightness-110'
               : 'bg-control-bg text-text-tertiary hover:bg-control-bg-hover hover:text-text-secondary'
           }`}
         >
@@ -1720,7 +1720,7 @@ export default function PromptTemplates({ sessionName, onFocusTerminal }: Prompt
           onClick={() => setActiveTab('my')}
           className={`px-3 py-1.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
             activeTab === 'my'
-              ? 'border-blue-500 text-blue-400'
+              ? 'border-action text-action'
               : 'border-transparent text-text-muted hover:text-text-secondary'
           }`}
         >
@@ -1730,20 +1730,20 @@ export default function PromptTemplates({ sessionName, onFocusTerminal }: Prompt
           onClick={() => setActiveTab('community')}
           className={`px-3 py-1.5 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center gap-1.5 ${
             activeTab === 'community'
-              ? 'border-blue-500 text-blue-400'
+              ? 'border-action text-action'
               : 'border-transparent text-text-muted hover:text-text-secondary'
           }`}
         >
           Community
           {hasUpdates && (
-            <span className="w-2 h-2 rounded-full bg-amber-400" title="Updates available" />
+            <span className="w-2 h-2 rounded-full bg-amber" title="Updates available" />
           )}
         </button>
       </div>
 
       {/* Update preview modal */}
       {updatePreview && (
-        <div className="mb-4 p-3 bg-bg-surface rounded border border-amber-500/50">
+        <div className="mb-4 p-3 bg-bg-surface rounded border border-amber/30">
           <div className="text-sm font-medium text-text-primary mb-1">
             Update available for &ldquo;{updatePreview.template.name}&rdquo;
           </div>
@@ -1756,13 +1756,13 @@ export default function PromptTemplates({ sessionName, onFocusTerminal }: Prompt
           <div className="flex items-center gap-2">
             <button
               onClick={() => confirmUpdate(false)}
-              className="px-3 py-1 text-sm bg-amber-600 text-white rounded hover:bg-amber-500 transition-colors"
+              className="px-3 py-1 text-sm bg-amber text-white rounded hover:brightness-110 transition-colors"
             >
               Update
             </button>
             <button
               onClick={() => confirmUpdate(true)}
-              className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-500 transition-colors"
+              className="px-3 py-1 text-sm bg-action text-white rounded hover:brightness-110 transition-colors"
               title="Update and auto-update future versions"
             >
               Update + Auto-update
@@ -1779,7 +1779,7 @@ export default function PromptTemplates({ sessionName, onFocusTerminal }: Prompt
 
       {/* Detach confirmation */}
       {detachConfirm && (
-        <div className="mb-4 p-3 bg-bg-surface rounded border border-orange-500/50">
+        <div className="mb-4 p-3 bg-bg-surface rounded border border-warning/30">
           <div className="text-sm text-text-primary mb-2">
             Detach &ldquo;{detachConfirm.template.name}&rdquo; from cloud source? It will become a
             local-only prompt and can be shared again as a new prompt.
@@ -1787,7 +1787,7 @@ export default function PromptTemplates({ sessionName, onFocusTerminal }: Prompt
           <div className="flex items-center gap-2">
             <button
               onClick={confirmDetach}
-              className="px-3 py-1 text-sm bg-orange-600 text-white rounded hover:bg-orange-500 transition-colors"
+              className="px-3 py-1 text-sm bg-warning text-white rounded hover:brightness-110 transition-colors"
             >
               Detach
             </button>

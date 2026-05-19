@@ -21,7 +21,7 @@ export default function SessionCardActions({
     <div className="flex items-center gap-1 flex-shrink-0">
       <button
         onClick={onTogglePaused}
-        className={`transition-colors p-1 ${paused || !alive ? 'text-yellow-400 hover:text-green-400' : 'text-text-muted hover:text-yellow-400'}`}
+        className={`transition-colors p-1 ${paused || !alive ? 'text-warning hover:text-success' : 'text-text-muted hover:text-warning'}`}
         title={!alive ? 'Restart session' : paused ? 'Resume session' : 'Pause session'}
       >
         {paused || !alive ? <Play size={16} /> : <Pause size={16} />}
@@ -29,7 +29,7 @@ export default function SessionCardActions({
       <button
         onClick={onEdit}
         data-testid="session-edit-btn"
-        className="text-text-muted hover:text-blue-400 transition-colors p-1"
+        className="text-text-muted hover:text-action transition-colors p-1"
         title="Edit session"
       >
         <Pencil size={16} />
@@ -37,7 +37,7 @@ export default function SessionCardActions({
       {alive && (
         <button
           onClick={onReset}
-          className="text-text-muted hover:text-yellow-400 transition-colors p-1"
+          className="text-text-muted hover:text-warning transition-colors p-1"
           title="Reset session"
         >
           <RefreshCw size={16} />
@@ -46,7 +46,7 @@ export default function SessionCardActions({
       <button
         onClick={onDelete}
         data-testid="session-delete-btn"
-        className="text-text-muted hover:text-red-400 transition-colors p-1"
+        className="text-text-muted hover:text-danger transition-colors p-1"
         title="Delete session"
       >
         <X size={16} />

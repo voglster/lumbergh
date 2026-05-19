@@ -73,7 +73,7 @@ function TodoMovePicker({
             <button
               key={s.name}
               onClick={() => onMoveTodo(index, s.name)}
-              className="px-2 py-1 text-xs bg-control-bg hover:bg-blue-600 text-text-secondary hover:text-white rounded transition-colors"
+              className="px-2 py-1 text-xs bg-control-bg hover:bg-action text-text-secondary hover:text-white rounded-[var(--radius-md)] transition-colors"
             >
               {s.displayName || s.name}
             </button>
@@ -95,14 +95,14 @@ function TodoSendButtons({
     <>
       <button
         onClick={() => onSendToTerminal(index, false)}
-        className="text-text-muted hover:text-yellow-400 transition-colors px-1"
+        className="text-text-muted hover:text-warning transition-colors px-1"
         title="Send text (no Enter)"
       >
         <Play size={18} />
       </button>
       <button
         onClick={() => onSendToTerminal(index, true)}
-        className="text-text-muted hover:text-blue-400 transition-colors px-1"
+        className="text-text-muted hover:text-action transition-colors px-1"
         title="Send + Enter (yolo)"
       >
         <SendHorizonal size={18} />
@@ -177,7 +177,7 @@ export default function TodoItem({
     <div
       className={`bg-bg-surface rounded border border-border-default ${
         isDragging ? 'opacity-50' : ''
-      } ${isDragOver ? 'border-blue-500' : ''} ${isHighlighted ? 'todo-highlight' : ''}`}
+      } ${isDragOver ? 'border-action' : ''} ${isHighlighted ? 'todo-highlight' : ''}`}
     >
       <div
         draggable
@@ -192,7 +192,7 @@ export default function TodoItem({
         )}
         <button
           onClick={() => onToggleExpand(index)}
-          className="w-8 h-8 flex items-center justify-center text-text-muted hover:text-text-secondary hover:bg-control-bg rounded transition-colors text-xl"
+          className="w-8 h-8 flex items-center justify-center text-text-muted hover:text-text-secondary hover:bg-control-bg rounded-[var(--radius-md)] transition-colors text-xl"
           title={isExpanded ? 'Collapse' : 'Expand'}
         >
           {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
@@ -206,7 +206,7 @@ export default function TodoItem({
             onKeyDown={onEditKeyDown}
             autoFocus
             containerClassName="flex-1 min-w-0"
-            className="w-full px-2 py-1 bg-input-bg text-text-primary text-base rounded border border-blue-500 focus:outline-none"
+            className="w-full px-2 py-1 bg-input-bg text-text-primary text-base rounded-[var(--radius-lg)] border border-action focus:outline-none"
           />
         ) : (
           <TodoText
@@ -220,7 +220,7 @@ export default function TodoItem({
         {sessionName && !todo.done && (
           <button
             onClick={() => onOpenMovePicker(index)}
-            className={`text-sm text-text-muted hover:text-green-400 transition-colors px-1 ${movePickerIndex === index ? 'text-green-400' : ''}`}
+            className={`text-sm text-text-muted hover:text-success transition-colors px-1 ${movePickerIndex === index ? 'text-success' : ''}`}
             title="Move to another session"
           >
             <ExternalLink size={16} />
@@ -229,7 +229,7 @@ export default function TodoItem({
         {todo.done && (
           <button
             onClick={() => onDelete(index)}
-            className="text-sm text-red-400/50 hover:text-red-400 transition-colors px-1"
+            className="text-sm text-danger/50 hover:text-danger transition-colors px-1"
             title="Delete task"
           >
             <Trash2 size={16} />
@@ -240,7 +240,7 @@ export default function TodoItem({
           checked={todo.done}
           onChange={() => onToggle(index)}
           data-testid="todo-checkbox"
-          className="w-5 h-5 rounded bg-bg-surface border-input-border text-blue-500 focus:ring-blue-500 accent-blue-500"
+          className="w-5 h-5 rounded bg-bg-surface border-input-border text-action focus:ring-action accent-action"
         />
       </div>
       {movePickerIndex === index && (
@@ -263,7 +263,7 @@ export default function TodoItem({
             multiline
             rows={5}
             autoFocus
-            className="w-full h-32 px-3 py-2 bg-input-bg text-text-primary text-sm rounded border border-input-border focus:outline-none focus:border-blue-500 resize-y"
+            className="w-full h-32 px-3 py-2 bg-input-bg text-text-primary text-sm rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50 resize-y"
           />
         </div>
       )}

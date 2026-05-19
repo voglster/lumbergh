@@ -60,11 +60,11 @@ export default function SessionSummaryOverlay({ sessionName, onDismiss, onTempHi
 
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-      <div className="pointer-events-auto w-[90%] max-w-lg rounded-lg border border-border-default bg-bg-surface/95 backdrop-blur-sm shadow-lg max-h-[70%] overflow-y-auto">
+      <div className="pointer-events-auto w-[90%] max-w-lg rounded-[var(--radius-xl)] border border-border-default bg-bg-surface/95 backdrop-blur-sm shadow-lg max-h-[70%] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-4 pt-3 pb-1">
           <span className="text-xs text-text-muted font-medium flex items-center gap-1.5">
-            <Brain size={12} className="text-purple-400" />
+            <Brain size={12} className="text-purple" />
             What happened?{timeAgo ? ` · ${timeAgo}` : ''}
           </span>
           <div className="flex items-center gap-1">

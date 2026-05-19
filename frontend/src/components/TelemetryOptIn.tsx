@@ -100,7 +100,7 @@ export default function TelemetryOptIn({ onClose }: Props) {
   if (guiltTrip) {
     return (
       <div className="fixed inset-0 bg-bg-overlay flex items-center justify-center z-50 p-4">
-        <div className="bg-bg-surface rounded-lg w-full max-w-sm border border-border-default p-6 space-y-4 text-center">
+        <div className="bg-bg-surface rounded-[var(--radius-xl)] w-full max-w-sm border border-border-default p-6 space-y-4 text-center">
           <div className="text-4xl leading-none">
             {guiltTrip.speaker === 'Milton' ? (
               <span className="font-mono tracking-tighter">-_-</span>
@@ -135,7 +135,7 @@ export default function TelemetryOptIn({ onClose }: Props) {
   // Normal opt-in modal
   return (
     <div className="fixed inset-0 bg-bg-overlay flex items-center justify-center z-50 p-4">
-      <div className="bg-bg-surface rounded-lg w-full max-w-sm border border-border-default p-6 space-y-4">
+      <div className="bg-bg-surface rounded-[var(--radius-xl)] w-full max-w-sm border border-border-default p-6 space-y-4">
         <h2 className="text-lg font-semibold text-text-primary">Help Improve Lumbergh</h2>
         <p className="text-sm text-text-secondary">
           Send anonymous usage statistics to help us improve Lumbergh. No personal data, session
@@ -144,7 +144,7 @@ export default function TelemetryOptIn({ onClose }: Props) {
             href="https://app.lumbergh.dev/privacy"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-400 hover:text-blue-300"
+            className="text-action hover:text-action/80"
           >
             See what we collect
           </a>
@@ -161,7 +161,7 @@ export default function TelemetryOptIn({ onClose }: Props) {
           <button
             onClick={() => respond(true)}
             disabled={saving}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-white rounded transition-colors"
+            className="px-4 py-2 bg-action hover:bg-action/80 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-white rounded-[var(--radius-md)] transition-colors"
           >
             Enable Stats
           </button>

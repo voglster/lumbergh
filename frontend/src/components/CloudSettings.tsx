@@ -16,7 +16,7 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${on ? 'bg-blue-600' : 'bg-bg-elevated'}`}
+      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${on ? 'bg-action' : 'bg-bg-elevated'}`}
     >
       <span
         className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${on ? 'translate-x-4.5' : 'translate-x-0.5'}`}
@@ -113,7 +113,7 @@ function BackupSection({ onRefresh }: { onRefresh: () => void }) {
           <a
             href={`${getApiBase()}/backup/download`}
             download="lumbergh-backup.json"
-            className="text-blue-400 hover:text-blue-300"
+            className="text-action hover:text-action/80"
           >
             download
           </a>
@@ -130,7 +130,7 @@ function BackupSection({ onRefresh }: { onRefresh: () => void }) {
             })
           }
           disabled={busy}
-          className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded transition-colors"
+          className="px-3 py-1.5 text-xs bg-action hover:bg-action/80 disabled:opacity-50 text-white rounded-[var(--radius-md)] transition-colors"
         >
           {busy ? 'Working...' : 'Backup now'}
         </button>
@@ -138,7 +138,7 @@ function BackupSection({ onRefresh }: { onRefresh: () => void }) {
           type="button"
           onClick={() => setShowRestoreConfirm(true)}
           disabled={busy}
-          className="px-3 py-1.5 text-xs bg-bg-elevated hover:bg-bg-elevated/80 disabled:opacity-50 text-text-secondary rounded transition-colors"
+          className="px-3 py-1.5 text-xs bg-bg-elevated hover:bg-bg-elevated/80 disabled:opacity-50 text-text-secondary rounded-[var(--radius-md)] transition-colors"
         >
           Restore
         </button>
@@ -146,7 +146,7 @@ function BackupSection({ onRefresh }: { onRefresh: () => void }) {
           type="button"
           onClick={() => setShowDeleteConfirm(true)}
           disabled={busy}
-          className="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 disabled:opacity-50 transition-colors"
+          className="px-3 py-1.5 text-xs text-danger hover:text-danger/80 disabled:opacity-50 transition-colors"
         >
           Delete backup
         </button>
@@ -156,7 +156,7 @@ function BackupSection({ onRefresh }: { onRefresh: () => void }) {
         <a
           href={`${getApiBase()}/backup/download-local`}
           download="lumbergh-backup-local.json"
-          className="text-blue-400 hover:text-blue-300"
+          className="text-action hover:text-action/80"
         >
           Export current local data
         </a>
@@ -175,7 +175,7 @@ function BackupSection({ onRefresh }: { onRefresh: () => void }) {
               value={restorePassphrase}
               onChange={(e) => setRestorePassphrase(e.target.value)}
               placeholder="Enter backup passphrase"
-              className="w-full px-3 py-1.5 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 text-sm"
+              className="w-full px-3 py-1.5 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50 text-sm"
             />
           )}
           <div className="flex gap-2">
@@ -198,7 +198,7 @@ function BackupSection({ onRefresh }: { onRefresh: () => void }) {
                 )
               }
               disabled={busy || (status.hasPassphrase && !restorePassphrase)}
-              className="px-3 py-1.5 text-xs bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white rounded transition-colors"
+              className="px-3 py-1.5 text-xs bg-warning hover:bg-warning/80 disabled:opacity-50 text-white rounded-[var(--radius-md)] transition-colors"
             >
               Confirm restore
             </button>
@@ -229,7 +229,7 @@ function BackupSection({ onRefresh }: { onRefresh: () => void }) {
                 })
               }
               disabled={busy}
-              className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded transition-colors"
+              className="px-3 py-1.5 text-xs bg-danger hover:bg-danger/80 disabled:opacity-50 text-white rounded-[var(--radius-md)] transition-colors"
             >
               Delete
             </button>
@@ -250,7 +250,7 @@ function BackupSection({ onRefresh }: { onRefresh: () => void }) {
         {status.hasPassphrase ? (
           <>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-green-400">Encrypted</span>
+              <span className="text-sm text-success">Encrypted</span>
               <button
                 type="button"
                 onClick={() =>
@@ -264,7 +264,7 @@ function BackupSection({ onRefresh }: { onRefresh: () => void }) {
                     fetchStatus
                   )
                 }
-                className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                className="text-xs text-danger hover:text-danger/80 transition-colors"
               >
                 Remove passphrase
               </button>
@@ -275,7 +275,7 @@ function BackupSection({ onRefresh }: { onRefresh: () => void }) {
           </>
         ) : (
           <>
-            <p className="text-xs text-yellow-400/80">
+            <p className="text-xs text-warning/80">
               Not encrypted — backups are stored in plaintext on the server.
             </p>
             <div className="flex gap-2">
@@ -284,7 +284,7 @@ function BackupSection({ onRefresh }: { onRefresh: () => void }) {
                 value={passphrase}
                 onChange={(e) => setPassphrase(e.target.value)}
                 placeholder="Enter a passphrase"
-                className="flex-1 px-2 py-1.5 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-xs"
+                className="flex-1 px-2 py-1.5 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50 font-mono text-xs"
               />
               <button
                 type="button"
@@ -295,7 +295,7 @@ function BackupSection({ onRefresh }: { onRefresh: () => void }) {
                     .join('')
                   setPassphrase(generated)
                 }}
-                className="px-2 py-1.5 text-xs text-text-muted hover:text-text-secondary bg-bg-elevated rounded transition-colors"
+                className="px-2 py-1.5 text-xs text-text-muted hover:text-text-secondary bg-bg-elevated rounded-[var(--radius-md)] transition-colors"
               >
                 Generate
               </button>
@@ -305,7 +305,7 @@ function BackupSection({ onRefresh }: { onRefresh: () => void }) {
                 <button
                   type="button"
                   onClick={() => navigator.clipboard.writeText(passphrase)}
-                  className="px-2 py-1.5 text-xs text-text-muted hover:text-text-secondary bg-bg-elevated rounded transition-colors"
+                  className="px-2 py-1.5 text-xs text-text-muted hover:text-text-secondary bg-bg-elevated rounded-[var(--radius-md)] transition-colors"
                 >
                   Copy
                 </button>
@@ -325,7 +325,7 @@ function BackupSection({ onRefresh }: { onRefresh: () => void }) {
                     a.click()
                     URL.revokeObjectURL(url)
                   }}
-                  className="px-2 py-1.5 text-xs text-text-muted hover:text-text-secondary bg-bg-elevated rounded transition-colors"
+                  className="px-2 py-1.5 text-xs text-text-muted hover:text-text-secondary bg-bg-elevated rounded-[var(--radius-md)] transition-colors"
                 >
                   Save to file
                 </button>
@@ -346,13 +346,13 @@ function BackupSection({ onRefresh }: { onRefresh: () => void }) {
                       }
                     )
                   }
-                  className="px-2 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded transition-colors"
+                  className="px-2 py-1.5 text-xs bg-action hover:bg-action/80 disabled:opacity-50 text-white rounded-[var(--radius-md)] transition-colors"
                 >
                   Set
                 </button>
               </div>
             )}
-            <p className="text-xs text-red-400/80 font-medium">
+            <p className="text-xs text-danger/80 font-medium">
               If you lose your passphrase, your encrypted backups cannot be recovered. Save it
               somewhere safe.
             </p>
@@ -360,7 +360,7 @@ function BackupSection({ onRefresh }: { onRefresh: () => void }) {
         )}
       </div>
 
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
     </div>
   )
 }
@@ -501,14 +501,14 @@ export default function CloudSettings({ onConnected }: { onConnected?: () => voi
               <button
                 type="button"
                 onClick={handleRelink}
-                className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                className="text-sm text-action hover:text-action/80 transition-colors"
               >
                 Relink
               </button>
               <button
                 type="button"
                 onClick={handleDisconnect}
-                className="text-sm text-red-400 hover:text-red-300 transition-colors"
+                className="text-sm text-danger hover:text-danger/80 transition-colors"
               >
                 Disconnect
               </button>
@@ -520,7 +520,7 @@ export default function CloudSettings({ onConnected }: { onConnected?: () => voi
       ) : cloudConnecting && cloudUserCode ? (
         <div className="p-3 bg-bg-elevated/50 rounded space-y-3 text-center">
           <p className="text-sm text-text-secondary">Waiting for authorization...</p>
-          <div className="bg-bg-elevated rounded-lg py-3 px-4">
+          <div className="bg-bg-elevated rounded-[var(--radius-xl)] py-3 px-4">
             <p className="text-xs text-text-muted mb-1">Your Code</p>
             <p className="text-2xl font-mono font-bold text-text-primary tracking-widest">
               {cloudUserCode}
@@ -531,7 +531,7 @@ export default function CloudSettings({ onConnected }: { onConnected?: () => voi
               href={verificationUrl || '#'}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-400 hover:text-blue-300"
+              className="text-action hover:text-action/80"
             >
               Open this link
             </a>{' '}
@@ -543,13 +543,13 @@ export default function CloudSettings({ onConnected }: { onConnected?: () => voi
           type="button"
           onClick={handleConnect}
           disabled={cloudConnecting}
-          className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded transition-colors text-sm font-medium"
+          className="w-full px-4 py-2 bg-action hover:bg-action/80 disabled:opacity-50 text-white rounded-[var(--radius-md)] transition-colors text-sm font-medium"
         >
           {cloudConnecting ? 'Connecting...' : 'Connect to Cloud'}
         </button>
       )}
 
-      {cloudError && <div className="text-red-400 text-sm">{cloudError}</div>}
+      {cloudError && <div className="text-danger text-sm">{cloudError}</div>}
 
       <button
         type="button"
@@ -568,7 +568,7 @@ export default function CloudSettings({ onConnected }: { onConnected?: () => voi
             onChange={(e) => saveCloudUrl(e.target.value)}
             onBlur={handleBlurSave}
             placeholder={DEFAULT_CLOUD_URL}
-            className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-sm"
+            className="w-full px-3 py-2 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50 font-mono text-sm"
           />
           {cloudUrl !== DEFAULT_CLOUD_URL && (
             <button

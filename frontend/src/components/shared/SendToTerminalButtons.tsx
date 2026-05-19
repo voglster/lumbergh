@@ -16,7 +16,7 @@ export default function SendToTerminalButtons({
       <button
         onClick={() => onSend(false)}
         disabled={disabled}
-        className="text-text-muted hover:text-yellow-400 disabled:text-text-muted disabled:cursor-not-allowed transition-colors px-1"
+        className="text-text-muted hover:text-warning disabled:text-text-muted disabled:cursor-not-allowed transition-colors px-1"
         title="Send text (no Enter)"
       >
         <Play size={18} />
@@ -24,7 +24,7 @@ export default function SendToTerminalButtons({
       <button
         onClick={() => onSend(true)}
         disabled={disabled}
-        className="text-text-muted hover:text-blue-400 disabled:text-text-muted disabled:cursor-not-allowed transition-colors px-1"
+        className="text-text-muted hover:text-action disabled:text-text-muted disabled:cursor-not-allowed transition-colors px-1"
         title="Send + Enter (yolo)"
       >
         <SendHorizonal size={18} />

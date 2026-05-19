@@ -318,7 +318,7 @@ export default function TodoList({
           onKeyDown={handleKeyDown}
           placeholder="Add a task... (press Enter, use @ to reference prompts)"
           data-testid="todo-input"
-          className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500"
+          className="w-full px-3 py-2 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50"
         />
       </div>
 
@@ -341,7 +341,7 @@ export default function TodoList({
                       </span>
                       <button
                         onClick={handleDeleteAllDone}
-                        className="text-xs text-text-muted hover:text-red-400 transition-colors"
+                        className="text-xs text-text-muted hover:text-danger transition-colors"
                         title="Clear completed tasks"
                       >
                         (clear)

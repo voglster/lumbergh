@@ -31,7 +31,7 @@ export default function NewRepoForm({
           onChange={(e) => onProjectNameChange(e.target.value)}
           placeholder="e.g., my-new-project"
           data-testid="project-name-input"
-          className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500"
+          className="w-full px-3 py-2 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50"
           autoFocus
         />
         {projectSlug && projectSlug !== projectName && (
@@ -49,12 +49,12 @@ export default function NewRepoForm({
               value={parentDir}
               onChange={(e) => onParentDirChange(e.target.value)}
               placeholder="e.g., /home/user/src"
-              className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-sm"
+              className="w-full px-3 py-2 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50 font-mono text-sm"
             />
             <button
               type="button"
               onClick={() => onEditingParentDirChange(false)}
-              className="mt-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+              className="mt-1 text-xs text-action hover:text-action/80 transition-colors"
             >
               Done
             </button>
@@ -67,7 +67,7 @@ export default function NewRepoForm({
             <button
               type="button"
               onClick={() => onEditingParentDirChange(true)}
-              className="text-xs text-blue-400 hover:text-blue-300 transition-colors shrink-0"
+              className="text-xs text-action hover:text-action/80 transition-colors shrink-0"
             >
               Change
             </button>

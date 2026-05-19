@@ -26,15 +26,13 @@ export default function ExistingRepoForm({
             onChange={(e) => onWorkdirChange(e.target.value)}
             placeholder="e.g., /home/user/myproject"
             data-testid="workdir-input"
-            className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-sm"
+            className="w-full px-3 py-2 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50 font-mono text-sm"
             required
           />
           {dirStatus === 'checking' && <p className="text-xs text-text-muted mt-1">Checking...</p>}
-          {dirStatus === 'exists' && (
-            <p className="text-xs text-green-400 mt-1">Directory exists</p>
-          )}
+          {dirStatus === 'exists' && <p className="text-xs text-success mt-1">Directory exists</p>}
           {dirStatus === 'not_found' && (
-            <p className="text-xs text-yellow-400 mt-1">
+            <p className="text-xs text-warning mt-1">
               Directory not found — use the &quot;New Repo&quot; tab to create one
             </p>
           )}
@@ -44,7 +42,7 @@ export default function ExistingRepoForm({
               onManualEntryChange(false)
               onWorkdirChange('')
             }}
-            className="mt-2 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+            className="mt-2 text-xs text-action hover:text-action/80 transition-colors"
           >
             Search repositories instead
           </button>

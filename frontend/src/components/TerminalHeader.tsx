@@ -10,6 +10,7 @@ import {
   ExternalLink,
   RefreshCw,
 } from 'lucide-react'
+import Button from './ui/Button'
 import SessionNavigatorDots from './SessionNavigatorDots'
 
 interface Props {
@@ -56,7 +57,7 @@ export default function TerminalHeader({
   onShowSummary,
 }: Props) {
   return (
-    <div className="bg-bg-surface border-b border-border-default">
+    <div className="glass border-b border-border-default">
       {/* Main row */}
       <div className="flex items-center gap-2 p-2">
         <div className="flex items-center gap-2 shrink-0">
@@ -165,7 +166,7 @@ function QuickActions({
       {!isTouchDevice && (
         <button
           onClick={popOut}
-          className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover rounded"
+          className="w-8 h-8 rounded-[var(--radius-md)] bg-control-bg hover:bg-control-bg-hover flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
           title="Pop out terminal to new window"
         >
           <ExternalLink size={14} />
@@ -174,61 +175,73 @@ function QuickActions({
       {onShowSummary && !showSummary && (
         <button
           onClick={onShowSummary}
-          className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover rounded"
+          className="w-8 h-8 rounded-[var(--radius-md)] bg-control-bg hover:bg-control-bg-hover flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
           title="What happened? (AI summary)"
         >
-          <Brain size={14} className="text-purple-400" />
+          <Brain size={14} className="text-purple" />
         </button>
       )}
-      {isTouchDevice && (
-        <button
-          onClick={onToggleScrollMode}
-          disabled={!isConnected}
-          className={`px-2 py-1 text-xs rounded ${
-            scrollMode
-              ? 'bg-yellow-600 hover:bg-yellow-500'
-              : 'bg-control-bg hover:bg-control-bg-hover'
-          } disabled:bg-control-bg-hover disabled:opacity-50`}
-          title={scrollMode ? 'Exit scroll mode (q)' : 'Enter scroll mode (copy-mode)'}
-        >
-          {scrollMode ? 'Exit' : 'Scroll'}
-        </button>
-      )}
-      <button
+      {isTouchDevice &&
+        (scrollMode ? (
+          <Button
+            variant="warning"
+            size="sm"
+            onClick={onToggleScrollMode}
+            disabled={!isConnected}
+            title="Exit scroll mode (q)"
+          >
+            Exit
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onToggleScrollMode}
+            disabled={!isConnected}
+            title="Enter scroll mode (copy-mode)"
+          >
+            Scroll
+          </Button>
+        ))}
+      <Button
+        variant="danger"
+        size="sm"
         onClick={() => onSendRaw('\x1b')}
         disabled={!isConnected}
-        className="px-2 py-1 text-xs bg-red-700 hover:bg-red-600 disabled:bg-control-bg-hover disabled:opacity-50 rounded"
         title="Send Escape key"
       >
         Esc
-      </button>
-      <button
+      </Button>
+      <Button
+        variant="primary"
+        size="sm"
         onClick={() => onSendRaw('\x1b[Z')}
         disabled={!isConnected}
-        className="px-2 py-1 text-xs bg-blue-700 hover:bg-blue-600 disabled:bg-control-bg-hover disabled:opacity-50 rounded"
         title="Toggle Plan/Accept Edits mode (Shift+Tab)"
       >
         Mode
-      </button>
-      <button
+      </Button>
+      <Button
+        variant="secondary"
+        size="sm"
         onClick={() => onSendViaApi('1')}
         disabled={!isConnected}
-        className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover disabled:opacity-50 rounded"
         title="Send 1"
       >
         1
-      </button>
-      <button
+      </Button>
+      <Button
+        variant="secondary"
+        size="sm"
         onClick={() => onSendViaApi('/clear')}
         disabled={!isConnected}
-        className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover disabled:opacity-50 rounded"
         title="Send /clear"
       >
         <Eraser size={16} />
-      </button>
+      </Button>
       <button
         onClick={() => onHeaderExpandedChange(!headerExpanded)}
-        className={`px-2 py-1 text-xs rounded ${headerExpanded ? 'bg-control-bg-hover' : 'bg-control-bg hover:bg-control-bg-hover'}`}
+        className={`w-8 h-8 rounded-[var(--radius-md)] flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors cursor-pointer ${headerExpanded ? 'bg-control-bg-hover' : 'bg-control-bg hover:bg-control-bg-hover'}`}
         title="More options"
       >
         <MoreHorizontal size={16} />
@@ -283,7 +296,9 @@ function ExpandedRow({
           </button>
         </div>
         {onReset && (
-          <button
+          <Button
+            variant="warning"
+            size="sm"
             onClick={() => {
               if (
                 confirm(
@@ -294,11 +309,10 @@ function ExpandedRow({
                 onCollapse()
               }
             }}
-            className="px-2 py-1 text-xs bg-yellow-700 hover:bg-yellow-600 rounded"
             title="Reset session (close all windows and restart Claude)"
           >
             Reset
-          </button>
+          </Button>
         )}
         <button
           onClick={() => window.location.reload()}
@@ -311,27 +325,29 @@ function ExpandedRow({
       </div>
       {/* Quick buttons - right aligned */}
       <div className="flex items-center gap-2 shrink-0">
-        <button
+        <Button
+          variant="success"
+          size="sm"
           onClick={() => {
             onSendTmuxCommand('new-window')
             onCollapse()
           }}
-          className="px-2 py-1 text-xs bg-green-700 hover:bg-green-600 rounded"
           title="Create new tmux window"
         >
           + Window
-        </button>
+        </Button>
         {isTouchDevice && (
-          <button
+          <Button
+            variant="warning"
+            size="sm"
             onClick={() => {
               onSendRaw('q')
               onCollapse()
             }}
-            className="px-2 py-1 text-xs bg-yellow-600 hover:bg-yellow-500 rounded"
             title="Exit scroll mode (press if stuck in scroll)"
           >
             Exit Scroll
-          </button>
+          </Button>
         )}
         <button
           onClick={() => {
@@ -359,34 +375,37 @@ function ExpandedRow({
         >
           <ChevronDown size={16} />
         </button>
-        <button
+        <Button
+          variant="danger"
+          size="sm"
           onClick={() => onSendRaw('\x03')}
           disabled={!isConnected}
-          className="px-2 py-1 text-xs bg-red-700 hover:bg-red-600 disabled:opacity-50 rounded"
           title="Send Ctrl+C (interrupt)"
         >
           ^C
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="danger"
+          size="sm"
           onClick={() => onSendRaw('\x04')}
           disabled={!isConnected}
-          className="px-2 py-1 text-xs bg-red-700 hover:bg-red-600 disabled:opacity-50 rounded"
           title="Send Ctrl+D (EOF)"
         >
           ^D
-        </button>
+        </Button>
         {['1', '2', '3', '4', 'yes'].map((text) => (
-          <button
+          <Button
             key={text}
+            variant="secondary"
+            size="sm"
             onClick={() => {
               onSendViaApi(text)
               onCollapse()
             }}
             disabled={!isConnected}
-            className="px-2 py-1 text-xs bg-control-bg hover:bg-control-bg-hover disabled:opacity-50 rounded"
           >
             {text}
-          </button>
+          </Button>
         ))}
       </div>
     </div>

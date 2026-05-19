@@ -152,9 +152,9 @@ function RefBadge({
       }}
       className={`inline-flex items-center gap-1 px-2 py-1 text-base rounded font-medium leading-none cursor-pointer transition-colors max-w-full ${
         isBranchMenuOpen
-          ? 'bg-blue-500/40 text-blue-200 ring-1 ring-blue-400/70'
+          ? 'bg-action/40 text-action/80 ring-1 ring-action/70'
           : isCurrent
-            ? 'bg-blue-500/25 text-blue-300 ring-1 ring-blue-400/50 hover:bg-blue-500/35'
+            ? 'bg-action/25 text-action ring-1 ring-action/50 hover:bg-action/35'
             : 'bg-bg-surface text-text-tertiary ring-1 ring-border-default hover:bg-control-bg-hover hover:text-text-secondary'
       }`}
     >
@@ -216,10 +216,10 @@ function WipRow({
   return (
     <div
       onClick={() => onSelectCommit?.(null)}
-      className={`absolute right-0 flex items-center gap-2 px-1 border-b border-orange-500/20 cursor-pointer group ${
+      className={`absolute right-0 flex items-center gap-2 px-1 border-b border-warning/20 cursor-pointer group ${
         selectedCommit === null
-          ? 'bg-orange-500/[0.2] border-l-2 border-l-orange-400'
-          : 'bg-orange-500/[0.1] hover:bg-orange-500/[0.16]'
+          ? 'bg-warning/20 border-l-2 border-l-warning'
+          : 'bg-warning/10 hover:bg-warning/[0.16]'
       }`}
       style={{
         top: headRow * ROW_HEIGHT,
@@ -228,10 +228,10 @@ function WipRow({
         paddingLeft: 4,
       }}
     >
-      <span className="px-1.5 py-0.5 text-xs rounded font-semibold leading-none bg-orange-500/25 text-orange-300 ring-1 ring-orange-400/50 shrink-0">
+      <span className="px-1.5 py-0.5 text-xs rounded font-semibold leading-none bg-warning/25 text-warning ring-1 ring-warning/50 shrink-0">
         WIP
       </span>
-      <span className="text-base text-orange-200/90 truncate min-w-0">
+      <span className="text-base text-warning/90 truncate min-w-0">
         {workingChanges.files} uncommitted {workingChanges.files === 1 ? 'change' : 'changes'}
       </span>
       <button
@@ -243,7 +243,7 @@ function WipRow({
           })
           if (ok) afterAction()
         }}
-        className="ml-auto shrink-0 p-1 rounded hover:bg-orange-500/25 text-orange-300/70 hover:text-orange-200 transition-opacity opacity-0 group-hover:opacity-100"
+        className="ml-auto shrink-0 p-1 rounded hover:bg-warning/25 text-warning/70 hover:text-warning/80 transition-opacity opacity-0 group-hover:opacity-100"
         title="Stash changes"
       >
         <Archive size={16} />
@@ -311,18 +311,18 @@ function DeleteBranchModal({
       }}
     >
       <div
-        className="w-full sm:max-w-sm mx-0 sm:mx-4 bg-bg-surface border border-red-500/30 rounded-t-2xl sm:rounded-xl shadow-xl p-5"
+        className="w-full sm:max-w-sm mx-0 sm:mx-4 bg-bg-surface border border-danger/30 rounded-t-2xl sm:rounded-xl shadow-xl p-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2.5 mb-3">
-          <div className="p-2 rounded-lg bg-red-500/15">
-            <AlertTriangle size={18} className="text-red-400" />
+          <div className="p-2 rounded-lg bg-danger/15">
+            <AlertTriangle size={18} className="text-danger" />
           </div>
           <h3 className="text-lg font-semibold text-text-primary">Delete branch</h3>
         </div>
         <p className="text-sm text-text-secondary mb-1">
           Are you sure you want to delete {isRemoteOnly ? 'the remote branch' : 'the branch'}{' '}
-          <code className="font-mono font-medium text-red-400">{branch.name}</code>?
+          <code className="font-mono font-medium text-danger">{branch.name}</code>?
         </p>
         <p className="text-xs text-text-muted mb-4">
           Commits will remain in the repository until garbage collected.
@@ -333,7 +333,7 @@ function DeleteBranchModal({
               type="checkbox"
               checked={deleteRemote}
               onChange={(e) => setDeleteRemote(e.target.checked)}
-              className="w-4 h-4 rounded border-border-default bg-bg-elevated text-red-500 focus:ring-red-500/30 accent-red-500"
+              className="w-4 h-4 rounded border-border-default bg-bg-elevated text-danger focus:ring-danger/30 accent-danger"
             />
             <span className="text-sm text-text-secondary group-hover:text-text-primary">
               Also delete remote branch
@@ -351,7 +351,7 @@ function DeleteBranchModal({
           <button
             onClick={handleConfirm}
             disabled={isDeleting}
-            className="px-4 py-2.5 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+            className="px-4 py-2.5 rounded-lg text-sm font-medium bg-danger text-white hover:bg-danger/80 disabled:opacity-50"
           >
             {isDeleting ? 'Deleting...' : 'Delete'}
           </button>
@@ -399,7 +399,7 @@ function CommitContextMenu({
   return (
     <div
       ref={menuRef}
-      className="absolute right-2 z-50 w-52 py-1 bg-bg-surface border border-border-default rounded-lg shadow-xl"
+      className="absolute right-2 z-50 w-52 py-1 bg-bg-surface border border-border-default rounded-[var(--radius-xl)] shadow-xl"
       style={{ top: topPx }}
     >
       {!menuCommit.pushed && (
@@ -445,7 +445,7 @@ function CommitContextMenu({
       </button>
       <button
         onClick={handleResetHard}
-        className="w-full text-left px-3 py-1.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300"
+        className="w-full text-left px-3 py-1.5 text-sm text-danger hover:bg-danger/10 hover:text-danger/80"
       >
         Reset hard to here
       </button>
@@ -468,7 +468,7 @@ function StashContextMenu({
   return (
     <div
       ref={stashMenuRef}
-      className="absolute z-50 w-48 py-1 bg-bg-surface border border-border-default rounded-lg shadow-xl"
+      className="absolute z-50 w-48 py-1 bg-bg-surface border border-border-default rounded-[var(--radius-xl)] shadow-xl"
       style={{ left: menuStash.x, top: menuStash.y + 4 }}
     >
       <div className="px-3 py-1.5 text-xs text-text-muted border-b border-border-default truncate">
@@ -482,7 +482,7 @@ function StashContextMenu({
       </button>
       <button
         onClick={handleStashDrop}
-        className="w-full text-left px-3 py-1.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300"
+        className="w-full text-left px-3 py-1.5 text-sm text-danger hover:bg-danger/10 hover:text-danger/80"
       >
         Delete
       </button>
@@ -596,7 +596,7 @@ function BranchContextMenu({
   return (
     <div
       ref={branchMenuRef}
-      className="absolute z-50 w-52 py-1 bg-bg-surface border border-border-default rounded-lg shadow-xl"
+      className="absolute z-50 w-52 py-1 bg-bg-surface border border-border-default rounded-[var(--radius-xl)] shadow-xl"
       style={{ left: menuBranch.x, top: menuBranch.y + 4 }}
     >
       <div className="px-3 py-1.5 text-xs text-text-muted border-b border-border-default truncate">
@@ -609,7 +609,7 @@ function BranchContextMenu({
             onClick={item.onClick}
             className={`w-full text-left px-3 py-1.5 text-sm ${
               item.danger
-                ? 'text-red-400 hover:bg-red-500/10 hover:text-red-300 flex items-center gap-2'
+                ? 'text-danger hover:bg-danger/10 hover:text-danger/80 flex items-center gap-2'
                 : 'text-text-secondary hover:bg-control-bg-hover hover:text-text-primary'
             }`}
           >
@@ -1267,7 +1267,7 @@ export default function GitGraph({
   return (
     <div className="h-full flex flex-col relative">
       {/* Error */}
-      {error && <div className="px-3 py-2 text-sm text-red-400 bg-red-500/10">{error}</div>}
+      {error && <div className="px-3 py-2 text-sm text-danger bg-danger/10">{error}</div>}
 
       {/* Graph */}
       <div ref={containerRef} className="flex-1 min-h-0 overflow-auto">
@@ -1373,7 +1373,7 @@ export default function GitGraph({
                     </div>
                     {isExpanded && extraCount > 0 && (
                       <div
-                        className="absolute left-2 z-50 flex flex-col gap-1 p-1.5 bg-bg-surface border border-border-default rounded-lg shadow-xl min-w-[160px]"
+                        className="absolute left-2 z-50 flex flex-col gap-1 p-1.5 bg-bg-surface border border-border-default rounded-[var(--radius-xl)] shadow-xl min-w-[160px]"
                         style={{ top: ROW_HEIGHT }}
                         onMouseEnter={() => {
                           if (expandedRowTimeout.current) {
@@ -1402,7 +1402,7 @@ export default function GitGraph({
                       className="absolute left-0 right-0 flex items-center px-2"
                       style={{ top: rowToY(headIdx), height: ROW_HEIGHT }}
                     >
-                      <span className="px-1.5 py-0.5 text-xs rounded font-medium leading-none bg-yellow-500/20 text-yellow-300 ring-1 ring-yellow-500/40">
+                      <span className="px-1.5 py-0.5 text-xs rounded font-medium leading-none bg-warning/20 text-warning ring-1 ring-warning/40">
                         HEAD
                       </span>
                     </div>
@@ -1414,7 +1414,7 @@ export default function GitGraph({
             <div
               onMouseDown={branchPanel.onMouseDown}
               onTouchStart={branchPanel.onTouchStart}
-              className="absolute top-0 bottom-0 z-10 w-3 cursor-col-resize hover:bg-blue-500/40 active:bg-blue-500/60 transition-colors touch-none"
+              className="absolute top-0 bottom-0 z-10 w-3 cursor-col-resize hover:bg-action/40 active:bg-action/60 transition-colors touch-none"
               style={{ left: branchPanel.width - 6 }}
             />
 
@@ -1438,7 +1438,7 @@ export default function GitGraph({
             <div
               onMouseDown={graphPanel.onMouseDown}
               onTouchStart={graphPanel.onTouchStart}
-              className="absolute top-0 bottom-0 z-10 w-3 cursor-col-resize hover:bg-blue-500/40 active:bg-blue-500/60 transition-colors touch-none"
+              className="absolute top-0 bottom-0 z-10 w-3 cursor-col-resize hover:bg-action/40 active:bg-action/60 transition-colors touch-none"
               style={{ left: branchPanel.width + graphPanel.width - 2 }}
             />
 
@@ -1481,11 +1481,11 @@ export default function GitGraph({
                   onClick={() => onSelectCommit?.(node.commit.hash)}
                   className={`absolute right-0 flex items-center gap-2 px-1 cursor-pointer group ${
                     isSelected
-                      ? 'bg-blue-500/[0.25] border-l-2 border-l-blue-400'
+                      ? 'bg-action/25 border-l-2 border-l-action'
                       : node.isHead
-                        ? 'bg-blue-500/[0.14] hover:bg-blue-500/[0.2]'
+                        ? 'bg-action/[0.14] hover:bg-action/20'
                         : node.onCurrentBranch
-                          ? 'bg-blue-500/[0.06] hover:bg-blue-500/[0.12]'
+                          ? 'bg-action/[0.06] hover:bg-action/[0.12]'
                           : 'hover:bg-bg-surface/50 opacity-60'
                   }`}
                   style={{

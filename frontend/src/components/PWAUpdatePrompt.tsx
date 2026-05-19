@@ -21,11 +21,11 @@ export default function PWAUpdatePrompt() {
   if (!needRefresh) return null
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-bg-surface border border-border-default rounded-lg shadow-lg px-4 py-3 flex items-center gap-3 max-w-[90vw]">
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-bg-surface border border-border-default rounded-[var(--radius-xl)] shadow-lg px-4 py-3 flex items-center gap-3 max-w-[90vw]">
       <span className="text-sm text-text-primary">New version available</span>
       <button
         onClick={() => updateServiceWorker(true)}
-        className="px-3 py-1 text-xs bg-blue-700 hover:bg-blue-600 text-white rounded"
+        className="px-3 py-1 text-xs bg-action hover:bg-action/80 text-white rounded"
       >
         Reload
       </button>

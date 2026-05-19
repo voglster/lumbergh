@@ -30,8 +30,8 @@ export function getSessionStatus(session: SessionBase): {
 }
 
 export const statusColorClasses: Record<string, { dot: string; text: string }> = {
-  gray: { dot: 'bg-gray-500', text: 'text-text-tertiary' },
-  yellow: { dot: 'bg-yellow-400', text: 'text-yellow-400' },
-  green: { dot: 'bg-green-500', text: 'text-green-400' },
-  red: { dot: 'bg-red-500', text: 'text-red-400' },
+  gray: { dot: 'bg-text-tertiary', text: 'text-text-tertiary' },
+  yellow: { dot: 'bg-warning shadow-[0_0_6px_rgba(255,159,10,0.4)]', text: 'text-warning' },
+  green: { dot: 'bg-success shadow-[0_0_6px_rgba(48,209,88,0.4)]', text: 'text-success' },
+  red: { dot: 'bg-danger shadow-[0_0_6px_rgba(255,69,58,0.4)]', text: 'text-danger' },
 }

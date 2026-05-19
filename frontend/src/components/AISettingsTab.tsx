@@ -73,7 +73,7 @@ export default function AISettingsTab({
         <select
           value={value}
           onChange={(e) => onProviderConfigChange(providerId, field.key, e.target.value)}
-          className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 text-sm"
+          className="w-full px-3 py-2 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50 text-sm"
         >
           <option value="">Select a model</option>
           {cloudModels.map((model) => (
@@ -94,7 +94,7 @@ export default function AISettingsTab({
           <select
             value={value}
             onChange={(e) => onProviderConfigChange(providerId, field.key, e.target.value)}
-            className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 text-sm"
+            className="w-full px-3 py-2 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50 text-sm"
           >
             <option value="">Select a model</option>
             {ollamaModels.map((model) => (
@@ -112,7 +112,7 @@ export default function AISettingsTab({
         <select
           value={value}
           onChange={(e) => onProviderConfigChange(providerId, field.key, e.target.value)}
-          className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 text-sm"
+          className="w-full px-3 py-2 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50 text-sm"
         >
           {field.options.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -129,7 +129,7 @@ export default function AISettingsTab({
         value={value}
         onChange={(e) => onProviderConfigChange(providerId, field.key, e.target.value)}
         placeholder={field.placeholder}
-        className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 font-mono text-sm"
+        className="w-full px-3 py-2 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50 font-mono text-sm"
       />
     )
   }
@@ -141,7 +141,7 @@ export default function AISettingsTab({
         <select
           value={aiProvider}
           onChange={(e) => onAiProviderChange(e.target.value)}
-          className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 text-sm"
+          className="w-full px-3 py-2 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50 text-sm"
         >
           {PROVIDERS.filter((p) => p.id !== 'lumbergh_cloud' || cloudUsername).map((p) => (
             <option key={p.id} value={p.id}>

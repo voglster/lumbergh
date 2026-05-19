@@ -113,8 +113,8 @@ export default function ResizablePanes({
       <div
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
-        className={`w-1 bg-border-default hover:bg-blue-500 cursor-col-resize transition-colors flex-shrink-0 touch-none ${
-          isDragging ? 'bg-blue-500' : ''
+        className={`w-[2px] bg-border-default hover:bg-action cursor-col-resize transition-colors flex-shrink-0 touch-none ${
+          isDragging ? 'bg-action' : ''
         }`}
       />
 

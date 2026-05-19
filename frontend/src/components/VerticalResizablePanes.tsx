@@ -113,8 +113,8 @@ export default function VerticalResizablePanes({
       <div
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
-        className={`h-1 bg-border-default hover:bg-blue-500 cursor-row-resize transition-colors flex-shrink-0 touch-none ${
-          isDragging ? 'bg-blue-500' : ''
+        className={`h-[2px] bg-border-default hover:bg-action cursor-row-resize transition-colors flex-shrink-0 touch-none ${
+          isDragging ? 'bg-action' : ''
         }`}
       />
 

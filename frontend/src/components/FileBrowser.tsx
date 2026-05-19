@@ -57,7 +57,7 @@ function MermaidDiagram({ code }: { code: string }) {
         })
         .catch((err) => {
           if (ref.current) {
-            ref.current.innerHTML = `<pre class="text-red-400 p-4">Mermaid error: ${err.message}</pre>`
+            ref.current.innerHTML = `<pre class="text-danger p-4">Mermaid error: ${err.message}</pre>`
           }
         })
     }
@@ -259,7 +259,7 @@ function FileContentView({
           {selectedFile.path.endsWith('.md') && (
             <button
               onClick={onTogglePreview}
-              className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-white"
+              className="text-xs px-2 py-1 bg-action hover:brightness-110 rounded text-white"
               title={showMarkdownPreview ? 'Show code' : 'Preview markdown'}
             >
               {showMarkdownPreview ? 'Code' : 'Preview'}
@@ -268,7 +268,7 @@ function FileContentView({
           {isCsv && (
             <button
               onClick={onToggleCsvPreview}
-              className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-white"
+              className="text-xs px-2 py-1 bg-action hover:brightness-110 rounded text-white"
               title={showCsvPreview ? 'Show raw text' : 'Show as table'}
             >
               {showCsvPreview ? 'Raw' : 'Table'}
@@ -552,7 +552,7 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
               ) : (
                 <ChevronRight size={14} className="text-text-muted" />
               )}
-              <Folder size={16} className="text-yellow-400" />
+              <Folder size={16} className="text-warning" />
               <span className="text-text-secondary truncate">{name}</span>
             </button>
             {isExpanded && renderTree(tree, entry.path, depth + 1)}
@@ -627,14 +627,14 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
 
       return (
         <div className="flex items-center gap-1 flex-wrap">
-          <Folder size={16} className="text-yellow-400" />
+          <Folder size={16} className="text-warning" />
           {segments.map((segment, i) => (
             <span key={segment.path} className="flex items-center">
               {i < segments.length - 1 ? (
                 <>
                   <button
                     onClick={() => navigateToDir(segment.path)}
-                    className="text-blue-400 hover:text-blue-300 hover:underline"
+                    className="text-action hover:text-action/80 hover:underline"
                   >
                     {segment.name}
                   </button>
@@ -662,10 +662,10 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4">
-        <span className="text-red-400">Error: {error}</span>
+        <span className="text-danger">Error: {error}</span>
         <button
           onClick={() => fetchFiles()}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-white"
+          className="px-4 py-2 bg-action hover:brightness-110 rounded text-white"
         >
           Retry
         </button>
@@ -750,7 +750,7 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
             e.preventDefault()
             handleSendToTerminal()
           }}
-          className="z-50 text-lg bg-blue-600 hover:bg-blue-500 text-white rounded px-1.5 py-0.5 pointer-events-auto"
+          className="z-50 text-lg bg-action hover:brightness-110 text-white rounded px-1.5 py-0.5 pointer-events-auto"
           style={{
             position: 'fixed',
             top: buttonPos.top,

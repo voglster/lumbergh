@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import type { KeyboardEvent } from 'react'
+import Button from './ui/Button'
 
 interface QuickInputProps {
   onSend: (text: string) => void
@@ -40,22 +41,17 @@ export default function QuickInput({
         onKeyDown={handleKeyDown}
         disabled={disabled}
         placeholder={placeholder}
-        className="flex-1 bg-input-bg text-text-primary px-3 py-2 rounded border border-input-border
-                   focus:outline-none focus:border-blue-500 disabled:opacity-50
-                   text-base" // text-base prevents iOS zoom on focus
+        className="flex-1 bg-input-bg text-text-primary px-3.5 py-2.5 rounded-[var(--radius-lg)] border border-input-border inset
+                   focus:outline-none focus:border-action/50 focus:shadow-[inset_0_1px_3px_rgba(0,0,0,0.2),0_0_0_3px_rgba(10,132,255,0.15)] transition-all duration-200
+                   disabled:opacity-50 text-base" // text-base prevents iOS zoom on focus
         autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"
         spellCheck={false}
       />
-      <button
-        onClick={handleSendClick}
-        disabled={disabled || !value.trim()}
-        className="bg-blue-600 hover:bg-blue-700 disabled:bg-control-bg-hover disabled:cursor-not-allowed
-                   text-text-primary px-4 py-2 rounded font-medium transition-colors"
-      >
+      <Button variant="primary" onClick={handleSendClick} disabled={disabled || !value.trim()}>
         Send
-      </button>
+      </Button>
     </div>
   )
 }

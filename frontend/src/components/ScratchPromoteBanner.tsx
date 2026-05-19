@@ -45,14 +45,14 @@ export default function ScratchPromoteBanner({ sessionName, isScratch, onPromote
 
   if (!expanded) {
     return (
-      <div className="flex items-center justify-between px-3 py-1.5 bg-amber-900/30 border-b border-amber-700/50">
-        <div className="flex items-center gap-2 text-xs text-amber-400">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-amber/10 border-b border-amber/30">
+        <div className="flex items-center gap-2 text-xs text-amber">
           <Zap size={12} />
           <span>Scratch session</span>
         </div>
         <button
           onClick={() => setExpanded(true)}
-          className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 transition-colors"
+          className="flex items-center gap-1 text-xs text-amber hover:text-amber/80 transition-colors"
         >
           Assign to project
           <ArrowRight size={12} />
@@ -62,9 +62,9 @@ export default function ScratchPromoteBanner({ sessionName, isScratch, onPromote
   }
 
   return (
-    <div className="px-3 py-2 bg-amber-900/30 border-b border-amber-700/50">
+    <div className="px-3 py-2 bg-amber/10 border-b border-amber/30">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-amber-400 font-medium">Assign to project</span>
+        <span className="text-xs text-amber font-medium">Assign to project</span>
         <button
           onClick={() => setExpanded(false)}
           className="p-0.5 text-text-muted hover:text-text-primary transition-colors"
@@ -78,32 +78,32 @@ export default function ScratchPromoteBanner({ sessionName, isScratch, onPromote
           value={workdir}
           onChange={(e) => setWorkdir(e.target.value)}
           placeholder="Project directory (e.g. ~/src/my-project)"
-          className="flex-1 px-2 py-1 text-sm bg-bg-base border border-border-default rounded focus:border-amber-500 focus:outline-none"
+          className="flex-1 px-2 py-1 text-sm bg-bg-base border border-border-default rounded-[var(--radius-lg)] focus:border-amber/50 focus:outline-none"
         />
         <input
           type="text"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           placeholder="Session name (optional)"
-          className="sm:w-40 px-2 py-1 text-sm bg-bg-base border border-border-default rounded focus:border-amber-500 focus:outline-none"
+          className="sm:w-40 px-2 py-1 text-sm bg-bg-base border border-border-default rounded-[var(--radius-lg)] focus:border-amber/50 focus:outline-none"
         />
         <div className="flex gap-2">
           <button
             onClick={handlePromote}
             disabled={!workdir.trim() || submitting}
-            className="px-3 py-1 text-sm bg-amber-600 hover:bg-amber-500 disabled:opacity-50 rounded transition-colors"
+            className="px-3 py-1 text-sm bg-amber hover:bg-amber/80 disabled:opacity-50 rounded-[var(--radius-md)] transition-colors"
           >
             {submitting ? 'Promoting...' : 'Promote'}
           </button>
           <button
             onClick={() => setExpanded(false)}
-            className="px-3 py-1 text-sm bg-control-bg hover:bg-control-bg-hover rounded transition-colors"
+            className="px-3 py-1 text-sm bg-control-bg hover:bg-control-bg-hover rounded-[var(--radius-md)] transition-colors"
           >
             Cancel
           </button>
         </div>
       </div>
-      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+      {error && <p className="mt-1 text-xs text-danger">{error}</p>}
     </div>
   )
 }

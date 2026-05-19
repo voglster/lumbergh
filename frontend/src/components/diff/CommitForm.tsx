@@ -101,7 +101,7 @@ function CommitButtons({
         onClick={() => onCommit(true)}
         disabled={!commitMessage.trim() || busy}
         data-testid="commit-btn"
-        className="px-3 py-2 bg-green-600 hover:bg-green-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-text-primary text-sm rounded transition-colors"
+        className="px-3 py-2 bg-success hover:brightness-110 text-white disabled:bg-control-bg-hover disabled:cursor-not-allowed text-sm rounded-[var(--radius-md)] transition-colors"
         title="Commit & push (Ctrl/Cmd+Shift+Enter)"
       >
         {isCommitting ? 'Committing...' : isPushing ? 'Pushing...' : 'Commit & Push'}
@@ -167,9 +167,9 @@ function AIGenerateButton({
     <button
       onClick={aiConfigured ? onGenerate : undefined}
       disabled={!aiConfigured || busy}
-      className={`px-3 py-2 text-sm rounded transition-colors ${
+      className={`px-3 py-2 text-sm rounded-[var(--radius-md)] transition-colors ${
         aiConfigured
-          ? 'bg-purple-600 hover:bg-purple-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-text-primary'
+          ? 'bg-purple hover:brightness-110 text-white disabled:bg-control-bg-hover disabled:cursor-not-allowed'
           : 'bg-control-bg-hover text-text-muted cursor-not-allowed'
       }`}
       title={
@@ -223,7 +223,7 @@ const CommitForm = memo(function CommitForm({
           onKeyDown={handleKeyDown}
           placeholder="Commit message..."
           rows={commitMessage.includes('\n') ? 3 : 1}
-          className="flex-1 px-3 py-2 bg-control-bg text-text-primary text-sm rounded border border-border-subtle focus:outline-none focus:border-blue-500 resize-none"
+          className="flex-1 px-3 py-2 bg-control-bg text-text-primary text-sm rounded-[var(--radius-lg)] border border-border-subtle focus:outline-none focus:border-action/50 resize-none"
           disabled={isCommitting || isGenerating}
         />
         <div className="flex flex-col gap-1.5 shrink-0">
@@ -247,7 +247,7 @@ const CommitForm = memo(function CommitForm({
       </div>
       {commitResult && (
         <div
-          className={`mt-2 text-sm ${commitResult.type === 'success' ? 'text-green-400' : 'text-red-400'}`}
+          className={`mt-2 text-sm ${commitResult.type === 'success' ? 'text-success' : 'text-danger'}`}
         >
           {commitResult.message}
         </div>

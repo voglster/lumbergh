@@ -21,9 +21,9 @@ export default function ModeToggle({ mode, onModeChange }: Props) {
             key={opt.key}
             type="button"
             onClick={() => onModeChange(opt.key)}
-            className={`flex-1 px-3 py-2 text-sm rounded transition-colors ${
+            className={`flex-1 px-3 py-2 text-sm rounded-[var(--radius-md)] transition-colors ${
               mode === opt.key
-                ? 'bg-blue-600 text-white'
+                ? 'bg-action text-white'
                 : 'bg-control-bg text-text-tertiary hover:text-text-primary hover:bg-control-bg-hover'
             }`}
           >

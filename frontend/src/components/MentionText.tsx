@@ -28,9 +28,9 @@ export default function MentionText({ text, prompts, className = '' }: MentionTe
     // Style based on whether prompt exists and its scope
     const bgColor = prompt
       ? prompt.scope === 'project'
-        ? 'bg-green-900/50 text-green-300 border-green-700'
-        : 'bg-purple-900/50 text-purple-300 border-purple-700'
-      : 'bg-red-900/50 text-red-300 border-red-700'
+        ? 'bg-success/10 text-success border-success/50'
+        : 'bg-purple/10 text-purple border-purple/50'
+      : 'bg-danger/10 text-danger border-danger/50'
 
     parts.push(
       <span

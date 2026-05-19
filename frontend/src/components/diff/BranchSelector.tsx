@@ -89,7 +89,7 @@ export default function BranchSelector({
         onClick={() => !isDisabled && setIsOpen(!isOpen)}
         disabled={isDisabled}
         className={`flex items-center gap-1 px-2 py-1 rounded text-sm ${
-          isDisabled ? 'text-text-muted cursor-not-allowed' : 'text-blue-400 hover:bg-control-bg'
+          isDisabled ? 'text-text-muted cursor-not-allowed' : 'text-action hover:bg-control-bg'
         }`}
         title={isDisabled ? 'Commit or stash changes first' : 'Switch branch'}
       >
@@ -103,7 +103,7 @@ export default function BranchSelector({
         <div className="absolute top-full left-0 mt-1 min-w-[200px] max-h-[300px] overflow-auto bg-bg-surface border border-border-subtle rounded shadow-lg z-50">
           {isLoading && <div className="px-3 py-2 text-sm text-text-tertiary">Switching...</div>}
           {error && (
-            <div className="px-3 py-2 text-sm text-red-400 border-b border-border-default">
+            <div className="px-3 py-2 text-sm text-danger border-b border-border-default">
               {error}
             </div>
           )}
@@ -119,7 +119,7 @@ export default function BranchSelector({
                     disabled={isLoading || branch.current}
                     className={`flex-1 px-3 py-2 text-left text-sm ${
                       branch.current
-                        ? 'text-green-400 bg-bg-elevated/50'
+                        ? 'text-success bg-bg-elevated/50'
                         : 'text-text-secondary hover:bg-control-bg'
                     }`}
                   >
@@ -133,7 +133,7 @@ export default function BranchSelector({
                         handleDelete(branch.name, false)
                       }}
                       disabled={isDeletingBranch}
-                      className="px-2 py-2 text-text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="px-2 py-2 text-text-muted hover:text-danger opacity-0 group-hover:opacity-100 transition-opacity"
                       title={`Delete branch ${branch.name}`}
                     >
                       <Trash2 size={13} />
@@ -164,7 +164,7 @@ export default function BranchSelector({
                         handleDelete(branch.name, true)
                       }}
                       disabled={isDeletingBranch}
-                      className="px-2 py-2 text-text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="px-2 py-2 text-text-muted hover:text-danger opacity-0 group-hover:opacity-100 transition-opacity"
                       title={`Delete remote branch ${branch.name}`}
                     >
                       <Trash2 size={13} />

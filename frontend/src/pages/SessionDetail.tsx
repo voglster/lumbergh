@@ -524,9 +524,8 @@ export default function SessionDetail() {
             {tab.label}
             {tab.id === 'git' && diffStats && diffStats.files > 0 && (
               <span className="ml-2 text-xs">
-                ({diffStats.files})
-                <span className="text-green-400 ml-1">+{diffStats.additions}</span>
-                <span className="text-red-400 ml-1">-{diffStats.deletions}</span>
+                ({diffStats.files})<span className="text-success ml-1">+{diffStats.additions}</span>
+                <span className="text-danger ml-1">-{diffStats.deletions}</span>
               </span>
             )}
           </button>
@@ -541,7 +540,7 @@ export default function SessionDetail() {
             <Settings size={14} />
           </button>
           {showTabSettings && (
-            <div className="absolute right-0 top-full mt-1 bg-bg-surface border border-border-default rounded-lg shadow-lg p-3 z-50 min-w-[160px]">
+            <div className="absolute right-0 top-full mt-1 bg-bg-surface border border-border-default rounded-[var(--radius-xl)] shadow-lg p-3 z-50 min-w-[160px]">
               <p className="text-xs text-text-tertiary mb-2 font-medium">Visible Tabs</p>
               <label className="flex items-center gap-2 py-1 text-sm border-b border-border-default mb-1 pb-2">
                 <input
@@ -645,14 +644,14 @@ export default function SessionDetail() {
   if (notFound) {
     return (
       <div className="h-full flex flex-col items-center justify-center bg-bg-sunken text-text-primary gap-4">
-        <div className="text-red-400 text-xl font-semibold">Session Not Found</div>
+        <div className="text-danger text-xl font-semibold">Session Not Found</div>
         <p className="text-text-tertiary text-sm text-center px-4">
           The session <span className="text-text-secondary font-mono">"{name}"</span> does not exist
           or has been deleted.
         </p>
         <button
           onClick={() => navigate('/')}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-sm transition-colors"
+          className="px-4 py-2 bg-action hover:brightness-110 text-white rounded text-sm transition-colors"
         >
           Go to Dashboard
         </button>
@@ -733,8 +732,8 @@ export default function SessionDetail() {
                 {tab.id === 'git' && diffStats && diffStats.files > 0 && (
                   <span className="ml-1 text-xs">
                     ({diffStats.files})
-                    <span className="text-green-400 ml-1">+{diffStats.additions}</span>
-                    <span className="text-red-400 ml-1">-{diffStats.deletions}</span>
+                    <span className="text-success ml-1">+{diffStats.additions}</span>
+                    <span className="text-danger ml-1">-{diffStats.deletions}</span>
                   </span>
                 )}
               </button>

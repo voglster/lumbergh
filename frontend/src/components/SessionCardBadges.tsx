@@ -32,15 +32,15 @@ export default function SessionCardBadges({
     <>
       {type === 'scratch' && (
         <div className="flex items-center gap-1.5 mb-1">
-          <Zap size={14} className="text-amber-400" />
-          <span className="text-xs text-amber-400 font-medium">Scratch</span>
+          <Zap size={14} className="text-amber" />
+          <span className="text-xs text-amber font-medium">Scratch</span>
         </div>
       )}
 
       {type === 'worktree' && worktreeBranch && (
         <div className="flex items-center gap-1.5 mb-1">
-          <GitBranch size={14} className="text-purple-400" />
-          <span className="text-xs text-purple-400 font-mono">{worktreeBranch}</span>
+          <GitBranch size={14} className="text-purple" />
+          <span className="text-xs text-purple font-mono">{worktreeBranch}</span>
           {worktreeParentRepo && (
             <span className="text-xs text-text-muted">
               from {worktreeParentRepo.split('/').pop()}
@@ -66,7 +66,7 @@ export default function SessionCardBadges({
 
       {description && <p className="text-sm text-text-muted truncate mb-1">{description}</p>}
 
-      {status && <p className="text-sm text-blue-400 truncate mb-2 italic">{status}</p>}
+      {status && <p className="text-sm text-action truncate mb-2 italic">{status}</p>}
     </>
   )
 }

@@ -8,7 +8,6 @@ import {
   Monitor,
   Info,
   ArrowUpCircle,
-  X,
   BookOpen,
   Star,
   FolderOpen,
@@ -18,6 +17,8 @@ import { getApiBase } from '../config'
 import SessionCard from '../components/SessionCard'
 import CreateSessionModal from '../components/CreateSessionModal'
 import SettingsModal from '../components/SettingsModal'
+import Button from '../components/ui/Button'
+import Banner from '../components/ui/Banner'
 import { useTheme } from '../hooks/useTheme'
 
 import type { SessionBase } from '../utils/sessionStatus'
@@ -167,10 +168,10 @@ function DashboardContent({
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-4">
-        <span className="text-red-400">{error}</span>
+        <span className="text-danger">{error}</span>
         <button
           onClick={onRetry}
-          className="px-4 py-2 bg-control-bg hover:bg-control-bg-hover rounded transition-colors"
+          className="px-4 py-2 bg-control-bg hover:bg-control-bg-hover rounded-[var(--radius-md)] transition-colors"
         >
           Retry
         </button>
@@ -185,13 +186,14 @@ function DashboardContent({
         <p className="text-sm">
           Create a new session to get started, or existing tmux sessions will appear here
         </p>
-        <button
+        <Button
           onClick={onCreateNew}
-          className="mt-2 flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors text-base"
+          variant="primary"
+          className="mt-2 flex items-center gap-2 px-6 py-3 text-base"
         >
           <Plus size={20} />
           Create Your First Session
-        </button>
+        </Button>
       </div>
     )
   }
@@ -238,103 +240,92 @@ function DashboardBanners({
   return (
     <>
       {lbSharedInstalled === false && (
-        <div className="mx-4 mt-4 p-3 bg-blue-900/50 border border-blue-700 rounded-lg flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Info size={20} className="text-blue-400 flex-shrink-0" />
-            <span className="text-sm text-text-secondary">
-              Enable cross-session sharing by adding LB Shared commands to your CLAUDE.md
-            </span>
-          </div>
-          <button
-            onClick={onInstallLbShared}
-            disabled={installingLbShared}
-            className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 rounded transition-colors"
-          >
-            {installingLbShared ? 'Installing...' : 'Enable'}
-          </button>
-        </div>
+        <Banner
+          variant="info"
+          icon={<Info size={20} />}
+          className="mx-4 mt-4"
+          action={
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={onInstallLbShared}
+              disabled={installingLbShared}
+            >
+              {installingLbShared ? 'Installing...' : 'Enable'}
+            </Button>
+          }
+        >
+          Enable cross-session sharing by adding LB Shared commands to your CLAUDE.md
+        </Banner>
       )}
 
       {tmuxMouseEnabled === false && (
-        <div className="mx-4 mt-4 p-3 bg-yellow-900/50 border border-yellow-700 rounded-lg flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Info size={20} className="text-yellow-400 flex-shrink-0" />
-            <span className="text-sm text-text-secondary">
-              Tmux mouse mode is off — terminal scrolling and clicking won't work in the browser
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onEnableTmuxMouse('mouse_only')}
-              disabled={enablingTmuxMouse}
-              className="px-3 py-1.5 text-sm bg-yellow-700 hover:bg-yellow-600 disabled:bg-yellow-800 rounded transition-colors"
-            >
-              Just enable mouse
-            </button>
-            <button
-              onClick={() => onEnableTmuxMouse('full')}
-              disabled={enablingTmuxMouse}
-              className="px-3 py-1.5 text-sm bg-yellow-600 hover:bg-yellow-500 disabled:bg-yellow-800 rounded transition-colors"
-            >
-              Install full config
-            </button>
-          </div>
-        </div>
+        <Banner
+          variant="warning"
+          icon={<Info size={20} />}
+          className="mx-4 mt-4"
+          action={
+            <div className="flex items-center gap-2">
+              <Button
+                variant="warning"
+                size="sm"
+                onClick={() => onEnableTmuxMouse('mouse_only')}
+                disabled={enablingTmuxMouse}
+              >
+                Just enable mouse
+              </Button>
+              <Button
+                variant="warning"
+                size="sm"
+                onClick={() => onEnableTmuxMouse('full')}
+                disabled={enablingTmuxMouse}
+              >
+                Install full config
+              </Button>
+            </div>
+          }
+        >
+          Tmux mouse mode is off — terminal scrolling and clicking won't work in the browser
+        </Banner>
       )}
 
       {isFirstRun && defaultRepoDir && (
-        <div className="mx-4 mt-4 p-3 bg-blue-900/50 border border-blue-700 rounded-lg flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <FolderOpen size={20} className="text-blue-400 flex-shrink-0" />
-            <span className="text-sm text-text-secondary">
-              Searching for repos in <span className="font-mono">{defaultRepoDir}</span> —{' '}
-              <button
-                onClick={onOpenSettings}
-                className="text-blue-400 hover:text-blue-300 underline"
-              >
-                Change in Settings
-              </button>
-            </span>
-          </div>
-          <button
-            onClick={onDismissFirstRun}
-            title="Dismiss"
-            className="p-1.5 text-text-tertiary hover:text-text-primary rounded transition-colors"
-          >
-            <X size={16} />
+        <Banner
+          variant="info"
+          icon={<FolderOpen size={20} />}
+          className="mx-4 mt-4"
+          onDismiss={onDismissFirstRun}
+        >
+          Searching for repos in <span className="font-mono">{defaultRepoDir}</span> —{' '}
+          <button onClick={onOpenSettings} className="text-action hover:brightness-110 underline">
+            Change in Settings
           </button>
-        </div>
+        </Banner>
       )}
 
       {updateInfo && (
-        <div className="mx-4 mt-4 p-3 bg-yellow-900/50 border border-yellow-700 rounded-lg flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <ArrowUpCircle size={20} className="text-yellow-400 flex-shrink-0" />
-            <span className="text-sm text-text-secondary">
-              {getUpdateMessage(updateInfo.current, updateInfo.latest)}
-              <code className="ml-2 text-xs bg-black/30 px-1.5 py-0.5 rounded font-mono">
-                Run: uv tool upgrade pylumbergh
-              </code>
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
+        <Banner
+          variant="warning"
+          icon={<ArrowUpCircle size={20} />}
+          className="mx-4 mt-4"
+          onDismiss={() => onDismissUpdate(updateInfo.latest)}
+          action={
             <a
               href={`https://github.com/voglster/lumbergh/releases/tag/v${updateInfo.latest}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-1.5 text-sm bg-yellow-600 hover:bg-yellow-500 rounded transition-colors"
             >
-              View Release
+              <Button variant="warning" size="sm">
+                View Release
+              </Button>
             </a>
-            <button
-              onClick={() => onDismissUpdate(updateInfo.latest)}
-              title="Dismiss"
-              className="p-1.5 text-text-tertiary hover:text-text-primary rounded transition-colors"
-            >
-              <X size={16} />
-            </button>
-          </div>
-        </div>
+          }
+        >
+          {getUpdateMessage(updateInfo.current, updateInfo.latest)}
+          <code className="ml-2 text-xs bg-black/30 px-1.5 py-0.5 rounded font-mono">
+            Run: uv tool upgrade pylumbergh
+          </code>
+        </Banner>
       )}
     </>
   )
@@ -651,12 +642,12 @@ export default function Dashboard() {
   return (
     <div className="h-full flex flex-col bg-bg-sunken text-text-primary overflow-hidden">
       {/* Header */}
-      <header className="flex items-center justify-between p-4 bg-bg-surface border-b border-border-default">
+      <header className="glass flex items-center justify-between p-4 border-b border-border-default">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-semibold text-text-secondary">Lumbergh</h1>
           {planInfo && planInfo.limit > 0 && (
             <span
-              className={`text-xs font-medium ${planInfo.used >= planInfo.limit ? 'text-yellow-500' : 'text-text-muted'}`}
+              className={`text-xs font-medium ${planInfo.used >= planInfo.limit ? 'text-warning' : 'text-text-muted'}`}
             >
               Cloud: {planInfo.used}/{planInfo.limit}
             </span>
@@ -672,7 +663,7 @@ export default function Dashboard() {
             target="_blank"
             rel="noopener noreferrer"
             title="Documentation"
-            className="p-2 text-text-tertiary hover:text-text-primary hover:bg-control-bg rounded transition-colors"
+            className="w-8 h-8 rounded-[var(--radius-md)] bg-control-bg hover:bg-control-bg-hover flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
           >
             <BookOpen size={20} />
           </a>
@@ -680,7 +671,7 @@ export default function Dashboard() {
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            className="p-2 text-text-tertiary hover:text-text-primary hover:bg-control-bg rounded transition-colors"
+            className="w-8 h-8 rounded-[var(--radius-md)] bg-control-bg hover:bg-control-bg-hover flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
           >
             {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
           </button>
@@ -688,27 +679,30 @@ export default function Dashboard() {
             onClick={() => setShowSettingsModal(true)}
             title="Settings"
             data-testid="settings-btn"
-            className="p-2 text-text-tertiary hover:text-text-primary hover:bg-control-bg rounded transition-colors"
+            className="w-8 h-8 rounded-[var(--radius-md)] bg-control-bg hover:bg-control-bg-hover flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
           >
             <Settings size={20} />
           </button>
-          <button
+          <div className="w-px h-5 bg-border-default mx-1" />
+          <Button
             onClick={handleCreateScratch}
             disabled={creatingScratch}
             title="Quick scratch session"
             data-testid="scratch-session-btn"
-            className="p-2 text-amber-400 hover:bg-amber-600/20 hover:text-amber-300 disabled:opacity-50 rounded transition-colors"
+            variant="warning"
+            size="sm"
           >
             <Zap size={16} />
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setShowCreateModal(true)}
             data-testid="new-session-btn"
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded transition-colors"
+            variant="primary"
+            size="sm"
           >
             <Plus size={16} />
             New Session
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -753,7 +747,7 @@ export default function Dashboard() {
               href={`https://github.com/voglster/lumbergh/releases/tag/v${currentVersion}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-amber-400 transition-colors"
+              className="hover:text-action transition-colors"
             >
               v{currentVersion}
             </a>
@@ -764,10 +758,10 @@ export default function Dashboard() {
           href="https://github.com/voglster/lumbergh"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 hover:text-amber-400 transition-colors group"
+          className="inline-flex items-center gap-1.5 hover:text-action transition-colors group"
         >
           I was told there would be
-          <Star size={14} className="group-hover:fill-amber-400 transition-colors" />
+          <Star size={14} className="group-hover:fill-current transition-colors" />
           stars
         </a>
       </footer>

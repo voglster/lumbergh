@@ -48,7 +48,7 @@ function DivergedView({
   return (
     <>
       <div className="text-center">
-        <div className="text-lg text-yellow-400 mb-1">Branches have diverged</div>
+        <div className="text-lg text-warning mb-1">Branches have diverged</div>
         <div className="text-text-muted">
           {remoteStatus.ahead} unpushed commit{remoteStatus.ahead > 1 ? 's' : ''},{' '}
           {remoteStatus.behind} commit{remoteStatus.behind > 1 ? 's' : ''} behind{' '}
@@ -59,7 +59,7 @@ function DivergedView({
         <button
           onClick={onPullAndPush}
           disabled={isPulling || isPushing}
-          className="px-6 py-3 bg-yellow-600 hover:bg-yellow-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+          className="px-6 py-3 bg-warning hover:brightness-110 text-white disabled:bg-control-bg-hover disabled:cursor-not-allowed rounded-lg transition-colors flex items-center justify-center gap-2"
         >
           {isPulling ? (
             <>Pulling...</>
@@ -96,14 +96,14 @@ function AheadView({
         <div className="text-text-muted">
           You have {remoteStatus.ahead} unpushed commit
           {remoteStatus.ahead > 1 ? 's' : ''} on{' '}
-          <span className="text-blue-400 font-mono">{remoteStatus.branch}</span>
+          <span className="text-action font-mono">{remoteStatus.branch}</span>
         </div>
       </div>
       <div className="flex flex-col gap-3">
         <button
           onClick={onPush}
           disabled={isPushing}
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+          className="px-6 py-3 bg-action hover:brightness-110 text-white disabled:bg-control-bg-hover disabled:cursor-not-allowed rounded-lg transition-colors flex items-center justify-center gap-2"
         >
           {isPushing ? (
             <>Pushing...</>
@@ -135,7 +135,7 @@ function BehindView({
     <>
       <div className="text-center">
         <div className="text-lg text-text-secondary mb-1">No local changes</div>
-        <div className="text-yellow-500">
+        <div className="text-warning">
           {remoteStatus.behind} commit{remoteStatus.behind > 1 ? 's' : ''} behind{' '}
           <span className="font-mono">{remoteStatus.remote || 'origin'}</span>
         </div>
@@ -144,7 +144,7 @@ function BehindView({
         <button
           onClick={onPull}
           disabled={isPulling}
-          className="px-6 py-3 bg-yellow-600 hover:bg-yellow-500 disabled:bg-control-bg-hover disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+          className="px-6 py-3 bg-warning hover:brightness-110 text-white disabled:bg-control-bg-hover disabled:cursor-not-allowed rounded-lg transition-colors flex items-center justify-center gap-2"
         >
           {isPulling ? (
             <>Pulling...</>

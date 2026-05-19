@@ -135,7 +135,7 @@ export default function Scratchpad({ sessionName, onFocusTerminal }: ScratchpadP
             e.preventDefault() // Prevent blur from firing
             handleSendToTerminal()
           }}
-          className="absolute top-3 right-20 px-2 py-1 text-xs bg-blue-600 hover:bg-blue-500 rounded"
+          className="absolute top-3 right-20 px-2 py-1 text-xs bg-action hover:brightness-110 text-white rounded"
           title="Send selected text to terminal (no Enter)"
         >
           Send to Terminal
@@ -144,11 +144,11 @@ export default function Scratchpad({ sessionName, onFocusTerminal }: ScratchpadP
       <span
         className={`absolute top-3 right-3 text-xs ${
           status === 'saving'
-            ? 'text-yellow-400'
+            ? 'text-warning'
             : status === 'saved'
-              ? 'text-green-400'
+              ? 'text-success'
               : status === 'error'
-                ? 'text-red-400'
+                ? 'text-danger'
                 : 'text-transparent'
         }`}
       >
@@ -164,7 +164,7 @@ export default function Scratchpad({ sessionName, onFocusTerminal }: ScratchpadP
         onBlur={() => setHasSelection(false)}
         placeholder="Type your notes here..."
         data-testid="scratchpad-textarea"
-        className="h-full w-full bg-bg-surface text-text-secondary border border-border-default rounded p-3 resize-none focus:outline-none focus:border-border-subtle font-mono text-sm"
+        className="h-full w-full bg-bg-surface text-text-secondary border border-border-default rounded p-3 resize-none focus:outline-none focus:border-action/50 font-mono text-sm"
       />
     </div>
   )

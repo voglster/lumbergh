@@ -625,13 +625,13 @@ export default memo(function Terminal({
 
       {/* Error display (only show if session is not dead - dead sessions have their own overlay) */}
       {error && !sessionDead && (
-        <div className="bg-red-900/80 text-red-200 px-2 py-1 text-sm">{error}</div>
+        <div className="bg-danger/20 text-danger px-2 py-1 text-sm">{error}</div>
       )}
 
       {/* Session death overlay */}
       {sessionDead && (
         <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-20">
-          <div className="text-red-400 text-lg font-semibold mb-2">Session Terminated</div>
+          <div className="text-danger text-lg font-semibold mb-2">Session Terminated</div>
           <p className="text-text-tertiary text-sm mb-4 text-center px-4">
             The tmux session has ended or was killed
           </p>
@@ -644,7 +644,7 @@ export default memo(function Terminal({
             </button>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-sm"
+              className="px-4 py-2 bg-action hover:brightness-110 text-white rounded text-sm"
             >
               Retry
             </button>
@@ -657,14 +657,14 @@ export default memo(function Terminal({
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-10">
           <button
             onClick={() => sendTmuxCommand('page-up')}
-            className="w-14 h-14 bg-yellow-600/90 hover:bg-yellow-500 rounded-lg flex items-center justify-center shadow-lg"
+            className="w-14 h-14 bg-warning/90 hover:bg-warning rounded-lg flex items-center justify-center shadow-lg"
             title="Page Up"
           >
             <ChevronUp size={24} />
           </button>
           <button
             onClick={() => sendTmuxCommand('page-down')}
-            className="w-14 h-14 bg-yellow-600/90 hover:bg-yellow-500 rounded-lg flex items-center justify-center shadow-lg"
+            className="w-14 h-14 bg-warning/90 hover:bg-warning rounded-lg flex items-center justify-center shadow-lg"
             title="Page Down"
           >
             <ChevronDown size={24} />
@@ -674,12 +674,12 @@ export default memo(function Terminal({
 
       {/* Terminal container with focus click shield */}
       <div
-        className={`flex-1 overflow-hidden relative ${hasFocus ? 'border-2 border-blue-500/70' : 'border-2 border-transparent'}`}
+        className={`flex-1 overflow-hidden relative ${hasFocus ? 'border-2 border-action/40' : 'border-2 border-transparent'}`}
       >
         {/* Floating connection indicator */}
         <div
           className={`absolute top-1 right-1 w-2 h-2 rounded-full z-10 ${
-            isConnected ? 'bg-green-500' : 'bg-red-500'
+            isConnected ? 'bg-success' : 'bg-danger'
           }`}
           title={isConnected ? 'Connected' : 'Disconnected'}
         />

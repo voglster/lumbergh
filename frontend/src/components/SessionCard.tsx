@@ -5,6 +5,7 @@ import { Minus, Pause, Play, AlertCircle, AlertTriangle, Circle, Cloud, Star } f
 import SessionCardEditForm from './SessionCardEditForm'
 import SessionCardActions from './SessionCardActions'
 import SessionCardBadges from './SessionCardBadges'
+import GlassPanel from './ui/GlassPanel'
 import type { SessionBase } from '../utils/sessionStatus'
 import { getSessionStatus as getBaseStatus, statusColorClasses } from '../utils/sessionStatus'
 
@@ -67,14 +68,12 @@ function SessionCardFooter({
       <span>
         {session.windows} window{session.windows !== 1 ? 's' : ''}
       </span>
-      {session.attached && <span className="text-blue-400">attached</span>}
-      {!session.workdir && <span className="text-yellow-500">orphan</span>}
+      {session.attached && <span className="text-action">attached</span>}
+      {!session.workdir && <span className="text-warning">orphan</span>}
       <button
         onClick={onToggleTheOne}
-        className={`ml-auto p-0.5 rounded transition-colors ${
-          session.theOne
-            ? 'text-yellow-400 hover:text-yellow-300'
-            : 'text-text-muted hover:text-yellow-400'
+        className={`ml-auto p-0.5 rounded-[var(--radius-md)] transition-colors ${
+          session.theOne ? 'text-amber hover:text-amber/80' : 'text-text-muted hover:text-amber'
         }`}
         title={session.theOne ? 'Starred (click to unstar)' : 'Star session'}
       >
@@ -82,12 +81,12 @@ function SessionCardFooter({
       </button>
       <button
         onClick={onToggleCloud}
-        className={`p-0.5 rounded transition-colors ${
+        className={`p-0.5 rounded-[var(--radius-md)] transition-colors ${
           session.cloudEnabled
-            ? 'text-blue-400 hover:text-blue-300'
+            ? 'text-action hover:text-action/80'
             : cloudAtLimit
               ? 'text-text-muted opacity-40 cursor-not-allowed'
-              : 'text-text-muted hover:text-blue-400'
+              : 'text-text-muted hover:text-action'
         }`}
         title={
           session.cloudEnabled
@@ -216,10 +215,12 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset, clou
   const colors = statusColorClasses[status.color]
 
   return (
-    <div
+    <GlassPanel
+      hover
+      padding="md"
       onClick={handleClick}
       data-testid="session-card-link"
-      className={`bg-bg-surface rounded-lg p-4 cursor-pointer hover:bg-bg-elevated transition-colors border ${session.type === 'scratch' ? 'border-dashed border-amber-500/50' : session.theOne ? 'border-blue-500 dark:border-blue-400' : 'border-border-default hover:border-border-subtle'} ${session.paused ? 'opacity-50' : ''}`}
+      className={`cursor-pointer ${session.type === 'scratch' ? 'border-dashed border-amber/30' : session.theOne ? 'border-action' : ''} ${session.paused ? 'opacity-50' : ''}`}
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -265,6 +266,6 @@ export default function SessionCard({ session, onDelete, onUpdate, onReset, clou
         onToggleCloud={handleToggleCloud}
         onToggleTheOne={handleToggleTheOne}
       />
-    </div>
+    </GlassPanel>
   )
 }

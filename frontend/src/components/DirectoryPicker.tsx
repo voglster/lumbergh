@@ -164,7 +164,7 @@ export default function DirectoryPicker({ value, onChange, onManualEntry }: Prop
       {/* Selected value display or search input */}
       {value ? (
         <div className="flex items-center gap-2">
-          <div className="flex-1 px-3 py-2 bg-input-bg rounded border border-input-border">
+          <div className="flex-1 px-3 py-2 bg-input-bg rounded-[var(--radius-lg)] border border-input-border">
             <div className="text-text-primary font-medium">{displayName}</div>
             <div className="text-xs text-text-tertiary font-mono truncate">{value}</div>
           </div>
@@ -201,7 +201,7 @@ export default function DirectoryPicker({ value, onChange, onManualEntry }: Prop
             onFocus={() => setIsOpen(true)}
             onKeyDown={handleKeyDown}
             placeholder="Search git repositories..."
-            className="w-full px-3 py-2 bg-input-bg text-text-primary rounded border border-input-border focus:outline-none focus:border-blue-500 pr-10"
+            className="w-full px-3 py-2 bg-input-bg text-text-primary rounded-[var(--radius-lg)] border border-input-border focus:outline-none focus:border-action/50 pr-10"
           />
           {isLoading && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -236,7 +236,7 @@ export default function DirectoryPicker({ value, onChange, onManualEntry }: Prop
           className="absolute z-50 w-full mt-1 bg-control-bg border border-border-subtle rounded shadow-lg max-h-64 overflow-y-auto"
         >
           {error ? (
-            <div className="px-3 py-2 text-red-400 text-sm">{error}</div>
+            <div className="px-3 py-2 text-danger text-sm">{error}</div>
           ) : directories.length === 0 && !isLoading ? (
             <EmptyResults query={query} looksLikePath={looksLikePath} />
           ) : (
@@ -248,7 +248,7 @@ export default function DirectoryPicker({ value, onChange, onManualEntry }: Prop
                 onMouseEnter={() => setHighlightedIndex(index)}
                 className={`w-full px-3 py-2 text-left transition-colors ${
                   index === highlightedIndex
-                    ? 'bg-blue-600 text-text-primary'
+                    ? 'bg-action text-text-primary'
                     : 'text-text-primary hover:bg-control-bg-hover'
                 }`}
               >
@@ -265,7 +265,7 @@ export default function DirectoryPicker({ value, onChange, onManualEntry }: Prop
         <button
           type="button"
           onClick={onManualEntry}
-          className="mt-2 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+          className="mt-2 text-xs text-action hover:text-action/80 transition-colors"
         >
           Enter path manually
         </button>

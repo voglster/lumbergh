@@ -99,7 +99,7 @@ export default function SessionCardEditForm({
   return (
     <div
       onClick={(e) => e.stopPropagation()}
-      className="bg-bg-surface rounded-lg p-4 border border-blue-500"
+      className="bg-bg-surface rounded-[var(--radius-xl)] p-4 border border-action"
     >
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
@@ -110,7 +110,7 @@ export default function SessionCardEditForm({
             onChange={(e) => setEditName(e.target.value)}
             onKeyDown={handleKeyDown}
             autoFocus
-            className="w-full bg-control-bg text-text-primary px-2 py-1.5 rounded border border-border-subtle focus:border-blue-500 focus:outline-none text-sm"
+            className="w-full bg-control-bg text-text-primary px-2 py-1.5 rounded-[var(--radius-lg)] border border-border-subtle focus:border-action/50 focus:outline-none text-sm"
             placeholder={sessionName}
           />
         </div>
@@ -121,7 +121,7 @@ export default function SessionCardEditForm({
             value={editDescription}
             onChange={(e) => setEditDescription(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full bg-control-bg text-text-primary px-2 py-1.5 rounded border border-border-subtle focus:border-blue-500 focus:outline-none text-sm"
+            className="w-full bg-control-bg text-text-primary px-2 py-1.5 rounded-[var(--radius-lg)] border border-border-subtle focus:border-action/50 focus:outline-none text-sm"
             placeholder="Optional description"
           />
         </div>
@@ -205,7 +205,7 @@ export default function SessionCardEditForm({
           </button>
           <button
             type="submit"
-            className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
+            className="px-3 py-1 text-sm bg-action hover:bg-action/80 text-white rounded-[var(--radius-md)] transition-colors"
           >
             Save
           </button>

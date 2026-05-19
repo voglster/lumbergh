@@ -167,18 +167,18 @@ const FileDiff = memo(function FileDiff({
           <ArrowLeft size={14} /> Back
         </button>
         <span className="text-text-muted">/</span>
-        <span className="font-mono text-sm text-blue-400 truncate flex-1">{file.path}</span>
+        <span className="font-mono text-sm text-action truncate flex-1">{file.path}</span>
         {isMarkdown && (
           <button
             onClick={() => setShowMarkdownPreview(true)}
-            className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-white"
+            className="text-xs px-2 py-1 bg-action hover:brightness-110 text-white rounded"
             title="Preview new version"
           >
             Preview
           </button>
         )}
-        <span className="text-green-400 text-xs">+{stats.additions}</span>
-        <span className="text-red-400 text-xs">-{stats.deletions}</span>
+        <span className="text-success text-xs">+{stats.additions}</span>
+        <span className="text-danger text-xs">-{stats.deletions}</span>
         <div className="flex items-center gap-0.5 ml-1">
           <button
             onClick={() => changeFontSize(-FONT_SIZE_STEP)}
@@ -231,7 +231,7 @@ const FileDiff = memo(function FileDiff({
                 e.preventDefault()
                 handleSendToTerminal()
               }}
-              className="z-10 text-lg bg-blue-600 hover:bg-blue-500 text-white rounded px-1.5 py-0.5"
+              className="z-10 text-lg bg-action hover:brightness-110 text-white rounded px-1.5 py-0.5"
               style={{ position: 'absolute', top: buttonPos.top, right: 16 }}
               title="Send selected text to terminal (no Enter)"
             >

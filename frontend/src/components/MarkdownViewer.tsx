@@ -146,7 +146,7 @@ export default function MarkdownViewer({ content, filePath, onClose }: Props) {
             className="text-text-tertiary hover:text-text-primary transition-colors p-1.5 rounded hover:bg-bg-hover"
             title="Copy markdown"
           >
-            {copied ? <Check size={18} className="text-green-400" /> : <Copy size={18} />}
+            {copied ? <Check size={18} className="text-success" /> : <Copy size={18} />}
           </button>
           <button
             onClick={onClose}

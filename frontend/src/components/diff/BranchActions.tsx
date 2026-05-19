@@ -59,8 +59,8 @@ export default function BranchActions({ gitBaseUrl, isBranchOp, onBranchAction }
           disabled={isBranchOp}
           className={`px-1.5 py-0.5 rounded text-xs transition-colors ${
             menuType === 'rebase'
-              ? 'bg-orange-600/30 text-orange-400'
-              : 'text-text-muted hover:text-orange-400 hover:bg-control-bg'
+              ? 'bg-warning/15 text-warning'
+              : 'text-text-muted hover:text-warning hover:bg-control-bg'
           } disabled:opacity-50`}
           title="Rebase onto another branch"
         >
@@ -71,8 +71,8 @@ export default function BranchActions({ gitBaseUrl, isBranchOp, onBranchAction }
           disabled={isBranchOp}
           className={`px-1.5 py-0.5 rounded text-xs transition-colors ${
             menuType === 'ff'
-              ? 'bg-green-600/30 text-green-400'
-              : 'text-text-muted hover:text-green-400 hover:bg-control-bg'
+              ? 'bg-success/15 text-success'
+              : 'text-text-muted hover:text-success hover:bg-control-bg'
           } disabled:opacity-50`}
           title="Fast-forward to another branch"
         >

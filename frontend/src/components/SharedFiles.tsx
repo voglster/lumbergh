@@ -104,14 +104,14 @@ function SharedFileItem({
         <div className="flex gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => onSendToTerminal(file.name, false)}
-            className="p-1.5 text-text-tertiary hover:text-blue-400 hover:bg-control-bg rounded"
+            className="p-1.5 text-text-tertiary hover:text-action hover:bg-control-bg rounded"
             title="Send path to terminal (no Enter)"
           >
             <Play size={16} />
           </button>
           <button
             onClick={() => onSendToTerminal(file.name, true)}
-            className="p-1.5 text-text-tertiary hover:text-green-400 hover:bg-control-bg rounded"
+            className="p-1.5 text-text-tertiary hover:text-success hover:bg-control-bg rounded"
             title="Send path to terminal + Enter"
           >
             <SendHorizonal size={16} />
@@ -144,10 +144,10 @@ function SharedFileItem({
             onClick={() => onStartSaveAsPrompt(file.name)}
             className={`p-1.5 hover:bg-control-bg rounded ${
               promptSuccess === file.name
-                ? 'text-green-400'
+                ? 'text-success'
                 : savingPrompt === file.name
-                  ? 'text-yellow-400 animate-pulse'
-                  : 'text-text-tertiary hover:text-purple-400'
+                  ? 'text-warning animate-pulse'
+                  : 'text-text-tertiary hover:text-purple'
             }`}
             title={promptSuccess === file.name ? 'Saved!' : 'Save as prompt template'}
             disabled={savingPrompt === file.name}
@@ -159,14 +159,14 @@ function SharedFileItem({
         <a
           href={`${getApiBase()}/shared/files/${encodeURIComponent(file.name)}/content`}
           download={file.name}
-          className="p-1.5 text-text-tertiary hover:text-blue-400 hover:bg-control-bg rounded"
+          className="p-1.5 text-text-tertiary hover:text-action hover:bg-control-bg rounded"
           title="Download file"
         >
           ↓
         </a>
         <button
           onClick={() => onDelete(file.name)}
-          className="p-1.5 text-text-tertiary hover:text-red-400 hover:bg-control-bg rounded"
+          className="p-1.5 text-text-tertiary hover:text-danger hover:bg-control-bg rounded"
           title="Delete file"
         >
           <Trash2 size={16} />
@@ -182,7 +182,7 @@ function SharedFileItem({
             type="text"
             value={promptName}
             onChange={(e) => onPromptNameChange(e.target.value)}
-            className="w-full bg-control-bg text-text-primary text-sm px-2 py-1 rounded border border-border-subtle focus:border-blue-500 focus:outline-none mb-2 font-mono"
+            className="w-full bg-control-bg text-text-primary text-sm px-2 py-1 rounded-[var(--radius-lg)] border border-border-subtle focus:border-action/50 focus:outline-none mb-2 font-mono"
             placeholder="prompt_name"
           />
           <div className="flex items-center gap-2 mb-2">
@@ -193,7 +193,7 @@ function SharedFileItem({
                 checked={promptScope === 'project'}
                 onChange={() => onPromptScopeChange('project')}
                 disabled={!sessionName}
-                className="accent-blue-500"
+                className="accent-action"
               />
               Project
             </label>
@@ -203,7 +203,7 @@ function SharedFileItem({
                 name={`scope-${file.name}`}
                 checked={promptScope === 'global'}
                 onChange={() => onPromptScopeChange('global')}
-                className="accent-blue-500"
+                className="accent-action"
               />
               Global
             </label>
@@ -212,7 +212,7 @@ function SharedFileItem({
             <button
               onClick={onConfirmSaveAsPrompt}
               disabled={promptSaving || !promptName.trim()}
-              className="flex-1 text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded disabled:opacity-50"
+              className="flex-1 text-xs px-2 py-1 bg-action hover:brightness-110 text-white rounded disabled:opacity-50"
             >
               {promptSaving ? 'Saving...' : 'Save'}
             </button>
@@ -535,7 +535,7 @@ export default function SharedFiles({ sessionName, onFocusTerminal, refreshTrigg
       <div
         className={`p-4 border-2 border-dashed rounded m-2 text-center transition-colors ${
           isDragging
-            ? 'border-blue-500 bg-blue-900/20'
+            ? 'border-action bg-action/10'
             : 'border-border-subtle hover:border-border-subtle'
         } ${uploading ? 'opacity-50' : ''}`}
         onDragOver={handleDragOver}
@@ -548,7 +548,7 @@ export default function SharedFiles({ sessionName, onFocusTerminal, refreshTrigg
       </div>
 
       {/* Error message */}
-      {error && <div className="mx-2 p-2 bg-red-900/50 text-red-300 text-sm rounded">{error}</div>}
+      {error && <div className="mx-2 p-2 bg-danger/15 text-danger text-sm rounded">{error}</div>}
 
       {/* File list */}
       <div className="flex-1 overflow-auto px-2 pb-2">
@@ -561,7 +561,7 @@ export default function SharedFiles({ sessionName, onFocusTerminal, refreshTrigg
               <div className="flex justify-end mb-1">
                 <button
                   onClick={clearAll}
-                  className="flex items-center gap-1 text-xs text-text-tertiary hover:text-red-400 px-2 py-1 rounded hover:bg-control-bg transition-colors"
+                  className="flex items-center gap-1 text-xs text-text-tertiary hover:text-danger px-2 py-1 rounded hover:bg-control-bg transition-colors"
                   title="Delete all shared files"
                 >
                   <Trash size={12} />
@@ -732,7 +732,7 @@ function CopyTextButton({ filename }: { filename: string }) {
   return (
     <button
       onClick={handleCopy}
-      className={`p-1.5 hover:bg-control-bg rounded ${copied ? 'text-green-400' : 'text-text-tertiary hover:text-blue-400'}`}
+      className={`p-1.5 hover:bg-control-bg rounded ${copied ? 'text-success' : 'text-text-tertiary hover:text-action'}`}
       title={copied ? 'Copied!' : 'Copy text'}
     >
       {copied ? <Check size={16} /> : <Copy size={16} />}

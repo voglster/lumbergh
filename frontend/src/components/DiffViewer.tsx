@@ -403,10 +403,10 @@ const DiffViewer = memo(function DiffViewer({
     if (error) {
       return (
         <div className="flex flex-col items-center justify-center h-full gap-4">
-          <span className="text-red-400">Error: {error}</span>
+          <span className="text-danger">Error: {error}</span>
           <button
             onClick={handleRefresh}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-white"
+            className="px-4 py-2 bg-action hover:brightness-110 text-white rounded"
           >
             Retry
           </button>
@@ -448,7 +448,7 @@ const DiffViewer = memo(function DiffViewer({
             </div>
             <div className="flex flex-col items-center justify-center flex-1 gap-6 p-6">
               {remoteStatus?.httpAuthWarning && (
-                <div className="w-full max-w-md rounded bg-yellow-900/40 border border-yellow-600/50 px-4 py-3 text-sm text-yellow-300">
+                <div className="w-full max-w-md rounded bg-warning/8 border border-warning/15 px-4 py-3 text-sm text-warning">
                   {remoteStatus.httpAuthWarning}
                 </div>
               )}
@@ -516,7 +516,7 @@ const DiffViewer = memo(function DiffViewer({
   if (expanded) {
     const fileNav = getFileNav()
     return (
-      <div className="fixed inset-0 bg-black/95 flex flex-col z-50">
+      <div className="fixed inset-0 bg-bg-base/95 flex flex-col z-50">
         {/* Header bar */}
         <div className="flex items-center justify-between px-3 py-2 bg-bg-sunken border-b border-border-default">
           <span className="text-sm text-text-secondary">Diff Viewer</span>

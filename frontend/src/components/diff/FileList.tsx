@@ -57,19 +57,19 @@ const FileRow = memo(function FileRow({
       data-testid="diff-file-item"
       className="group w-full flex items-center gap-3 px-3 py-2 hover:bg-bg-surface border-b border-border-default/50 text-left cursor-pointer"
     >
-      <span className="text-blue-400 font-mono text-sm truncate flex-1">{file.path}</span>
+      <span className="text-action font-mono text-sm truncate flex-1">{file.path}</span>
       {isWorkingChanges && (
         <button
           onClick={(e) => onRevertFile(file.path, e)}
           disabled={revertingFile === file.path}
-          className="opacity-0 group-hover:opacity-100 px-1 py-0.5 text-text-muted hover:text-red-400 disabled:text-text-muted transition-all"
+          className="opacity-0 group-hover:opacity-100 px-1 py-0.5 text-text-muted hover:text-danger disabled:text-text-muted transition-all"
           title={`Revert ${file.path}`}
         >
           {revertingFile === file.path ? '...' : <Undo2 size={14} />}
         </button>
       )}
-      <span className="text-green-400 text-xs">+{stats.additions}</span>
-      <span className="text-red-400 text-xs">-{stats.deletions}</span>
+      <span className="text-success text-xs">+{stats.additions}</span>
+      <span className="text-danger text-xs">-{stats.deletions}</span>
       <ChevronRight size={14} className="text-text-muted" />
     </div>
   )
