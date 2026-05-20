@@ -1,4 +1,6 @@
-"""Tests for tmux PTY I/O — short-write handling on large pastes."""
+"""Tests for tmux PTY I/O — short-write handling and child-exec env setup."""
+
+import os
 
 from fastapi import WebSocketDisconnect
 
@@ -42,3 +44,44 @@ async def test_write_loop_handles_short_writes(monkeypatch):
 
     assert bytes(written) == payload.encode("utf-8")
     assert call_count[0] >= 2, "expected retry after short write"
+
+
+def test_exec_tmux_attach_sets_term_when_unset(monkeypatch):
+    """Regression: daemon-launched parents (systemd, docker, cron) have no
+    TERM in env. Without one, tmux exits at startup with `open terminal
+    failed: terminal does not support clear`. The child must set TERM
+    before exec'ing tmux.
+    """
+    monkeypatch.delenv("TERM", raising=False)
+
+    captured: dict[str, object] = {}
+
+    def fake_execlp(*args):
+        captured["args"] = args
+        captured["TERM"] = os.environ.get("TERM")
+
+    monkeypatch.setattr(tmux_pty.os, "execlp", fake_execlp)
+
+    tmux_pty._exec_tmux_attach("mysession")
+
+    assert captured["TERM"] == "xterm-256color"
+    assert captured["args"][-1] == "mysession"
+
+
+def test_exec_tmux_attach_preserves_explicit_term(monkeypatch):
+    """Operators running custom xterm.js builds (or different terminfo)
+    must be able to override TERM via the inherited environment.
+    setdefault — not assignment — keeps that escape hatch open.
+    """
+    monkeypatch.setenv("TERM", "screen-256color")
+
+    captured: dict[str, object] = {}
+
+    def fake_execlp(*_args):
+        captured["TERM"] = os.environ.get("TERM")
+
+    monkeypatch.setattr(tmux_pty.os, "execlp", fake_execlp)
+
+    tmux_pty._exec_tmux_attach("mysession")
+
+    assert captured["TERM"] == "screen-256color"

@@ -199,6 +199,25 @@ def _session_exists(session_name: str) -> bool:
     return False
 
 
+def _exec_tmux_attach(session_name: str) -> None:
+    """Replace the current (forked child) process with `tmux attach-session`.
+
+    Sets TERM if unset so tmux can initialize a terminfo entry. Without this,
+    daemon-launched parents (systemd, docker, cron, supervisord) inherit no
+    TERM and tmux exits at startup with
+    `open terminal failed: terminal does not support clear`. setdefault
+    preserves any explicit TERM the operator passes in.
+    """
+    os.environ.setdefault("TERM", "xterm-256color")
+    os.execlp(
+        TMUX_CMD,
+        TMUX_CMD,
+        "attach-session",
+        "-t",
+        session_name,
+    )
+
+
 class TmuxPtySession:
     """Manages a PTY connected to a tmux/psmux session for bidirectional I/O.
 
@@ -230,13 +249,7 @@ class TmuxPtySession:
 
         if pid == 0:
             # Child process - exec tmux attach
-            os.execlp(
-                TMUX_CMD,
-                TMUX_CMD,
-                "attach-session",
-                "-t",
-                self.session_name,
-            )
+            _exec_tmux_attach(self.session_name)
         else:
             self.pid = pid
             self.master_fd = fd

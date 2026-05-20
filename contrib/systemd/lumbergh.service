@@ -27,10 +27,10 @@ Wants=network-online.target tailscaled.service
 Type=simple
 User=%i
 Group=%i
-WorkingDirectory=%h
-Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+WorkingDirectory=/home/%i
+Environment=PATH=/home/%i/.local/bin:/usr/local/bin:/usr/bin:/bin
 EnvironmentFile=-/etc/default/lumbergh
-ExecStart=%h/.local/bin/lumbergh $LUMBERGH_ARGS
+ExecStart=/home/%i/.local/bin/lumbergh $LUMBERGH_ARGS
 Restart=on-failure
 RestartSec=5
 KillSignal=SIGINT
