@@ -59,7 +59,7 @@ export default function TerminalHeader({
   return (
     <div className="glass border-b border-border-default">
       {/* Main row */}
-      <div className="flex items-center gap-2 p-2">
+      <div className="flex items-center gap-2 p-2 overflow-x-auto scrollbar-hide">
         <div className="flex items-center gap-2 shrink-0">
           {onBack && (
             <>
@@ -274,7 +274,7 @@ function ExpandedRow({
   onCollapse: () => void
 }) {
   return (
-    <div className="flex items-center justify-between px-2 pb-2 overflow-x-auto scrollbar-hide">
+    <div className="flex items-center gap-2 px-2 pb-2 overflow-x-auto scrollbar-hide">
       {/* Font size controls and reset - left aligned */}
       <div className="flex items-center gap-3 shrink-0">
         <div className="flex items-center gap-1">
@@ -323,6 +323,8 @@ function ExpandedRow({
           Reload
         </button>
       </div>
+      {/* Spacer: pushes groups apart when there's room, collapses when content overflows */}
+      <div className="flex-1 min-w-0" />
       {/* Quick buttons - right aligned */}
       <div className="flex items-center gap-2 shrink-0">
         <Button
