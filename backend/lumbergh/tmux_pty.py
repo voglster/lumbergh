@@ -121,6 +121,39 @@ def capture_pane_content(session_name: str) -> str:
         parts = ["\x1b[0m\x1b[H\x1b[2J"]
         for i, line in enumerate(lines):
             parts.append(f"\x1b[{i + 1};1H{line}\x1b[0m")
+
+        # Restore tmux's actual cursor position at the end. Without this the
+        # cursor lands wherever the last positioned write left it (usually the
+        # bottom-most non-empty row), and subsequent keystroke echoes from tmux
+        # — which don't carry their own positioning — get drawn at that wrong
+        # row instead of at the user's prompt. That's the "typed text shows up
+        # outside the prompt box" first-paint corruption.
+        try:
+            cursor_result = subprocess.run(
+                [
+                    TMUX_CMD,
+                    "display-message",
+                    "-t",
+                    session_name,
+                    "-p",
+                    "#{cursor_x},#{cursor_y},#{?cursor_flag,1,0}",
+                ],
+                capture_output=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=2,
+            )
+            if cursor_result.returncode == 0:
+                raw = cursor_result.stdout.strip()
+                cx_str, cy_str, vis_str = raw.split(",")
+                cx, cy = int(cx_str), int(cy_str)
+                # tmux cursor_x/y are 0-indexed; CSI H takes 1-indexed row;col
+                parts.append(f"\x1b[{cy + 1};{cx + 1}H")
+                # Match tmux's cursor visibility (DECSET 25 = show, DECRST = hide)
+                parts.append("\x1b[?25h" if vis_str == "1" else "\x1b[?25l")
+        except Exception:  # noqa: S110 - cursor restore is best-effort
+            pass
+
         return "".join(parts)
     except Exception:
         return ""
