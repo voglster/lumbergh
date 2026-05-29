@@ -58,7 +58,14 @@ export function useTerminalSocket({
   }, [onData, onResizeSync, onCopyMode, onConnect, onDisconnect])
 
   const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+    // Guard against StrictMode/double-effect creating a second WebSocket while
+    // the first is still CONNECTING. Without the CONNECTING check, the second
+    // connect call overwrites wsRef.current with ws2 while ws1 is still in
+    // flight; the backend then receives TWO register_client calls and sends
+    // TWO capture-pane snapshots + TWO tmux-attach redraws, producing the
+    // interleaved/half-cleared first-paint we see in the broken state.
+    const existing = wsRef.current
+    if (existing?.readyState === WebSocket.OPEN || existing?.readyState === WebSocket.CONNECTING) {
       return
     }
 
@@ -189,11 +196,17 @@ export function useTerminalSocket({
         const ws = wsRef.current
         // Set to null first so handlers exit early
         wsRef.current = null
-        // Only close already-open sockets. CONNECTING sockets will self-close
-        // in onopen (wsRef.current !== ws check) — avoids the browser warning
-        // "WebSocket is closed before the connection is established"
+        // Close OPEN sockets immediately. For CONNECTING sockets, schedule a
+        // close once they reach OPEN — leaving them to "self-close" via the
+        // wsRef.current !== ws check inside onopen worked for client-side
+        // dedupe but still let the backend complete register_client and send
+        // a full capture_pane_content snapshot before the close propagated.
+        // That orphaned snapshot races the live socket's snapshot and is what
+        // caused first-paint corruption on session switches.
         if (ws.readyState === WebSocket.OPEN) {
           ws.close()
+        } else if (ws.readyState === WebSocket.CONNECTING) {
+          ws.addEventListener('open', () => ws.close(), { once: true })
         }
       }
     }
