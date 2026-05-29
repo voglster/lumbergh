@@ -2,6 +2,7 @@ import { useRef, useEffect, useCallback, useState, memo } from 'react'
 import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
+import { Unicode11Addon } from '@xterm/addon-unicode11'
 import '@xterm/xterm/css/xterm.css'
 import { ChevronUp, ChevronDown } from 'lucide-react'
 import { useTerminalSocket } from '../hooks/useTerminalSocket'
@@ -43,8 +44,42 @@ export default memo(function Terminal({
   const fitAddonRef = useRef<FitAddon | null>(null)
   const sendRef = useRef<(data: string) => void>(() => {})
   const sendResizeRef = useRef<(cols: number, rows: number) => void>(() => {})
-  // Track last known dimensions for stability check
-  const lastDimensionsRef = useRef<{ width: number; height: number } | null>(null)
+  // Track last-sent cols/rows so we can dedupe redundant resize sends without
+  // suppressing legit small layout shifts that DO cross a column/row boundary.
+  const lastSentSizeRef = useRef<{ cols: number; rows: number } | null>(null)
+
+  // Debug HUD state — enable by running `localStorage.setItem('terminal-debug','1')`
+  // in devtools then reloading. Shows xterm cols/rows, last-sent size, byte/write
+  // counters, and timing of fits / first data so we can diagnose first-paint corruption.
+  const debugEnabledRef = useRef(false)
+  // mountedAt is a ref (not part of debugInfo state) so the very first fit/write
+  // reads the correct value synchronously — setDebugInfo is async, so storing
+  // mountedAt in state caused first-event timestamps to report time since page
+  // load instead of time since mount.
+  const mountedAtRef = useRef(0)
+  const [debugInfo, setDebugInfo] = useState<{
+    cols: number
+    rows: number
+    lastSentCols: number
+    lastSentRows: number
+    bytesIn: number
+    writes: number
+    fits: number
+    firstByteMs: number | null
+    firstFitMs: number | null
+  }>({
+    cols: 0,
+    rows: 0,
+    lastSentCols: 0,
+    lastSentRows: 0,
+    bytesIn: 0,
+    writes: 0,
+    fits: 0,
+    firstByteMs: null,
+    firstFitMs: null,
+  })
+  const debugInfoRef = useRef(debugInfo)
+  debugInfoRef.current = debugInfo
   // Track whether a remote client resized the PTY (cleared on local re-fit)
   const remotelySizedRef = useRef(false)
 
@@ -122,13 +157,77 @@ export default memo(function Terminal({
     setScrollMode(!scrollMode)
   }, [scrollMode, sendTmuxCommand])
 
-  const handleData = useCallback((data: string) => {
-    termRef.current?.write(data)
-  }, [])
+  const handleData = useCallback(
+    (data: string) => {
+      if (debugEnabledRef.current) {
+        const now = performance.now()
+        const info = debugInfoRef.current
+        setDebugInfo({
+          ...info,
+          bytesIn: info.bytesIn + data.length,
+          writes: info.writes + 1,
+          firstByteMs: info.firstByteMs ?? now - mountedAtRef.current,
+          cols: termRef.current?.cols ?? info.cols,
+          rows: termRef.current?.rows ?? info.rows,
+        })
+
+        // Stash full raw chunks on window for post-hoc inspection in devtools.
+        // Run window.__termRawDump() to print all captured bytes with escapes
+        // visible. Capped to most recent 200 chunks per session.
+        const w = window as unknown as {
+          __termRaw?: Record<string, string[]>
+          __termRawDump?: () => void
+        }
+        if (!w.__termRaw) {
+          w.__termRaw = {}
+          w.__termRawDump = () => {
+            for (const [s, chunks] of Object.entries(w.__termRaw ?? {})) {
+              console.log(
+                `--- ${s} (${chunks.length} chunks, ${chunks.join('').length}B total) ---`
+              )
+              chunks.forEach((c, i) => console.log(`[${i}]`, JSON.stringify(c)))
+            }
+          }
+        }
+        const buf = (w.__termRaw[sessionName] ??= [])
+        buf.push(data)
+        if (buf.length > 200) buf.shift()
+
+        console.log(
+          `[term ${sessionName}] +${(now - mountedAtRef.current).toFixed(0)}ms write ${data.length}B (xterm ${termRef.current?.cols}x${termRef.current?.rows})`,
+          data.length < 200 ? JSON.stringify(data) : `[${data.length}B — call __termRawDump()]`
+        )
+      }
+      termRef.current?.write(data)
+    },
+    [sessionName]
+  )
 
   const handleCopyMode = useCallback((active: boolean) => {
     setScrollMode(active)
   }, [])
+
+  const logFit = useCallback(
+    (cols: number, rows: number, willSend: boolean) => {
+      if (!debugEnabledRef.current) return
+      const now = performance.now()
+      const info = debugInfoRef.current
+      setDebugInfo({
+        ...info,
+        cols,
+        rows,
+        lastSentCols: cols,
+        lastSentRows: rows,
+        fits: info.fits + 1,
+        firstFitMs: info.firstFitMs ?? now - mountedAtRef.current,
+      })
+
+      console.log(
+        `[term ${sessionName}] +${(now - mountedAtRef.current).toFixed(0)}ms fit -> ${cols}x${rows}${willSend ? ' (sent)' : ' (deduped)'}`
+      )
+    },
+    [sessionName]
+  )
 
   // Fit terminal and send resize - used on connect and container resize
   const handleFit = useCallback(() => {
@@ -153,9 +252,15 @@ export default memo(function Terminal({
       } catch {
         // localStorage unavailable - non-critical
       }
-      sendResizeRef.current(cols, rows)
+      const last = lastSentSizeRef.current
+      const willSend = !last || last.cols !== cols || last.rows !== rows
+      if (willSend) {
+        lastSentSizeRef.current = { cols, rows }
+        sendResizeRef.current(cols, rows)
+      }
+      logFit(cols, rows, willSend)
     }
-  }, [])
+  }, [logFit])
 
   // Provide cached dimensions to the WebSocket so the backend can size the
   // PTY before tmux attach. Uses last-fit values; safe fallback if missing.
@@ -225,6 +330,7 @@ export default memo(function Terminal({
   }, [onFocusReady])
 
   // Initialize terminal
+  // eslint-disable-next-line complexity
   useEffect(() => {
     if (!containerRef.current) return
 
@@ -238,6 +344,18 @@ export default memo(function Terminal({
     // the backend's first capture-pane snapshot lands in a correctly-sized
     // buffer. Without this, xterm starts at 80x24 default, the snapshot
     // wraps/clips, and the visible state stays mangled until manual refit.
+    debugEnabledRef.current = (() => {
+      try {
+        return localStorage.getItem('terminal-debug') === '1'
+      } catch {
+        return false
+      }
+    })()
+    mountedAtRef.current = performance.now()
+    if (debugEnabledRef.current) {
+      console.log(`[term ${sessionName}] mount; cached=${JSON.stringify(getInitialSize())}`)
+    }
+
     const cachedSize = getInitialSize()
     const term = new XTerm({
       cursorBlink: true,
@@ -247,6 +365,9 @@ export default memo(function Terminal({
       macOptionClickForcesSelection: true,
       cols: cachedSize?.cols,
       rows: cachedSize?.rows,
+      logLevel: debugEnabledRef.current ? 'debug' : 'info',
+      // Required so we can set term.unicode.activeVersion below (Unicode11Addon's API)
+      allowProposedApi: true,
       theme: {
         background: termBg,
         foreground: termFg,
@@ -257,9 +378,18 @@ export default memo(function Terminal({
 
     const fitAddon = new FitAddon()
     const webLinksAddon = new WebLinksAddon()
+    const unicode11Addon = new Unicode11Addon()
 
     term.loadAddon(fitAddon)
     term.loadAddon(webLinksAddon)
+    term.loadAddon(unicode11Addon)
+    // Switch xterm's character-width tables from the default Unicode v6 to v11
+    // so it agrees with tmux (and any modern terminal) about how wide emoji,
+    // box-drawing, and other ambiguous-width glyphs render. Width disagreement
+    // is what causes the "text drawn outside the box" first-paint corruption:
+    // every cursor-position sequence after an offending glyph lands one column
+    // off, and tmux's redraw doesn't anchor mid-line so the drift accumulates.
+    term.unicode.activeVersion = '11'
     term.open(containerRef.current)
 
     termRef.current = term
@@ -275,7 +405,11 @@ export default memo(function Terminal({
 
       // Only fit when we have meaningful dimensions (not collapsed)
       if (width > 50 && height > 50) {
-        fitAddon.fit()
+        // Use handleFit so the new cols/rows are sent to the backend.
+        // Bare fitAddon.fit() here would leave xterm's grid out of sync with
+        // tmux's pane size, causing garbled rendering on session attach until
+        // a later resize event happens to push the dimensions through.
+        handleFit()
         term.focus()
         // Disconnect after successful initial fit
         initialFitObserver.disconnect()
@@ -489,25 +623,11 @@ export default memo(function Terminal({
 
     let timeoutId: ReturnType<typeof setTimeout> | null = null
 
-    const resizeObserver = new ResizeObserver((entries) => {
-      const entry = entries[0]
-      if (!entry) return
-
-      const { width, height } = entry.contentRect
-      const last = lastDimensionsRef.current
-
-      // Stability check: skip if dimensions changed less than 5px
-      // This prevents resize thrashing from minor fluctuations
-      if (last) {
-        const deltaW = Math.abs(width - last.width)
-        const deltaH = Math.abs(height - last.height)
-        if (deltaW < 5 && deltaH < 5) {
-          return
-        }
-      }
-
-      lastDimensionsRef.current = { width, height }
-
+    const resizeObserver = new ResizeObserver(() => {
+      // Debounce only — dedupe is handled inside handleFit by comparing
+      // computed cols/rows against the last-sent values. A pixel-delta
+      // suppression here can swallow small layout shifts that DO cross a
+      // column boundary, leaving xterm and tmux out of sync.
       if (timeoutId) clearTimeout(timeoutId)
       timeoutId = setTimeout(handleFit, 150)
     })
@@ -526,7 +646,10 @@ export default memo(function Terminal({
     if (isVisible && termRef.current && containerRef.current) {
       // Reset dimension tracking so the next ResizeObserver event always triggers a refit
       // Without this, switching back to a same-sized container gets skipped by the 5px check
-      lastDimensionsRef.current = null
+      // Clear the last-sent-size cache so the next handleFit re-asserts the
+      // size to the backend even if cols/rows look unchanged. Visibility /
+      // orientation changes can leave tmux's idea of the pane size stale.
+      lastSentSizeRef.current = null
       // Double RAF ensures layout is complete after display:none removal
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -545,13 +668,19 @@ export default memo(function Terminal({
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && termRef.current && isVisible) {
-        lastDimensionsRef.current = null
+        // Clear the last-sent-size cache so the next handleFit re-asserts the
+        // size to the backend even if cols/rows look unchanged. Visibility /
+        // orientation changes can leave tmux's idea of the pane size stale.
+        lastSentSizeRef.current = null
         setTimeout(handleFit, 200)
       }
     }
 
     const handleOrientation = () => {
-      lastDimensionsRef.current = null
+      // Clear the last-sent-size cache so the next handleFit re-asserts the
+      // size to the backend even if cols/rows look unchanged. Visibility /
+      // orientation changes can leave tmux's idea of the pane size stale.
+      lastSentSizeRef.current = null
       setTimeout(handleFit, 300)
     }
 
@@ -683,6 +812,23 @@ export default memo(function Terminal({
           }`}
           title={isConnected ? 'Connected' : 'Disconnected'}
         />
+        {debugEnabledRef.current && (
+          <div className="absolute top-1 left-1 z-20 px-2 py-1 bg-black/80 text-[10px] font-mono text-yellow-200 rounded pointer-events-none leading-tight">
+            <div>
+              xterm {debugInfo.cols}x{debugInfo.rows}
+            </div>
+            <div>
+              sent {debugInfo.lastSentCols}x{debugInfo.lastSentRows}
+            </div>
+            <div>
+              fits {debugInfo.fits} · writes {debugInfo.writes} · {debugInfo.bytesIn}B
+            </div>
+            <div>
+              t1B {debugInfo.firstByteMs?.toFixed(0) ?? '—'}ms · t1F{' '}
+              {debugInfo.firstFitMs?.toFixed(0) ?? '—'}ms
+            </div>
+          </div>
+        )}
         {/* Focus click shield - intercepts first click to focus without triggering tmux selection */}
         {!isTouchDevice && !hasFocus && (
           <div
