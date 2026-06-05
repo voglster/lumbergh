@@ -83,6 +83,29 @@ def get_session_pane_id(session_name: str) -> str:
     raise ValueError(f"Session '{session_name}' not found or no active pane")
 
 
+def _status_top_offset(status: str, position: str, client_h: str, window_h: str) -> int:
+    """Rows the pane content is pushed down by a top status bar.
+
+    ``capture-pane`` returns only the pane, but tmux draws its status bar above
+    the pane when ``status-position`` is ``top``. The live screen therefore has
+    pane content starting one (or more, for multi-line status) rows down. The
+    snapshot must match that offset; otherwise every positioned line lands one
+    row high, the status row gets clobbered, and tmux's later incremental
+    redraws — which use the real screen coordinates — drift permanently.
+
+    The status height is ``client_height - window_height`` when a client is
+    attached (the only time a snapshot is sent); we fall back to a single line
+    if those aren't available.
+    """
+    if status in ("", "off", "0") or position != "top":
+        return 0
+    try:
+        lines = int(client_h) - int(window_h)
+    except (ValueError, TypeError):
+        lines = 1
+    return lines if lines > 0 else 1
+
+
 def capture_pane_content(session_name: str) -> str:
     """Capture the current visible content of the active pane.
 
@@ -117,42 +140,56 @@ def capture_pane_content(session_name: str) -> str:
         if result.returncode != 0:
             return ""
         lines = result.stdout.splitlines()
-        # Reset attributes, clear screen, home cursor, then absolute-position each line
-        parts = ["\x1b[0m\x1b[H\x1b[2J"]
-        for i, line in enumerate(lines):
-            parts.append(f"\x1b[{i + 1};1H{line}\x1b[0m")
 
-        # Restore tmux's actual cursor position at the end. Without this the
-        # cursor lands wherever the last positioned write left it (usually the
-        # bottom-most non-empty row), and subsequent keystroke echoes from tmux
-        # — which don't carry their own positioning — get drawn at that wrong
-        # row instead of at the user's prompt. That's the "typed text shows up
-        # outside the prompt box" first-paint corruption.
+        # Fetch cursor position plus the status-bar geometry in one call. The
+        # status fields let us offset the snapshot when the bar sits at the top
+        # (see _status_top_offset); the cursor fields restore the prompt.
+        top_offset = 0
+        cursor: tuple[int, int, bool] | None = None
         try:
-            cursor_result = subprocess.run(
+            info_result = subprocess.run(
                 [
                     TMUX_CMD,
                     "display-message",
                     "-t",
                     session_name,
                     "-p",
-                    "#{cursor_x},#{cursor_y},#{?cursor_flag,1,0}",
+                    "#{cursor_x},#{cursor_y},#{?cursor_flag,1,0},"
+                    "#{status},#{status-position},#{client_height},#{window_height}",
                 ],
                 capture_output=True,
                 encoding="utf-8",
                 errors="replace",
                 timeout=2,
             )
-            if cursor_result.returncode == 0:
-                raw = cursor_result.stdout.strip()
-                cx_str, cy_str, vis_str = raw.split(",")
-                cx, cy = int(cx_str), int(cy_str)
-                # tmux cursor_x/y are 0-indexed; CSI H takes 1-indexed row;col
-                parts.append(f"\x1b[{cy + 1};{cx + 1}H")
-                # Match tmux's cursor visibility (DECSET 25 = show, DECRST = hide)
-                parts.append("\x1b[?25h" if vis_str == "1" else "\x1b[?25l")
-        except Exception:  # noqa: S110 - cursor restore is best-effort
+            if info_result.returncode == 0:
+                fields = info_result.stdout.strip().split(",")
+                if len(fields) == 7:
+                    cx_str, cy_str, vis_str, status, position, client_h, window_h = fields
+                    top_offset = _status_top_offset(status, position, client_h, window_h)
+                    cursor = (int(cx_str), int(cy_str), vis_str == "1")
+        except Exception:  # noqa: S110 - cursor/status probe is best-effort
             pass
+
+        # Reset attributes, clear screen, home cursor, then absolute-position
+        # each pane line below the status bar (top_offset is 0 unless the bar
+        # is at the top).
+        parts = ["\x1b[0m\x1b[H\x1b[2J"]
+        for i, line in enumerate(lines):
+            parts.append(f"\x1b[{top_offset + i + 1};1H{line}\x1b[0m")
+
+        # Restore tmux's actual cursor position at the end. Without this the
+        # cursor lands wherever the last positioned write left it (usually the
+        # bottom-most non-empty row), and subsequent keystroke echoes from tmux
+        # — which don't carry their own positioning — get drawn at that wrong
+        # row instead of at the user's prompt. That's the "typed text shows up
+        # outside the prompt box" first-paint corruption. cursor_x/y are
+        # 0-indexed and pane-relative, so add the same top_offset.
+        if cursor is not None:
+            cx, cy, visible = cursor
+            parts.append(f"\x1b[{top_offset + cy + 1};{cx + 1}H")
+            # Match tmux's cursor visibility (DECSET 25 = show, DECRST = hide)
+            parts.append("\x1b[?25h" if visible else "\x1b[?25l")
 
         return "".join(parts)
     except Exception:
