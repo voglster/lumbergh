@@ -233,7 +233,7 @@ export default function DirectoryPicker({ value, onChange, onManualEntry }: Prop
       {isOpen && !value && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 w-full mt-1 bg-control-bg border border-border-subtle rounded shadow-lg max-h-64 overflow-y-auto"
+          className="absolute z-50 w-full mt-1 bg-bg-surface border border-border-default rounded-[var(--radius-lg)] shadow-[var(--shadow-high)] max-h-64 overflow-y-auto"
         >
           {error ? (
             <div className="px-3 py-2 text-danger text-sm">{error}</div>
