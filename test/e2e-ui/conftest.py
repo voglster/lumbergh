@@ -3,7 +3,7 @@
 import httpx
 import pytest
 from playwright.sync_api import Browser, BrowserContext, Page, expect, sync_playwright
-from pytest_bdd import given, parsers, when
+from pytest_bdd import given, parsers, then, when
 
 
 def pytest_addoption(parser):
@@ -27,6 +27,40 @@ def base_url(request):
 @pytest.fixture(scope="session")
 def repo_dir(request):
     return request.config.getoption("--repo-dir")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _settle_telemetry_consent(base_url):
+    """Record a telemetry decision so the first-run consent modal stays shut.
+
+    What this does: PATCHes `telemetryConsent: false` on the server under test
+    before any scenario runs.
+
+    Why: a fresh install has no `telemetryConsent` at all, and `GET
+    /api/settings` omits the field, so the session page reads it as null and
+    pops the `TelemetryOptIn` consent modal - a `fixed inset-0 z-50` overlay.
+    That overlay intercepts pointer events across the whole viewport, which
+    broke 9 of the 18 UI scenarios on a fresh environment (including the
+    project's own QEMU VM, where settings always start empty). Worse than the
+    failures: a scenario that drives the mouse can still pass while the overlay
+    silently eats the gesture, proving nothing at all.
+
+    It declines rather than accepts, so this can never switch real telemetry
+    on.
+
+    Known side effect: the decision persists in the settings store the tests
+    ran against. On a throwaway VM that is irrelevant, but running the suite
+    against your own dev server writes `telemetryConsent: false` into
+    ~/.config/lumbergh/settings.json and leaves it there. It cannot be undone
+    from here: the PATCH model treats None as "field not provided", so there is
+    no way to express "put it back to undecided" through the API. If you later
+    wonder why telemetry is off and you were never asked, this fixture is why -
+    re-enable it in Settings, or delete the key from settings.json to get the
+    prompt back.
+    """
+    with httpx.Client(base_url=base_url, timeout=10.0) as client:
+        r = client.patch("/api/settings", json={"telemetryConsent": False})
+        assert r.status_code == 200, f"Failed to settle telemetry consent: {r.text}"
 
 
 @pytest.fixture(scope="session")
@@ -130,3 +164,50 @@ def click_tab(page: Page, tab_name: str):
 def navigate_to_session(page: Page, base_url: str, name: str):
     page.goto(f"{base_url}/session/{name}")
     page.wait_for_load_state("networkidle")
+
+
+# Session-creation steps. These live here rather than in test_dashboard.py
+# because both dashboard.feature and dashboard_extended.feature use them, and
+# pytest-bdd only resolves step definitions from the scenario's own module or
+# from conftest - never across test modules. A step defined in one module and
+# used by another feature file fails at collection with
+# StepDefinitionNotFoundError. Steps used by a single feature stay in that
+# feature's module.
+
+
+@when("I click the new session button")
+def click_new_session(page: Page):
+    page.locator('[data-testid="new-session-btn"]').click()
+
+
+@when(parsers.parse('I enter session name "{name}" in the create modal'))
+def enter_session_name(page: Page, name: str):
+    inp = page.locator('[data-testid="session-name-input"]')
+    inp.fill(name)
+
+
+@when("I submit the create session form")
+def submit_create_form(page: Page):
+    btn = page.locator('[data-testid="create-session-submit"]')
+    # Wait for directory validation to complete and button to become enabled
+    expect(btn).to_be_enabled(timeout=10000)
+    btn.click()
+    # After submit, the app navigates to the new session's detail page
+    # Wait for the modal to close as confirmation
+    modal = page.locator('[data-testid="create-session-modal"]')
+    expect(modal).not_to_be_visible(timeout=15000)
+
+
+@then(parsers.parse('I should see the session card for "{name}"'))
+def see_session_card(page: Page, name: str):
+    card = page.locator(f'[data-testid="session-card-{name}"]')
+    expect(card).to_be_visible(timeout=10000)
+
+
+@then(parsers.parse('I should be on the session page for "{name}"'))
+def on_session_page(page: Page, name: str):
+    # The app navigates to /session/{name} after creation
+    page.wait_for_url(f"**/session/{name}", timeout=10000)
+    # Terminal container should be visible on the session detail page
+    terminal = page.locator('[data-testid="terminal-container"]')
+    expect(terminal).to_be_visible(timeout=10000)

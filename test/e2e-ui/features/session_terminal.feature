@@ -14,3 +14,11 @@ Feature: Session Terminal
     Then I should see the git tab content
     When I click the "todo" tab
     Then I should see the todo input
+
+  Scenario: Wheeling a plain shell pane does not inject page keys
+    Given a test session exists
+    And I am on the dashboard
+    When I record terminal websocket frames
+    And I click on the session "e2e-ui-session"
+    And I scroll the terminal with the wheel
+    Then no page-key escape sequences are sent to the session

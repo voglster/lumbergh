@@ -7,25 +7,11 @@ from pytest_bdd import given, parsers, scenarios, then, when
 scenarios("features/dashboard_extended.feature")
 
 
-# Re-register shared steps needed by this feature's scenarios.
-# pytest-bdd requires step definitions to be in the same module or conftest.
-
-
-@when("I click the new session button")
-def click_new_session(page: Page):
-    page.locator('[data-testid="new-session-btn"]').click()
-
-
-@when(parsers.parse('I enter session name "{name}" in the create modal'))
-def enter_session_name(page: Page, name: str):
-    inp = page.locator('[data-testid="session-name-input"]')
-    inp.fill(name)
-
-
-@then(parsers.parse('I should see the session card for "{name}"'))
-def see_session_card(page: Page, name: str):
-    card = page.locator(f'[data-testid="session-card-{name}"]')
-    expect(card).to_be_visible(timeout=10000)
+# Steps shared with dashboard.feature (clicking new session, entering the name,
+# submitting the form, asserting the session card and the resulting session
+# page) live in conftest.py - see the note there. They used to be copied into
+# this module, which drifted: two of them were never copied, so the scenario
+# that needed them failed at collection.
 
 
 @given("all test sessions are cleaned up")
