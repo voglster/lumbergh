@@ -5,6 +5,8 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import '@xterm/xterm/css/xterm.css'
 import { useTerminalSocket } from '../hooks/useTerminalSocket'
+import type { PaneState } from '../hooks/useTerminalSocket'
+import { createWheelPager } from '../utils/wheelScroll'
 import { getApiBase } from '../config'
 import { useTheme } from '../hooks/useTheme'
 import TerminalHeader from './TerminalHeader'
@@ -138,6 +140,11 @@ export default memo(function Terminal({
   const [scrollMode, setScrollMode] = useState(false)
   const scrollModeRef = useRef(false)
 
+  // Whether the pane's foreground app asked tmux for mouse reporting. Defaults
+  // to false so the wheel keeps the safe native path until the backend's first
+  // pane-state broadcast lands (within 250ms of connecting).
+  const mouseAppRef = useRef(false)
+
   // Track terminal focus (for focus-border styling on desktop)
   const [hasFocus, setHasFocus] = useState(false)
 
@@ -247,8 +254,9 @@ export default memo(function Terminal({
     [sessionName]
   )
 
-  const handleCopyMode = useCallback((active: boolean) => {
-    setScrollMode(active)
+  const handlePaneState = useCallback((state: PaneState) => {
+    setScrollMode(state.copyMode)
+    mouseAppRef.current = state.mouseApp
   }, [])
 
   const logFit = useCallback(
@@ -361,7 +369,7 @@ export default memo(function Terminal({
     sessionName,
     onData: handleData,
     onResizeSync: handleResizeSync,
-    onCopyMode: handleCopyMode,
+    onPaneState: handlePaneState,
     onConnect: handleConnect,
     getInitialSize,
   })
@@ -419,6 +427,13 @@ export default memo(function Terminal({
     if (!containerRef.current) return
 
     containerRef.current.innerHTML = ''
+
+    // This component is not keyed on sessionName, so the instance (and its
+    // refs) survives a session switch even though this effect re-runs. Clear
+    // the mouse-app flag so the new pane starts on the safe native path instead
+    // of inheriting the old pane's takeover until the first pane-state
+    // broadcast lands.
+    mouseAppRef.current = false
 
     const style = getComputedStyle(document.documentElement)
     const termBg = style.getPropertyValue('--terminal-bg').trim()
@@ -731,28 +746,47 @@ export default memo(function Terminal({
     // sequences through the same WebSocket path as real keystrokes.
     const PAGE_UP = '\x1b[5~'
     const PAGE_DOWN = '\x1b[6~'
-    // Pixels of wheel/drag travel per PageUp/PageDown emitted. Raise if it
-    // scrolls too fast, lower if too slow — these are the knobs to tune feel.
-    const WHEEL_PAGE_PX = 160
+    // Pixels of touch-drag travel per PageUp/PageDown emitted.
     const TOUCH_PAGE_PX = 45
     const scrollByKeys = (up: boolean, count: number) => {
       if (count <= 0) return
       sendRef.current((up ? PAGE_UP : PAGE_DOWN).repeat(count))
     }
 
-    // Desktop wheel → PageUp/PageDown. preventDefault/stopPropagation so xterm
-    // doesn't ALSO handle the wheel (double-scroll / its own dodgy reports).
-    let wheelAccum = 0
+    // Desktop wheel. The pager decides whether this pane is ours to drive; see
+    // utils/wheelScroll.ts. Panes that are not fullscreen mouse-mode apps get
+    // 'native' and the event is left alone so xterm's mouse report reaches tmux,
+    // which scrolls its own history.
+    const wheelPager = createWheelPager()
     const onWheel = (e: WheelEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      // Normalize line-mode deltas (some mice report deltaMode 1) to pixels.
-      wheelAccum += e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY
-      const steps = Math.trunc(wheelAccum / WHEEL_PAGE_PX)
-      if (steps !== 0) {
-        // deltaY < 0 = scroll up = PageUp; > 0 = down = PageDown.
-        scrollByKeys(steps < 0, Math.abs(steps))
-        wheelAccum -= steps * WHEEL_PAGE_PX
+      const action = wheelPager.feed({
+        deltaY: e.deltaY,
+        deltaX: e.deltaX,
+        deltaMode: e.deltaMode,
+        timeStamp: e.timeStamp,
+        ctrlKey: e.ctrlKey,
+        mouseApp: mouseAppRef.current,
+      })
+      switch (action.type) {
+        case 'native':
+          return
+        case 'page':
+          e.preventDefault()
+          e.stopPropagation()
+          scrollByKeys(action.direction === 'up', 1)
+          return
+        case 'swallow':
+          // Travel banked but still short of a page: consume it so xterm does
+          // not also act on the same wheel event.
+          e.preventDefault()
+          e.stopPropagation()
+          return
+        default: {
+          // Exhaustiveness: a new WheelAction variant becomes a type error here
+          // rather than being silently treated as 'swallow'.
+          const unhandled: never = action
+          void unhandled
+        }
       }
     }
 

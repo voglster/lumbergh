@@ -1,11 +1,19 @@
 import { useRef, useCallback, useEffect, useState } from 'react'
 import { getWsBase } from '../config'
 
+/** Pane state broadcast by the backend's 250ms tmux poll. */
+export interface PaneState {
+  /** tmux is in copy-mode. */
+  copyMode: boolean
+  /** The pane's foreground app asked tmux for mouse reporting. */
+  mouseApp: boolean
+}
+
 interface UseTerminalSocketOptions {
   sessionName: string
   onData: (data: string) => void
   onResizeSync?: (cols: number, rows: number) => void
-  onCopyMode?: (active: boolean) => void
+  onPaneState?: (state: PaneState) => void
   onConnect?: () => void
   onDisconnect?: () => void
   // Hint for the backend so the new PTY spawns at the right size and tmux
@@ -28,7 +36,7 @@ export function useTerminalSocket({
   sessionName,
   onData,
   onResizeSync,
-  onCopyMode,
+  onPaneState,
   onConnect,
   onDisconnect,
   getInitialSize,
@@ -48,17 +56,17 @@ export function useTerminalSocket({
   // Store callbacks in refs to avoid recreating connect() on every render
   const onDataRef = useRef(onData)
   const onResizeSyncRef = useRef(onResizeSync)
-  const onCopyModeRef = useRef(onCopyMode)
+  const onPaneStateRef = useRef(onPaneState)
   const onConnectRef = useRef(onConnect)
   const onDisconnectRef = useRef(onDisconnect)
 
   useEffect(() => {
     onDataRef.current = onData
     onResizeSyncRef.current = onResizeSync
-    onCopyModeRef.current = onCopyMode
+    onPaneStateRef.current = onPaneState
     onConnectRef.current = onConnect
     onDisconnectRef.current = onDisconnect
-  }, [onData, onResizeSync, onCopyMode, onConnect, onDisconnect])
+  }, [onData, onResizeSync, onPaneState, onConnect, onDisconnect])
 
   const connect = useCallback(() => {
     // Guard against StrictMode/double-effect creating a second WebSocket while
@@ -99,7 +107,12 @@ export function useTerminalSocket({
         } else if (message.type === 'resize_sync') {
           onResizeSyncRef.current?.(message.cols, message.rows)
         } else if (message.type === 'copy_mode') {
-          onCopyModeRef.current?.(message.active)
+          // Wire type is still `copy_mode` for backwards compatibility with a
+          // PWA-cached frontend; it now also carries mouse_app.
+          onPaneStateRef.current?.({
+            copyMode: Boolean(message.active),
+            mouseApp: Boolean(message.mouse_app),
+          })
         } else if (message.type === 'error') {
           setError(message.message)
         } else if (message.type === 'session_dead' || message.type === 'session_not_found') {
