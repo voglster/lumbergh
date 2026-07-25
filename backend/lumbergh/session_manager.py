@@ -29,6 +29,94 @@ class TerminalClient(Protocol):
     async def send_json(self, data: dict) -> None: ...
 
 
+# tmux tells us what the pane's foreground app is doing. The three mouse flags
+# mean "this app asked for mouse reporting" - exactly when tmux forwards wheel
+# reports to the app instead of scrolling its own history. `|` separates the
+# mode from the flags because pane_mode can be empty.
+_PANE_STATE_FORMAT = "#{pane_mode}|#{mouse_any_flag}#{mouse_button_flag}#{mouse_standard_flag}"
+
+# How often the monitor samples pane state. Quick enough that entering copy mode
+# or launching a fullscreen TUI feels instant, slow enough that the tmux probe
+# stays cheap. Tests shorten it rather than faking asyncio.sleep.
+_PANE_POLL_INTERVAL = 0.25
+
+
+@dataclass(frozen=True)
+class PaneState:
+    """Pane state sampled from tmux, broadcast to terminal WebSocket clients."""
+
+    copy_mode: bool
+    # True for fullscreen mouse-mode TUIs (Claude Code). Such panes need
+    # PageUp/PageDown to scroll; every other pane must keep native wheel ->
+    # xterm mouse report -> tmux copy-mode scrolling.
+    mouse_app: bool
+
+
+def _pane_state_message(state: PaneState) -> dict:
+    """Build the wire message for a pane state.
+
+    The type stays ``copy_mode`` and the copy-mode field stays ``active`` so a
+    stale service-worker-cached frontend ignores the extra key instead of
+    breaking. Kept in one place so that wart can't spread.
+    """
+    return {"type": "copy_mode", "active": state.copy_mode, "mouse_app": state.mouse_app}
+
+
+def _parse_pane_state(raw: str) -> PaneState:
+    """Parse ``_PANE_STATE_FORMAT`` output.
+
+    A tmux that does not know a format variable emits nothing for it, so an
+    unparseable line degrades to "not a mouse app" - the safe native path.
+    """
+    mode, _, mouse_flags = raw.strip().partition("|")
+    return PaneState(copy_mode=mode == "copy-mode", mouse_app="1" in mouse_flags)
+
+
+async def _cancel_task(task: asyncio.Task, label: str, session_name: str) -> None:
+    """Cancel a background task and absorb however it ended.
+
+    A task that already died with a real exception re-raises it here on await.
+    Letting that escape would skip the caller's remaining teardown - the PTY
+    close and the ``_sessions`` removal - leaving a leaked PTY cached under the
+    session name and handed out to every later client.
+    """
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+    except Exception:
+        # Full traceback: this fires at most once per teardown, and a task that
+        # died on its own is the one thing worth diagnosing here.
+        logger.exception(f"{label} for {session_name} ended in error")
+
+
+async def _kill_and_reap(proc: asyncio.subprocess.Process | None) -> None:
+    """Kill a still-running probe subprocess and await it so its pipes close.
+
+    A no-op once the child has exited - a completed ``communicate()`` has
+    already reaped it, which is why callers can run this unconditionally.
+
+    Best-effort, and that is load-bearing: callers run this while an exception is
+    already propagating, so anything raising here would replace it and kill the
+    monitor task. Hence both steps swallow errors, and a kill that fails still
+    falls through to the wait.
+    """
+    if proc is None or proc.returncode is not None:
+        return
+    try:
+        proc.kill()
+    except OSError:
+        # Broad on purpose - see above. ProcessLookupError (child already gone)
+        # is the expected one; a kill we simply can't perform must not become
+        # the monitor's problem either, and wait() below still runs regardless.
+        pass
+    try:
+        await proc.wait()
+    except Exception:  # noqa: S110 - best-effort reap
+        pass
+
+
 @dataclass
 class ManagedSession:
     """A PTY session with multiple connected WebSocket clients."""
@@ -36,7 +124,12 @@ class ManagedSession:
     pty: TmuxPtySession
     clients: set[TerminalClient] = field(default_factory=set)
     read_task: asyncio.Task | None = None
-    copy_mode_task: asyncio.Task | None = None
+    pane_state_task: asyncio.Task | None = None
+    # Last pane state broadcast by the monitor. Lives on the session (not in the
+    # monitor coroutine) because the monitor is created once per PTY: a client
+    # joining a pooled session needs the current state replayed to it, since the
+    # monitor's change-detection has nothing new to announce.
+    pane_state: PaneState | None = None
     # "Latest active device wins" sizing. A tmux window has one size for every
     # client, so when the same session is open on e.g. a phone and a desktop we
     # can't show both at their native size at once. Instead the most recently
@@ -136,9 +229,11 @@ class SessionManager:
                 managed = ManagedSession(pty=pty)
                 self._sessions[session_name] = managed
 
-                # Start the read loop and copy-mode monitor tasks
+                # Start the read loop and pane-state monitor tasks
                 managed.read_task = asyncio.create_task(self._broadcast_loop(session_name))
-                managed.copy_mode_task = asyncio.create_task(self._copy_mode_monitor(session_name))
+                managed.pane_state_task = asyncio.create_task(
+                    self._pane_state_monitor(session_name)
+                )
             else:
                 logger.info(f"Reusing existing PTY for session: {session_name}")
                 managed = self._sessions[session_name]
@@ -156,6 +251,19 @@ class SessionManager:
         # status bar/borders — the source of the "missing decorations" repaint).
         if not is_new_pty:
             await self._send_initial_repaint(session_name, websocket)
+            # The monitor only speaks up when the state *changes*, and it has
+            # already announced the current one to the clients that were here
+            # first. Replay it so this client also knows whether the pane is a
+            # mouse-mode app (wheel scrolling depends on it).
+            if managed.pane_state is not None:
+                # Built outside the try so a bug in here surfaces instead of
+                # being mistaken for a send failure, and so it is evident that
+                # nothing awaits between reading the state and sending it.
+                message = _pane_state_message(managed.pane_state)
+                try:
+                    await websocket.send_json(message)
+                except Exception as e:
+                    logger.warning(f"Failed to replay pane state for {session_name}: {e}")
 
         return managed
 
@@ -206,18 +314,10 @@ class SessionManager:
                 logger.info(f"Closing PTY for session: {session_name}")
 
                 if managed.read_task:
-                    managed.read_task.cancel()
-                    try:
-                        await managed.read_task
-                    except asyncio.CancelledError:
-                        pass
+                    await _cancel_task(managed.read_task, "Read loop", session_name)
 
-                if managed.copy_mode_task:
-                    managed.copy_mode_task.cancel()
-                    try:
-                        await managed.copy_mode_task
-                    except asyncio.CancelledError:
-                        pass
+                if managed.pane_state_task:
+                    await _cancel_task(managed.pane_state_task, "Pane state monitor", session_name)
 
                 managed.pty.close()
                 del self._sessions[session_name]
@@ -384,12 +484,18 @@ class SessionManager:
         except Exception as e:
             logger.error(f"Windows broadcast loop error: {e}")
 
-    async def _poll_copy_mode(self, session_name: str) -> bool | None:
-        """Return True/False for copy-mode active, or None if the probe failed.
+    async def _poll_pane_state(self, session_name: str) -> PaneState | None:
+        """Return the pane's copy-mode + mouse-app state, or None if the probe failed.
 
-        On failure, kill+reap the subprocess so its stdout/stderr pipes are
-        closed; otherwise the 250ms polling loop leaks two fds per failure
-        until EMFILE.
+        The reap runs in a ``finally`` rather than per-exception: any escape
+        route - timeout, cancellation on session teardown, an unenumerated bug,
+        even KeyboardInterrupt - otherwise leaks the child's stdout/stderr pipes,
+        and at one poll per 250ms that reaches EMFILE. It costs nothing on the
+        success path because a completed ``communicate()`` has already reaped.
+
+        Every statement that can raise stays inside the try - notably the decode,
+        whose UnicodeDecodeError is a ValueError, so undecodable output degrades
+        to None instead of escaping.
         """
         proc = None
         try:
@@ -399,45 +505,76 @@ class SessionManager:
                 "-p",
                 "-t",
                 session_name,
-                "#{pane_mode}",
+                _PANE_STATE_FORMAT,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
             stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=1.0)
-            return stdout.decode().strip() == "copy-mode"
+            return _parse_pane_state(stdout.decode())
         except (TimeoutError, OSError, ValueError):
-            if proc is not None and proc.returncode is None:
-                try:
-                    proc.kill()
-                except ProcessLookupError:
-                    pass
-                try:
-                    await proc.wait()
-                except Exception:  # noqa: S110 - best-effort reap
-                    pass
             return None
+        finally:
+            await _kill_and_reap(proc)
 
-    async def _copy_mode_monitor(self, session_name: str) -> None:
-        """Poll tmux pane_mode every 250ms and broadcast copy-mode state changes."""
-        last_active = False
+    async def _pane_state_monitor(self, session_name: str) -> None:
+        """Poll tmux pane state every 250ms and broadcast changes.
+
+        ``managed.pane_state`` starts as None so the first successful poll is
+        always sent: a client that connects while a fullscreen mouse-mode app is
+        already running has to learn ``mouse_app`` even though nothing changes
+        after it connects. Later joiners get the same state replayed by
+        register_client, because from here nothing has changed.
+
+        A failed poll (None) is not a state change - it leaves the last known
+        state in place rather than forcing a re-broadcast on every tmux hiccup.
+
+        Unexpected errors are logged and the loop keeps going. Letting one kill
+        the task would stop every future update and, worse, poison teardown:
+        awaiting a failed task re-raises, so unregister_client would skip
+        pty.close() and leave a dead PTY cached under this name.
+        """
+        consecutive_failures = 0
         try:
             while True:
-                await asyncio.sleep(0.25)
+                await asyncio.sleep(_PANE_POLL_INTERVAL)
                 managed = self._sessions.get(session_name)
                 if not managed or not managed.clients:
                     break
-                active = await self._poll_copy_mode(session_name)
-                if active is None or active == last_active:
-                    continue
-                last_active = active
-                message = {"type": "copy_mode", "active": active}
-                for client in list(managed.clients):
-                    try:
-                        await client.send_json(message)
-                    except Exception:  # noqa: S110
-                        pass
+                try:
+                    await self._poll_and_broadcast_pane_state(session_name, managed)
+                except Exception:
+                    # Once per outage, not once per poll. The errors this guard
+                    # exists for are typically deterministic - a parse bug, a
+                    # format variable some tmux build renders differently - so
+                    # they recur every interval, and an unthrottled traceback at
+                    # 4 Hz would bury the journal for the life of the session.
+                    consecutive_failures += 1
+                    if consecutive_failures == 1:
+                        logger.exception(f"Pane state poll failed for {session_name}")
+                else:
+                    if consecutive_failures:
+                        logger.info(
+                            f"Pane state poll recovered for {session_name} after "
+                            f"{consecutive_failures} consecutive failure(s)"
+                        )
+                    consecutive_failures = 0
         except asyncio.CancelledError:
             pass
+
+    async def _poll_and_broadcast_pane_state(
+        self, session_name: str, managed: ManagedSession
+    ) -> None:
+        """Sample the pane once and, if the state changed, tell every client."""
+        state = await self._poll_pane_state(session_name)
+        if state is None or state == managed.pane_state:
+            return
+        managed.pane_state = state
+        message = _pane_state_message(state)
+        for client in list(managed.clients):
+            try:
+                await client.send_json(message)
+            except Exception:  # noqa: S110 - best-effort broadcast
+                pass
 
     async def _notify_session_dead(self, session_name: str) -> None:
         """Send session_dead message to all connected clients."""
@@ -569,10 +706,14 @@ class SessionManager:
             managed = self._sessions.pop(session_name, None)
             if managed is None:
                 return
+            # Cancel without awaiting, unlike unregister_client: this is the
+            # "tmux session already died" path, so a task that errored on the way
+            # down is expected noise rather than something to report. Not
+            # awaiting also means a dead task can't re-raise into this teardown.
             if managed.read_task:
                 managed.read_task.cancel()
-            if managed.copy_mode_task:
-                managed.copy_mode_task.cancel()
+            if managed.pane_state_task:
+                managed.pane_state_task.cancel()
             try:
                 managed.pty.close()
             except Exception as e:

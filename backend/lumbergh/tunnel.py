@@ -44,7 +44,10 @@ class CloudClient:
         elif msg_type == "session_dead":
             await self._tunnel.send({"type": "session_dead", "session": self._session_name})
         elif msg_type == "copy_mode":
-            # Skip copy_mode for remote clients - not useful on mobile
+            # Carries copy-mode + mouse_app pane state. Forwarding it would need
+            # a matching change in the cloud server/frontend, which lives in a
+            # separate repo; dropping it leaves remote clients on the native
+            # wheel-scroll path, which is the safe default.
             pass
         elif msg_type == "resize_sync":
             # Skip resize_sync for cloud clients
