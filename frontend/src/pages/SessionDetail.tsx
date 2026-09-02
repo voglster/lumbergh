@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
+  ChevronsLeft,
+  ChevronsRight,
   Folder,
   GitBranch,
   ListTodo,
@@ -38,6 +40,7 @@ import { useConversationScale } from '../hooks/useConversationScale'
 import ZenTerminal from '../components/ZenTerminal'
 import { useFocusMode } from '../hooks/useFocusMode'
 import { paneLayout } from '../utils/focusMode'
+import type { FocusTarget } from '../utils/focusMode'
 
 type RightPanel = 'git' | 'files' | 'todos' | 'prompts' | 'shared'
 type MobileTab = 'terminal' | 'git' | 'files' | 'todos' | 'prompts' | 'shared'
@@ -76,6 +79,30 @@ const PANEL_LABELS: Record<string, string> = {
 
 function panelLabel(panel: string): string {
   return PANEL_LABELS[panel] ?? 'This panel'
+}
+
+// The quick "hide side panels" toggle only steps in when focus/maximize state
+// leaves the layout's own collapse unset -- once either forces a side, this
+// toggle has nothing to add.
+function resolveCollapse(
+  layoutCollapse: 'left' | 'right' | null,
+  rightPaneCollapsed: boolean
+): 'left' | 'right' | null {
+  if (layoutCollapse) return layoutCollapse
+  return rightPaneCollapsed ? 'right' : null
+}
+
+function canQuickCollapse(maximized: boolean, isTerminalOnly: boolean): boolean {
+  return !maximized && !isTerminalOnly
+}
+
+function canQuickRestore(
+  isTerminalOnly: boolean,
+  rightPaneCollapsed: boolean,
+  focus: FocusTarget,
+  maximized: boolean
+): boolean {
+  return !isTerminalOnly && rightPaneCollapsed && focus !== 'main' && !maximized
 }
 
 function diffDataEquals(a: DiffData | null, b: DiffData | null): boolean {
@@ -221,11 +248,19 @@ export default function SessionDetail() {
 
   const isTerminalOnly = visibleTabs.length === 0
 
-  const { maximized, terminalMaximized, terminalVisible, collapse } = paneLayout(
-    focus,
-    fullPane,
-    isTerminalOnly
-  )
+  // Quick, non-persisted "get it out of my way" toggle for the right pane
+  // group. Deliberately separate from tabVisibility (the gear icon's
+  // persisted, global/session setting) -- this is local UI state that resets
+  // on reload rather than a saved preference.
+  const [rightPaneCollapsed, setRightPaneCollapsed] = useState(false)
+
+  const {
+    maximized,
+    terminalMaximized,
+    terminalVisible,
+    collapse: layoutCollapse,
+  } = paneLayout(focus, fullPane, isTerminalOnly)
+  const collapse = resolveCollapse(layoutCollapse, rightPaneCollapsed)
 
   const handleTogglePanel = useCallback(() => {
     setFullPane('panel')
@@ -639,6 +674,19 @@ export default function SessionDetail() {
   // terminal.
   const renderPanelTabs = () => (
     <div className="flex gap-1 p-2 bg-bg-surface border-b border-border-default">
+      {canQuickCollapse(maximized, isTerminalOnly) && (
+        <>
+          <button
+            onClick={() => setRightPaneCollapsed(true)}
+            data-testid="panel-quick-collapse"
+            className="px-2 py-1 rounded text-text-tertiary hover:text-text-secondary hover:bg-control-bg-hover transition-colors"
+            title="Hide side panels"
+          >
+            <ChevronsRight size={14} />
+          </button>
+          <div className="w-px bg-border-default my-1" />
+        </>
+      )}
       {maximized && (
         <button
           data-testid="tab-terminal"
@@ -856,10 +904,21 @@ export default function SessionDetail() {
                   {isTerminalOnly && focus !== 'main' && (
                     <button
                       onClick={() => saveSessionTabVisibility({ ...globalTabVisibility })}
-                      className="absolute top-2 right-2 px-2 py-1 rounded bg-bg-surface/80 border border-border-default text-text-tertiary hover:text-text-primary text-xs transition-colors backdrop-blur-sm"
+                      className="absolute top-14 right-2 px-2 py-1 rounded bg-bg-surface/80 border border-border-default text-text-tertiary hover:text-text-primary text-xs transition-colors backdrop-blur-sm flex items-center gap-1"
                       title="Show side panels"
                     >
+                      <ChevronsLeft size={14} />
                       Tabs
+                    </button>
+                  )}
+                  {canQuickRestore(isTerminalOnly, rightPaneCollapsed, focus, maximized) && (
+                    <button
+                      onClick={() => setRightPaneCollapsed(false)}
+                      className="absolute top-14 right-2 px-2 py-1 rounded bg-bg-surface/80 border border-border-default text-text-tertiary hover:text-text-primary text-xs transition-colors backdrop-blur-sm flex items-center gap-1"
+                      title="Show side panels"
+                    >
+                      <ChevronsLeft size={14} />
+                      Panels
                     </button>
                   )}
                 </div>
