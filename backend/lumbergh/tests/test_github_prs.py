@@ -105,3 +105,14 @@ def test_each_repo_is_cached_on_its_own(monkeypatch, tmp_path):
 
     assert len(calls) == 2
     assert calls[0][1]["cwd"] == tmp_path
+
+
+def test_a_repo_with_more_open_prs_than_ghs_default_page_still_sees_them_all(monkeypatch, tmp_path):
+    calls = []
+    fake_gh(monkeypatch, stdout="[]", record=calls)
+
+    github.list_open_prs(tmp_path)
+
+    cmd = calls[0][0]
+    assert "--limit" in cmd
+    assert int(cmd[cmd.index("--limit") + 1]) >= 200

@@ -18,6 +18,9 @@ PR_CACHE_TTL = 60  # seconds — a PR list is decoration, not state to poll hard
 GH_TIMEOUT = 10  # seconds — gh talks to the network; never block on it
 
 PR_FIELDS = "number,title,state,url,headRefName,isDraft"
+# `gh pr list` pages at 30 by default, and a busy monorepo runs well past that;
+# a PR missing from the list is indistinguishable from a branch with no PR.
+PR_LIMIT = 500
 
 _cache: dict[Path, tuple[float, list[dict]]] = {}
 
@@ -42,7 +45,17 @@ def list_open_prs(cwd: Path) -> list[dict]:
 def _ask_gh(cwd: Path) -> list[dict]:
     try:
         result = subprocess.run(
-            ["gh", "pr", "list", "--state", "open", "--json", PR_FIELDS],
+            [
+                "gh",
+                "pr",
+                "list",
+                "--state",
+                "open",
+                "--limit",
+                str(PR_LIMIT),
+                "--json",
+                PR_FIELDS,
+            ],
             cwd=cwd,
             capture_output=True,
             text=True,
