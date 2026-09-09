@@ -113,4 +113,13 @@ describe('Ctrl+V as paste', () => {
   it('matches the physical V key, not the produced character', () => {
     expect(isPasteChord(chord({ code: 'KeyB', key: 'v', ctrlKey: true }))).toBe(false)
   })
+
+  it('falls back to the produced character when code is empty, as dictation tools send', () => {
+    expect(isPasteChord(chord({ code: '', key: 'v', ctrlKey: true }))).toBe(true)
+    expect(isPasteChord(chord({ code: '', key: 'V', ctrlKey: true }))).toBe(true)
+  })
+
+  it('still rejects a non-V key with an empty code', () => {
+    expect(isPasteChord(chord({ code: '', key: 'b', ctrlKey: true }))).toBe(false)
+  })
 })
