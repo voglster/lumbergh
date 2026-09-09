@@ -88,6 +88,22 @@ def for_session(name: str):
     return {"repo": str(repo), "worktrees": worktrees.reconcile(repo, _live_sessions())}
 
 
+@router.get("/readiness")
+def readiness(path: str):
+    """What reaping this worktree would cost, without touching it.
+
+    ``reap_readiness`` already decides this for `reap` itself, but it reports
+    dirtiness only as the blocker string — the caller deciding whether to force
+    needs the number of files, so ``work_in_progress`` is merged in alongside.
+    The live session is named because a reap takes the worker's tmux window down
+    with the tree, and that is not visible from the git state alone.
+    """
+    wt = Path(path).expanduser()
+    facts = worktrees.reap_readiness(wt)
+    session, _ = worktrees._live_session_for(wt, _live_sessions())
+    return {**facts, **worktrees.work_in_progress(wt), "session": session}
+
+
 @router.post("/reap")
 def reap(body: ReapBody):
     path = Path(body.path).expanduser()

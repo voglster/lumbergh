@@ -225,3 +225,79 @@ def test_for_session_lists_the_siblings_of_the_repo_the_session_sits_in(
 
     assert body["repo"] == str(repo)
     assert [w["path"] for w in body["worktrees"]] == [str(Path(made["path"]).resolve())]
+
+
+def test_readiness_reports_a_clean_worktree_as_holding_nothing(client, tmp_path):
+    from lumbergh.tests.test_worktrees import _init_repo
+
+    repo = _init_repo(tmp_path / "app")
+    wt_path = client.post(
+        "/api/worktrees", json={"repo": str(repo), "branch": "feat/x", "create_branch": True}
+    ).json()["path"]
+
+    r = client.get("/api/worktrees/readiness", params={"path": wt_path})
+
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["dirty"] == 0
+    assert body["commits"] == 0
+    # No remote to compare against, so landedness is unestablished rather than proven —
+    # the caller is told which of the two it is.
+    assert body["blocker"] == "unknown"
+    assert body["landed"] is None
+
+
+def test_readiness_counts_the_uncommitted_files_a_reap_would_destroy(client, tmp_path):
+    # The blocker alone says "dirty"; the modal has to say how much is at stake.
+    from lumbergh.tests.test_worktrees import _init_repo
+
+    repo = _init_repo(tmp_path / "app")
+    wt_path = client.post(
+        "/api/worktrees", json={"repo": str(repo), "branch": "feat/x", "create_branch": True}
+    ).json()["path"]
+    (Path(wt_path) / "scratch.py").write_text("half a thought\n")
+    (Path(wt_path) / "notes.md").write_text("the other half\n")
+
+    body = client.get("/api/worktrees/readiness", params={"path": wt_path}).json()
+
+    assert body["blocker"] == "dirty"
+    assert body["dirty"] == 2
+
+
+def test_readiness_names_the_live_session_a_reap_would_kill(client, tmp_path, monkeypatch):
+    from lumbergh.routers import worktrees as wt_router
+    from lumbergh.tests.test_worktrees import _init_repo
+
+    repo = _init_repo(tmp_path / "app")
+    wt_path = client.post(
+        "/api/worktrees",
+        json={"repo": str(repo), "branch": "feat/x", "create_branch": True, "session": "w-x"},
+    ).json()["path"]
+    monkeypatch.setattr(wt_router, "list_tmux_sessions", lambda: [{"name": "w-x"}])
+    monkeypatch.setattr(
+        wt_router, "get_stored_sessions", lambda: {"w-x": {"workdir": str(wt_path)}}
+    )
+
+    body = client.get("/api/worktrees/readiness", params={"path": wt_path}).json()
+
+    assert body["session"] == "w-x"
+
+
+def test_readiness_never_removes_anything(client, tmp_path):
+    from lumbergh.tests.test_worktrees import _init_repo
+
+    repo = _init_repo(tmp_path / "app")
+    wt_path = client.post(
+        "/api/worktrees", json={"repo": str(repo), "branch": "feat/x", "create_branch": True}
+    ).json()["path"]
+
+    client.get("/api/worktrees/readiness", params={"path": wt_path})
+
+    assert Path(wt_path).exists()
+    assert worktrees_module().get_entry(Path(wt_path)) is not None
+
+
+def worktrees_module():
+    from lumbergh import worktrees
+
+    return worktrees

@@ -1,14 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import {
-  MoreVertical,
-  Monitor,
-  Cloud,
-  Archive,
-  Tag,
-  AlertTriangle,
-  GitBranch,
-  GitPullRequest,
-} from 'lucide-react'
+import { MoreVertical, Monitor, Cloud, Archive, Tag, GitBranch, GitPullRequest } from 'lucide-react'
 import { getApiBase } from '../../config'
 import { useToast } from '../../hooks/toastContext'
 import { describeGitFailure } from '../../utils/gitFailure'
@@ -16,6 +7,8 @@ import type { GraphData, GraphWorktree } from '../diff/types'
 import GraphToolbar from './GraphToolbar'
 import { applyGraphResponse } from './graphSync'
 import { buildBranchMenuItems } from './branchMenu'
+import { DeleteBranchModal } from './DeleteBranchModal'
+import type { DeleteBranchTarget } from './branchMenu'
 import { buildTagMenuItems } from './tagMenu'
 import { ReflogOverlay } from './ReflogPanel'
 import WorktreeOverlay from './WorktreeOverlay'
@@ -25,6 +18,7 @@ import { HistorySearchOverlay } from './HistorySearchPanel'
 import { useGraphSearch } from './useGraphSearch'
 import type { ReflogEntry } from './ReflogPanel'
 import { prsByBranch, refBranchName } from './pullRequests'
+import { worktreeHolding } from './worktreeBranchDelete'
 import { errorDetail } from '../../utils/apiError'
 import type { PullRequest } from './pullRequests'
 import type { MenuBranchInfo } from './branchMenu'
@@ -400,115 +394,8 @@ function WipRow({
   )
 }
 
-function DeleteBranchModal({
-  sessionName,
-  branch,
-  onDone,
-  onCancel,
-}: {
-  sessionName?: string
-  branch: { name: string; local: boolean; remote: boolean } | null
-  onDone: () => void
-  onCancel: () => void
-}) {
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [deleteRemote, setDeleteRemote] = useState(false)
-
-  const handleConfirm = useCallback(async () => {
-    if (!sessionName || !branch) return
-    setIsDeleting(true)
-    try {
-      const remoteOnly = !branch.local && branch.remote
-      const res = await fetch(`${getApiBase()}/sessions/${sessionName}/git/delete-branch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          branch: branch.name,
-          delete_remote: deleteRemote,
-          remote_only: remoteOnly,
-        }),
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        alert(data.detail || `Delete failed (HTTP ${res.status})`)
-        return
-      }
-      onDone()
-    } catch {
-      alert('Failed to delete branch')
-    } finally {
-      setIsDeleting(false)
-    }
-  }, [sessionName, branch, deleteRemote, onDone])
-
-  // Reset checkbox when branch changes
-  useEffect(() => {
-    setDeleteRemote(false)
-  }, [branch?.name])
-
-  if (!branch) return null
-
-  const isRemoteOnly = !branch.local && branch.remote
-
-  return (
-    <div
-      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50"
-      onClick={() => !isDeleting && onCancel()}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape' && !isDeleting) onCancel()
-      }}
-    >
-      <div
-        className="w-full sm:max-w-sm mx-0 sm:mx-4 bg-bg-surface border border-danger/30 rounded-t-2xl sm:rounded-xl shadow-xl p-5"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center gap-2.5 mb-3">
-          <div className="p-2 rounded-lg bg-danger/15">
-            <AlertTriangle size={18} className="text-danger" />
-          </div>
-          <h3 className="text-lg font-semibold text-text-primary">Delete branch</h3>
-        </div>
-        <p className="text-sm text-text-secondary mb-1">
-          Are you sure you want to delete {isRemoteOnly ? 'the remote branch' : 'the branch'}{' '}
-          <code className="font-mono font-medium text-danger">{branch.name}</code>?
-        </p>
-        <p className="text-xs text-text-muted mb-4">
-          Commits will remain in the repository until garbage collected.
-        </p>
-        {branch.local && branch.remote && (
-          <label className="flex items-center gap-2 mb-4 cursor-pointer group">
-            <input
-              type="checkbox"
-              checked={deleteRemote}
-              onChange={(e) => setDeleteRemote(e.target.checked)}
-              className="w-4 h-4 rounded border-border-default bg-bg-elevated text-danger focus:ring-danger/30 accent-danger"
-            />
-            <span className="text-sm text-text-secondary group-hover:text-text-primary">
-              Also delete remote branch
-            </span>
-          </label>
-        )}
-        <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
-          <button
-            onClick={onCancel}
-            disabled={isDeleting}
-            className="px-4 py-2.5 rounded-lg text-sm font-medium bg-bg-elevated text-text-secondary hover:bg-control-bg-hover"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={isDeleting}
-            className="px-4 py-2.5 rounded-lg text-sm font-medium bg-danger text-white hover:bg-danger/80 disabled:opacity-50"
-          >
-            {isDeleting ? 'Deleting...' : 'Delete'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
+/** What the attached worktree holds, and the acknowledgement that removing it is
+ * part of the delete. Split out of the modal so each piece stays readable. */
 function CommitContextMenu({
   menuCommit,
   nodes,
@@ -655,7 +542,7 @@ function BranchContextMenu({
   handleBranchCheckout: () => void
   handleBranchPush: () => void
   handleResetTo: (hash: string, mode: ResetMode) => void
-  setDeleteBranchConfirm: (v: { name: string; local: boolean; remote: boolean } | null) => void
+  setDeleteBranchConfirm: (v: DeleteBranchTarget | null) => void
   setMenuBranch: (v: MenuBranchInfo | null) => void
 }) {
   if (!menuBranch) return null
@@ -670,7 +557,7 @@ function BranchContextMenu({
     handleResetTo,
     setDeleteBranchConfirm,
     setMenuBranch,
-    graphData?.worktrees?.find((w) => w.branch === menuBranch.name && !w.isCurrent)
+    worktreeHolding(menuBranch.name, graphData?.worktrees)
   )
 
   return (
@@ -742,11 +629,7 @@ export default function GitGraph({
   const [showReflog, setShowReflog] = useState(false)
   const [showWorktrees, setShowWorktrees] = useState(false)
   const [pullRequests, setPullRequests] = useState<Map<string, PullRequest>>(new Map())
-  const [deleteBranchConfirm, setDeleteBranchConfirm] = useState<{
-    name: string
-    local: boolean
-    remote: boolean
-  } | null>(null)
+  const [deleteBranchConfirm, setDeleteBranchConfirm] = useState<DeleteBranchTarget | null>(null)
   const [expandedRow, setExpandedRow] = useState<number | null>(null)
   const expandedRowTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)

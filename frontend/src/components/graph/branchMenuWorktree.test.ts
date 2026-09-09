@@ -23,7 +23,7 @@ const held = (over: Partial<GraphWorktree> = {}): GraphWorktree => ({
   ...over,
 })
 
-function build(heldBy?: GraphWorktree) {
+function build(heldBy?: GraphWorktree, setDeleteBranchConfirm = vi.fn()) {
   return buildBranchMenuItems(
     branch(),
     false,
@@ -31,7 +31,7 @@ function build(heldBy?: GraphWorktree) {
     vi.fn(),
     vi.fn(),
     vi.fn(),
-    vi.fn(),
+    setDeleteBranchConfirm,
     vi.fn(),
     heldBy
   )
@@ -55,5 +55,27 @@ describe('a branch another worktree has checked out', () => {
   it('falls back to the path when no session is attached', () => {
     const item = build(held({ sessionName: null })).find((i) => i.key === 'held-by-worktree')
     expect(String(item!.label)).toContain('aio-worktrees/feature')
+  })
+})
+
+describe('deleting a branch a worktree holds', () => {
+  it('tells the confirmation which worktree stands in the way', () => {
+    const setConfirm = vi.fn()
+    build(held(), setConfirm)
+      .find((i) => i.key === 'delete')!
+      .onClick()
+
+    expect(setConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'feature', worktree: held() })
+    )
+  })
+
+  it('leaves the worktree out when nothing holds the branch', () => {
+    const setConfirm = vi.fn()
+    build(undefined, setConfirm)
+      .find((i) => i.key === 'delete')!
+      .onClick()
+
+    expect(setConfirm.mock.calls[0][0].worktree).toBeUndefined()
   })
 })

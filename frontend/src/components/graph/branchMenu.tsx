@@ -13,6 +13,13 @@ export type BranchMenuItem = {
   separator?: boolean
 }
 
+export type DeleteBranchTarget = {
+  name: string
+  local: boolean
+  remote: boolean
+  worktree?: GraphWorktree
+}
+
 export type MenuBranchInfo = {
   name: string
   local: boolean
@@ -30,7 +37,7 @@ export function buildBranchMenuItems(
   handleBranchCheckout: () => void,
   handleBranchPush: () => void,
   handleResetTo: (hash: string, mode: ResetMode) => void,
-  setDeleteBranchConfirm: (v: { name: string; local: boolean; remote: boolean } | null) => void,
+  setDeleteBranchConfirm: (v: DeleteBranchTarget | null) => void,
   setMenuBranch: (v: MenuBranchInfo | null) => void,
   heldByWorktree?: GraphWorktree
 ): BranchMenuItem[] {
@@ -83,6 +90,9 @@ export function buildBranchMenuItems(
           name: menuBranch.name,
           local: menuBranch.local,
           remote: menuBranch.remote,
+          // git will refuse the delete while this tree holds the branch; the
+          // confirmation offers to remove it rather than reporting the refusal.
+          worktree: heldByWorktree,
         })
         setMenuBranch(null)
       },
