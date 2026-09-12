@@ -51,6 +51,7 @@ interface TerminalProps {
   onQuickWorktree?: () => void
   onForkSession?: () => void
   onReset?: () => void
+  onDone?: () => void
   onCycleSession?: (direction: 'next' | 'prev') => void
   showSessionDots?: boolean
   isVisible?: boolean
@@ -72,6 +73,7 @@ export default memo(function Terminal({
   onQuickWorktree,
   onForkSession,
   onReset,
+  onDone,
   onCycleSession,
   showSessionDots = true,
   isVisible = true,
@@ -1082,6 +1084,7 @@ export default memo(function Terminal({
           onQuickWorktree={onQuickWorktree}
           onForkSession={onForkSession}
           onReset={onReset}
+          onDone={onDone}
           onCycleSession={onCycleSession}
           showSessionDots={showSessionDots}
           view={view}

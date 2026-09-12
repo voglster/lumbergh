@@ -1,64 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
 
+import { WorktreeRiskPanel } from '../worktree/WorktreeRiskPanel'
+
 import { getApiBase } from '../../config'
-import { deleteBranchWithWorktree, worktreeRisks } from './worktreeBranchDelete'
+import { deleteBranchWithWorktree } from './worktreeBranchDelete'
 import type { Poster, WorktreeReadiness } from './worktreeBranchDelete'
 import type { DeleteBranchTarget } from './branchMenu'
-import type { GraphWorktree } from '../diff/types'
-
-export function AttachedWorktreePanel({
-  worktree,
-  readiness,
-  removeWorktree,
-  setRemoveWorktree,
-}: {
-  worktree: GraphWorktree
-  readiness: WorktreeReadiness | null
-  removeWorktree: boolean
-  setRemoveWorktree: (v: boolean) => void
-}) {
-  const risks = readiness ? worktreeRisks(readiness) : []
-  return (
-    <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 p-3">
-      <p className="text-xs text-text-secondary mb-1.5">
-        This branch is checked out in a worktree, so git cannot delete it on its own:
-      </p>
-      <p className="font-mono text-xs text-text-primary break-all mb-2">{worktree.path}</p>
-      {readiness === null ? (
-        <p className="text-xs text-text-muted">Checking what it holds...</p>
-      ) : (
-        <ul className="text-xs space-y-0.5">
-          {risks.map((risk) => (
-            <li key={risk} className="flex items-start gap-1.5 text-warning">
-              <AlertTriangle size={12} className="mt-0.5 shrink-0" />
-              <span>{risk}</span>
-            </li>
-          ))}
-          {risks.length === 0 && (
-            <li className="text-text-muted">Nothing uncommitted, nothing to lose.</li>
-          )}
-        </ul>
-      )}
-      <label className="flex items-start gap-2 mt-3 cursor-pointer group">
-        <input
-          type="checkbox"
-          checked={removeWorktree}
-          onChange={(e) => setRemoveWorktree(e.target.checked)}
-          className="w-4 h-4 mt-0.5 rounded border-border-default bg-bg-elevated text-danger focus:ring-danger/30 accent-danger"
-        />
-        <span className="text-sm text-text-secondary group-hover:text-text-primary">
-          Also remove the worktree
-          {risks.length > 0 && (
-            <span className="block text-xs text-warning">
-              This destroys everything listed above.
-            </span>
-          )}
-        </span>
-      </label>
-    </div>
-  )
-}
 
 export function DeleteBranchModal({
   sessionName,
@@ -180,8 +128,9 @@ export function DeleteBranchModal({
           Commits will remain in the repository until garbage collected.
         </p>
         {worktree && (
-          <AttachedWorktreePanel
-            worktree={worktree}
+          <WorktreeRiskPanel
+            lead="This branch is checked out in a worktree, so git cannot delete it on its own:"
+            path={worktree.path}
             readiness={readiness}
             removeWorktree={removeWorktree}
             setRemoveWorktree={setRemoveWorktree}

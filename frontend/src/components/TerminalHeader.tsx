@@ -13,6 +13,7 @@ import {
   GitBranchPlus,
   Split,
   Zap,
+  CheckCheck,
 } from 'lucide-react'
 import Button from './ui/Button'
 import SessionNavigatorDots from './SessionNavigatorDots'
@@ -35,6 +36,7 @@ interface Props {
   onQuickWorktree?: () => void
   onForkSession?: () => void
   onReset?: () => void
+  onDone?: () => void
   onCycleSession?: (direction: 'next' | 'prev') => void
   showSessionDots?: boolean
   view: 'term' | 'conv'
@@ -58,6 +60,7 @@ export default function TerminalHeader({
   onFit,
   onBack,
   onReset,
+  onDone,
   onCycleSession,
   showSessionDots = true,
   view,
@@ -107,6 +110,16 @@ export default function TerminalHeader({
           <SessionNavigatorDots currentSessionName={sessionName} />
         ) : (
           <div className="flex-1" />
+        )}
+        {onDone && (
+          <button
+            onClick={onDone}
+            className="shrink-0 px-2 py-1 text-xs rounded flex items-center gap-1 bg-control-bg hover:bg-danger/20 hover:text-danger text-text-tertiary transition-colors"
+            title="Finish with this session: close it and return to where you spawned it from"
+          >
+            <CheckCheck size={14} />
+            Done
+          </button>
         )}
         <QuickActions
           sessionName={sessionName}

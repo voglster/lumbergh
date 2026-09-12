@@ -25,6 +25,9 @@ import SharedFiles from '../components/SharedFiles'
 import TelemetryOptIn from '../components/TelemetryOptIn'
 import CreateSessionModal from '../components/CreateSessionModal'
 import { spawnParentRepo } from '../utils/spawnFrom'
+import { doneDestination } from '../utils/doneDestination'
+import type { DoneSession, SessionRow } from '../utils/doneDestination'
+import { DoneModal } from '../components/worktree/DoneModal'
 import { parseDiffPayload } from '../utils/diffPayload'
 import { errorDetail } from '../utils/apiError'
 import ErrorBoundary from '../components/ErrorBoundary'
@@ -136,6 +139,9 @@ export default function SessionDetail() {
   const [showTabSettings, setShowTabSettings] = useState(false)
   const [isScratch, setIsScratch] = useState(false)
   const [sessionRepo, setSessionRepo] = useState('')
+  const [thisSession, setThisSession] = useState<DoneSession | null>(null)
+  const [allSessions, setAllSessions] = useState<SessionRow[]>([])
+  const [confirmingDone, setConfirmingDone] = useState(false)
   const [spawnFromRepo, setSpawnFromRepo] = useState<string | null>(null)
   const [forkFrom, setForkFrom] = useState<string | null>(null)
   const [spawningQuick, setSpawningQuick] = useState(false)
@@ -171,11 +177,14 @@ export default function SessionDetail() {
     fetch(`${getApiBase()}/sessions`)
       .then((res) => res.json())
       .then((data) => {
-        const session = (data.sessions || []).find((s: { name: string }) => s.name === name)
+        const rows = data.sessions || []
+        setAllSessions(rows)
+        const session = rows.find((s: { name: string }) => s.name === name)
         if (session) {
           setSessionTabVisibility(session.tabVisibility || null)
           setIsScratch(session.type === 'scratch')
           setSessionRepo(spawnParentRepo(session))
+          setThisSession(session)
         }
       })
       .catch(() => {})
@@ -550,6 +559,7 @@ export default function SessionDetail() {
           onQuickWorktree={sessionRepo ? handleQuickWorktree : undefined}
           onForkSession={name ? () => setForkFrom(name) : undefined}
           onReset={handleReset}
+          onDone={thisSession ? () => setConfirmingDone(true) : undefined}
           onCycleSession={handleCycleSession}
           // The mobile layout already carries a compact dot strip in its tab
           // bar; a second row of the same dots is the busiest thing on a phone.
@@ -837,6 +847,16 @@ export default function SessionDetail() {
           sessionName={name!}
           isScratch={isScratch}
           onPromoted={() => setIsScratch(false)}
+        />
+      )}
+      {confirmingDone && thisSession && (
+        <DoneModal
+          session={thisSession}
+          onFinished={() => {
+            setConfirmingDone(false)
+            navigate(doneDestination(thisSession, allSessions))
+          }}
+          onCancel={() => setConfirmingDone(false)}
         />
       )}
       {showTelemetryOptIn && <TelemetryOptIn onClose={() => setShowTelemetryOptIn(false)} />}
