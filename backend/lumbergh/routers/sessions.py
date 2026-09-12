@@ -921,8 +921,14 @@ def _resolve_launch_command(agent_provider: str | None) -> str:
 
 
 @router.post("")
-async def create_session(body: CreateSessionRequest):
-    """Create a new tmux session."""
+def create_session(body: CreateSessionRequest):
+    """Create a new tmux session.
+
+    Sync for the same reason `delete_session` is: a worktree create runs the
+    project's own post-create hook, which is routinely an `npm install` or a
+    `uv sync`. On the event loop that is minutes in which Lumbergh serves
+    nothing at all. The threadpool is where work of unknown length belongs.
+    """
 
     # Auto-derive name from directory if not provided
     if not body.name and body.workdir:
@@ -1009,7 +1015,7 @@ async def create_session(body: CreateSessionRequest):
 
 
 @router.post("/quick-worktree")
-async def create_quick_worktree(body: QuickWorktreeRequest):
+def create_quick_worktree(body: QuickWorktreeRequest):
     """A worktree off this repo with the agent already running in it.
 
     The full create flow wants a branch, a session name and a description. This is
@@ -1026,7 +1032,7 @@ async def create_quick_worktree(body: QuickWorktreeRequest):
         quick_worktree.branch_names(repo),
         set(get_live_sessions()) | set(get_stored_sessions()),
     )
-    return await create_session(
+    return create_session(
         CreateSessionRequest(
             name=name,
             mode="worktree",
@@ -1368,8 +1374,15 @@ async def resume_session(name: str):
 
 
 @router.delete("/{name}")
-async def delete_session(name: str, cleanup_worktree: bool = False):
+def delete_session(name: str, cleanup_worktree: bool = False):
     """Kill a tmux session and remove metadata.
+
+    Deliberately sync: every step here blocks — `tmux kill-session`, the reap's
+    `git worktree remove` over a tree that may hold a borrowed `node_modules`,
+    and `shutil.rmtree`. Declared `async`, FastAPI runs it on the event loop and
+    nothing else is served until the last file is gone, which is the whole UI
+    freezing for the length of a delete. Sync hands it to the threadpool
+    instead, exactly as the `/api/worktrees/reap` endpoint already does.
 
     Args:
         name: Session name

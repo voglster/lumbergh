@@ -8,7 +8,6 @@ import asyncio
 import hashlib
 import json
 import logging
-import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -77,29 +76,9 @@ async def lifespan(app: FastAPI):  # noqa: ARG001 - required by FastAPI
     if orphaned:
         logger.info(f"Found {len(orphaned)} stored session(s) without tmux: {orphaned}")
 
-    # Event loop lag watchdog — writes stacks to /tmp/lumbergh-lag.log
-    # when the loop is blocked >200ms.  Cheap (one sleep per 50ms tick).
-    lag_log = Path(tempfile.gettempdir()) / "lumbergh-lag.log"
+    from lumbergh import stall_watchdog
 
-    async def _lag_watchdog(threshold_ms: float = 200):
-        import sys
-        import time
-        import traceback
-
-        while True:
-            t0 = time.monotonic()
-            await asyncio.sleep(0.05)
-            lag_ms = (time.monotonic() - t0 - 0.05) * 1000
-            if lag_ms > threshold_ms:
-                with open(lag_log, "a") as f:
-                    f.write(
-                        f"\n{'=' * 60}\nBlocked {lag_ms:.0f}ms at {time.strftime('%H:%M:%S')}\n"
-                    )
-                    for tid, frame in sys._current_frames().items():
-                        f.write(f"\n--- Thread {tid} ---\n")
-                        traceback.print_stack(frame, file=f)
-
-    _lag_task = asyncio.create_task(_lag_watchdog())  # noqa: RUF006
+    _stall_beat = stall_watchdog.start()
 
     install_session_hook()
 
@@ -132,6 +111,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001 - required by FastAPI
     yield
 
     _heartbeat_task.cancel()
+    _stall_beat.cancel()
 
     # Stop background services
     cloud_tunnel.stop()

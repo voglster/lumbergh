@@ -217,13 +217,31 @@ WebView has no console.
 
 ## Debugging Event Loop Lag
 
-A permanent watchdog in `main.py` logs to `/tmp/lumbergh-lag.log` whenever the event loop is blocked >200ms, including thread stacks. If the terminal feels laggy:
+Lumbergh serves terminals, polls and clicks from one event loop, so a handler
+that blocks stops everything at once — the UI does not degrade, it freezes.
 
-1. Check for entries: `cat /tmp/lumbergh-lag.log`
-2. The stacks show what was running on each thread at the time of the stall
-3. Common causes: synchronous TinyDB writes without `run_in_executor`, corrupt session JSON files (check `~/.config/lumbergh/session_data/`), or thread pool exhaustion from too many concurrent `capture_pane_content` calls
+`stall_watchdog.py` catches that and names the culprit. It keeps the loop's
+liveness in a timestamp and watches that timestamp **from a plain OS thread**,
+which keeps running while the loop does not. That detail is the whole point: a
+watchdog that samples from the loop itself only gets to run once the block is
+over, so its stacks show a server already idle again. The earlier in-loop
+version logged 250 stalls totalling 11 minutes without once naming a cause.
 
-To validate a fix, clear the log (`> /tmp/lumbergh-lag.log`) and watch for new entries.
+Stacks land in `/tmp/lumbergh-lag.log` under `STALL <ms>`, main thread first —
+the frame at the bottom of that stack *is* the blocking call.
+
+**The rule this exists to enforce: an endpoint that does unbounded work must be
+a sync `def`, not an `async def`.** FastAPI runs sync handlers in a threadpool
+and `async` ones on the loop. `create_session` and `delete_session` were `async`
+while calling `git worktree remove` over a borrowed `node_modules` and running
+project post-create hooks (`npm install`), which froze the entire UI for as long
+as that took — measured at 1.4s and 2.0s on a 671MB worktree, and up to 68s in
+the wild. Both are now sync; `test_endpoints_do_not_block_the_loop.py` measures
+loop responsiveness directly and fails if either regresses.
+
+Note when writing such a test: racing a second HTTP request against the slow one
+does not work, because which request reaches the loop first is scheduling luck.
+Measure the loop itself (`worst_loop_gap`).
 
 ## Conventions
 
