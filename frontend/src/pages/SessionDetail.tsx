@@ -25,7 +25,7 @@ import SharedFiles from '../components/SharedFiles'
 import TelemetryOptIn from '../components/TelemetryOptIn'
 import CreateSessionModal from '../components/CreateSessionModal'
 import { spawnParentRepo } from '../utils/spawnFrom'
-import { doneDestination } from '../utils/doneDestination'
+import { canFinish, doneDestination } from '../utils/doneDestination'
 import type { DoneSession, SessionRow } from '../utils/doneDestination'
 import { DoneModal } from '../components/worktree/DoneModal'
 import { parseDiffPayload } from '../utils/diffPayload'
@@ -559,7 +559,7 @@ export default function SessionDetail() {
           onQuickWorktree={sessionRepo ? handleQuickWorktree : undefined}
           onForkSession={name ? () => setForkFrom(name) : undefined}
           onReset={handleReset}
-          onDone={thisSession ? () => setConfirmingDone(true) : undefined}
+          onDone={canFinish(thisSession) ? () => setConfirmingDone(true) : undefined}
           onCycleSession={handleCycleSession}
           // The mobile layout already carries a compact dot strip in its tab
           // bar; a second row of the same dots is the busiest thing on a phone.

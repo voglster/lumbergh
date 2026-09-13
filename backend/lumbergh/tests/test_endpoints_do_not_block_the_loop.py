@@ -70,6 +70,16 @@ def sessions_app(tmp_path, monkeypatch):
     monkeypatch.setattr(sessions, "create_tmux_session", lambda *_a, **_kw: None)
     monkeypatch.setattr(cloud_tunnel, "notify_session_change", lambda: None)
 
+    # `routers.sessions` binds `sessions_table` at import time, so pointing
+    # LUMBERGH_DATA_DIR at a tmp_path and reloading `db_utils` redirects nothing:
+    # a create here writes straight into the real ~/.config/lumbergh/sessions.json
+    # and the session shows up in the running dashboard. Hand it its own table.
+    from tinydb import TinyDB
+
+    monkeypatch.setattr(
+        sessions, "sessions_table", TinyDB(tmp_path / "sessions.json").table("sessions")
+    )
+
     from lumbergh.main import app
 
     return app, sessions, tmp_path

@@ -28,3 +28,14 @@ export function doneDestination(session: DoneSession, sessions: SessionRow[]): s
   )
   return parent ? `/session/${parent.name}` : '/'
 }
+
+/** Whether finishing is a thing you can do to this session.
+ *
+ * Only a worktree session — one spawned off another repo to do one job, which
+ * ends. A main project session is the place you come *back* to: closing it from
+ * a Done button is never what anyone means, and there is no parent to return to
+ * afterwards.
+ */
+export function canFinish(session: DoneSession | null): boolean {
+  return session?.type === 'worktree' && !!session.worktreeParentRepo
+}

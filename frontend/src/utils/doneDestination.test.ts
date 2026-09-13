@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { doneDestination } from './doneDestination'
+import { canFinish, doneDestination } from './doneDestination'
 import type { DoneSession } from './doneDestination'
 
 const sessions = [
@@ -45,5 +45,25 @@ describe('where finishing a session sends you', () => {
     expect(doneDestination(self, [...sessions, { name: 'KB-50886', workdir: self.workdir }])).toBe(
       '/'
     )
+  })
+})
+
+describe('which sessions can be finished', () => {
+  it('offers done on a worktree session, which was spawned to be finished', () => {
+    expect(canFinish(worker())).toBe(true)
+  })
+
+  it('does not offer done on a main session', () => {
+    // A project session is the place you come back to. Closing it from a Done
+    // button is never what someone means, and it has no parent to return to.
+    expect(canFinish(worker({ type: 'direct', worktreeParentRepo: null }))).toBe(false)
+  })
+
+  it('does not offer done on a scratch session', () => {
+    expect(canFinish(worker({ type: 'scratch', worktreeParentRepo: null }))).toBe(false)
+  })
+
+  it('does not offer done before the session metadata has loaded', () => {
+    expect(canFinish(null)).toBe(false)
   })
 })
