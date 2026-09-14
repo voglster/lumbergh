@@ -56,6 +56,7 @@ function SharedFileItem({
   onPromptScopeChange: (scope: 'project' | 'global') => void
 }) {
   const isImg = isImage(file.name)
+  const isVid = isVideo(file.name)
   const isMd = isMarkdown(file.name)
   const isTxt = isTextFile(file.name)
 
@@ -90,6 +91,19 @@ function SharedFileItem({
             alt={file.name}
             className="w-full h-full object-cover"
           />
+        ) : isVid ? (
+          <div className="relative w-full h-full">
+            <video
+              src={`${getApiBase()}/shared/files/${encodeURIComponent(file.name)}/content`}
+              preload="metadata"
+              muted
+              playsInline
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+              <Play size={14} className="text-white fill-white" />
+            </div>
+          </div>
         ) : (
           <FileText size={20} className="text-text-tertiary" />
         )}
@@ -218,6 +232,16 @@ function PreviewSection({
     )
   }
 
+  if (isVideo(previewFile.name)) {
+    return (
+      <VideoLightbox
+        src={`${getApiBase()}/shared/files/${encodeURIComponent(previewFile.name)}/content`}
+        filename={previewFile.name}
+        onClose={onClose}
+      />
+    )
+  }
+
   if (isTextFile(previewFile.name) && previewContent !== null) {
     return <TextPreview content={previewContent} filename={previewFile.name} onClose={onClose} />
   }
@@ -234,6 +258,11 @@ function formatSize(bytes: number): string {
 function isImage(filename: string): boolean {
   const ext = filename.toLowerCase().split('.').pop()
   return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(ext || '')
+}
+
+function isVideo(filename: string): boolean {
+  const ext = filename.toLowerCase().split('.').pop()
+  return ['mp4', 'webm', 'mov', 'm4v', 'ogv'].includes(ext || '')
 }
 
 function isMarkdown(filename: string): boolean {
@@ -426,7 +455,7 @@ export default function SharedFiles({ sessionName, onFocusTerminal, refreshTrigg
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load file')
       }
-    } else if (isImage(file.name)) {
+    } else if (isImage(file.name) || isVideo(file.name)) {
       setPreviewContent(null)
       setPreviewFile(file)
     }
@@ -642,6 +671,64 @@ function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClos
         <X size={24} />
       </button>
       <img src={src} alt={alt} className="max-w-[90vw] max-h-[90vh] object-contain" />
+    </div>
+  )
+}
+
+function VideoLightbox({
+  src,
+  filename,
+  onClose,
+}: {
+  src: string
+  filename: string
+  onClose: () => void
+}) {
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handler)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', handler)
+      document.body.style.overflow = ''
+    }
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/90 flex items-center justify-center z-50"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 text-white/70 hover:text-white"
+        title="Close (Esc)"
+      >
+        <X size={24} />
+      </button>
+      {failed ? (
+        <div className="text-center text-text-tertiary text-sm px-6">
+          <div className="mb-2">This browser can&apos;t play {filename}.</div>
+          <a href={src} download={filename} className="text-action hover:underline">
+            Download it instead
+          </a>
+        </div>
+      ) : (
+        <video
+          src={src}
+          controls
+          autoPlay
+          playsInline
+          onError={() => setFailed(true)}
+          className="max-w-[90vw] max-h-[90vh]"
+        />
+      )}
     </div>
   )
 }

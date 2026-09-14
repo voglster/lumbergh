@@ -160,8 +160,11 @@ async def upload_file(file: UploadFile):
     original_ext = Path(file.filename).suffix.lower() or ".png"
 
     # Determine prefix based on content type
-    if file.content_type and file.content_type.startswith("image/"):
+    content_type = file.content_type or ""
+    if content_type.startswith("image/"):
         prefix = "screenshot"
+    elif content_type.startswith("video/"):
+        prefix = "video"
     else:
         prefix = "file"
 
