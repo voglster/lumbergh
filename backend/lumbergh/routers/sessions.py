@@ -23,6 +23,7 @@ from fastapi.responses import FileResponse
 from tinydb import Query
 
 from lumbergh import quick_worktree, session_attention, todo_spawn, worktrees
+from lumbergh import todos as todo_store
 from lumbergh.bill_nudge import BILL_SESSION
 from lumbergh.constants import IGNORE_DIRS, REPO_SEARCH_SKIP_DIRS, SCRATCH_DIR, TMUX_CMD
 from lumbergh.db_utils import (
@@ -2152,9 +2153,7 @@ async def get_session_todos(name: str):
     workdir = get_session_workdir(name)
     try:
         db = get_project_db(workdir)
-        todos_table = db.table("todos")
-        todos = get_single_document_items(todos_table)
-        return {"todos": todos}
+        return {"todos": todo_store.load(db.table("todos"))}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -2165,19 +2164,22 @@ async def save_session_todos(name: str, todo_list: TodoList):
     workdir = get_session_workdir(name)
     try:
         db = get_project_db(workdir)
-        todos_table = db.table("todos")
         todos = [
-            {"text": t.text, "done": t.done, "description": t.description} for t in todo_list.todos
+            {"id": t.id, "text": t.text, "done": t.done, "description": t.description}
+            for t in todo_list.todos
         ]
-        save_single_document_items(todos_table, todos)
-        return {"todos": todos}
+        return {"todos": todo_store.save(db.table("todos"), todos)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/{name}/todos/{index}/spawn")
-def launch_session_todo(name: str, index: int):
+@router.post("/{name}/todos/{todo_id}/spawn")
+def launch_session_todo(name: str, todo_id: str):
     """Hand one todo to a fresh worker in its own worktree.
+
+    Addressed by id: the dashboard's order is not the stored order (see
+    ``lumbergh.todos``), so a position would launch a different todo than the one
+    clicked.
 
     Sync on purpose: the spawn waits for the new agent's input prompt before typing the
     brief into it (see ``spawn_delivery``), which is seconds of blocking that must not
@@ -2186,15 +2188,15 @@ def launch_session_todo(name: str, index: int):
     from lumbergh.routers.bill import spawn as bill_spawn
 
     workdir = get_session_workdir(name)
-    todos = get_single_document_items(get_project_db(workdir).table("todos"))
-    if index < 0 or index >= len(todos):
-        raise HTTPException(status_code=400, detail="Invalid todo index")
+    todo = todo_store.find(todo_store.load(get_project_db(workdir).table("todos")), todo_id)
+    if todo is None:
+        raise HTTPException(status_code=404, detail="No such todo")
 
     meta = get_stored_sessions().get(name) or {"workdir": str(workdir)}
     taken = set(get_live_sessions()) | {
         str(e["branch"]) for e in worktrees.all_entries() if e.get("branch")
     }
-    return todo_spawn.launch(meta, todos[index], taken=taken, spawn=bill_spawn)
+    return todo_spawn.launch(meta, todo, taken=taken, spawn=bill_spawn)
 
 
 @router.post("/{name}/todos/move")
@@ -2204,27 +2206,21 @@ async def move_session_todo(name: str, req: TodoMoveRequest):
         source_workdir = get_session_workdir(name)
         source_db = get_project_db(source_workdir)
         source_table = source_db.table("todos")
-        source_todos = get_single_document_items(source_table)
+        source_todos = todo_store.load(source_table)
 
-        if req.todo_index < 0 or req.todo_index >= len(source_todos):
-            raise HTTPException(status_code=400, detail="Invalid todo index")
+        position = todo_store.index_of(source_todos, req.todo_id)
+        if position is None:
+            raise HTTPException(status_code=404, detail="No such todo")
 
-        # Pop the todo from source
-        todo = source_todos.pop(req.todo_index)
+        todo = source_todos.pop(position)
         todo["done"] = False  # Reset to unchecked in target
 
-        # Load target todos and prepend
-        target_workdir = get_session_workdir(req.target_session)
-        target_db = get_project_db(target_workdir)
-        target_table = target_db.table("todos")
-        target_todos = get_single_document_items(target_table)
+        target_table = get_project_db(get_session_workdir(req.target_session)).table("todos")
+        target_todos = todo_store.load(target_table)
         target_todos.insert(0, todo)
 
-        # Save both
-        save_single_document_items(source_table, source_todos)
-        save_single_document_items(target_table, target_todos)
-
-        return {"source_todos": source_todos}
+        todo_store.save(target_table, target_todos)
+        return {"source_todos": todo_store.save(source_table, source_todos)}
     except HTTPException:
         raise
     except Exception as e:

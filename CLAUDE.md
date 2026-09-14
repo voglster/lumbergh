@@ -249,6 +249,12 @@ Measure the loop itself (`worst_loop_gap`).
 - TinyDB for persistence:
   - Project data: `~/.config/lumbergh/projects/{hash}.json` (todos, scratchpad, prompts)
   - Global data: `~/.config/lumbergh/global.json` (shared prompts)
+- Todos are addressed by `id`, never by position (`backend/lumbergh/todos.py`). The
+  dashboard floats unfinished todos to the top on load without writing that order back,
+  and `lb todo add` appends — so the browser's order and the store's order are different
+  lists. Any endpoint taking a position acted on a different todo than the one clicked;
+  launching a todo as a worker spawned the wrong task, and moving one did it silently.
+  Ids are backfilled on read, so old backlogs pick them up on first open.
 - WebSocket for terminal streaming, REST+polling for diffs and metadata
 - Mobile-first responsive design (this will be used from phones/tablets)
 

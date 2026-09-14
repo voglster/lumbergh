@@ -589,7 +589,9 @@ def reap(
         }
     entry = get_entry(worktree)
     parent = Path(entry["parent_repo"]) if entry else parent_repo_of(worktree)
-    branch = entry.get("branch") if entry else None
+    # Ask the tree itself when the registry has nothing: an orphan adopted by hand is
+    # exactly the worktree whose leftover branch nobody is tracking.
+    branch = (entry.get("branch") if entry else None) or _head_branch(worktree)
     # Anything the worker left running here (a test server, most often) outlives the
     # tree otherwise: still holding its port and its shared-DB connection, running
     # code that no longer exists on disk. Kill it before the tree goes, and say so.
@@ -612,18 +614,50 @@ def reap(
             }
         return {**result, "processes_killed": processes_killed}
     remove_entry(worktree)
-    if rm_branch and branch:
-        try:
-            get_repo(parent).git.branch("-D", branch)
-        except GitCommandError:
-            pass
     return {
         "status": "removed",
         "path": str(worktree),
         "landed": landed,
         "commits": commits,
         "processes_killed": processes_killed,
+        "branch_removed": _clear_branch(parent, branch, landed=landed, force=rm_branch),
     }
+
+
+def _head_branch(worktree: Path) -> str | None:
+    name = subprocess.run(
+        ["git", "-C", str(worktree), "rev-parse", "--abbrev-ref", "HEAD"],
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    return name if name and name != "HEAD" else None
+
+
+def _clear_branch(
+    parent: Path, branch: str | None, *, landed: bool | None, force: bool
+) -> str | None:
+    """Take the branch with the worktree when nothing is left riding on it.
+
+    A reaped worker's branch used to outlive both its tree and its registry row, so the
+    registry would call the name free while git still refused to create it — the next
+    todo slugging to that name could not be launched at all.
+
+    ``-d`` is the whole safety argument: git itself refuses to delete a branch holding
+    commits that reached nothing else, so an un-landed worker keeps its only remaining
+    record.  ``-D`` needs a reason beyond a caller's optimism — either an explicit
+    ``rm_branch``, or a reap that *proved* the content landed (a cherry-picked or
+    rebased land leaves the original commits on no ancestor path, which ``-d`` cannot
+    see and would refuse over).
+    """
+    if not branch:
+        return None
+    for flag in ("-d", "-D") if (force or landed) else ("-d",):
+        try:
+            get_repo(parent).git.branch(flag, branch)
+            return branch
+        except GitCommandError:
+            continue
+    return None
 
 
 def parent_repo_of(worktree: Path) -> Path:

@@ -106,10 +106,10 @@ def test_save_empty_todo_list(client, test_session):
     assert r2.json()["todos"] == []
 
 
-def test_move_todo_invalid_index(client, test_session):
-    """Moving a todo with an out-of-bounds index should return 400."""
+def test_move_todo_unknown_id(client, test_session):
+    """Moving a todo that isn't in the backlog should return 404."""
     r = client.post(
         f"/api/sessions/{test_session}/todos/move",
-        json={"target_session": test_session, "todo_index": 9999},
+        json={"target_session": test_session, "todo_id": "nothing-like-this"},
     )
-    assert r.status_code == 400, f"Expected 400 for invalid index, got {r.status_code}: {r.text}"
+    assert r.status_code == 404, f"Expected 404 for unknown todo, got {r.status_code}: {r.text}"

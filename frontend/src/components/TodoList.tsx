@@ -18,6 +18,8 @@ function spawnFailureMessage(detail: unknown): string {
 }
 
 interface Todo {
+  /** Stable across reordering — how the backend is told which todo is meant. */
+  id: string
   text: string
   done: boolean
   description?: string
@@ -77,15 +79,19 @@ export default function TodoList({
       })
   }, [sessionName])
 
+  /** Persist the list and adopt what came back — the server mints ids for new rows,
+   *  and a row without its id cannot be launched or moved. */
   const saveTodos = useCallback(
     async (updatedTodos: Todo[]) => {
       setSaving(true)
       try {
-        await fetch(`${getApiBase()}/sessions/${sessionName}/todos`, {
+        const res = await fetch(`${getApiBase()}/sessions/${sessionName}/todos`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ todos: updatedTodos }),
         })
+        const data = await res.json()
+        if (data.todos) setTodos(data.todos)
       } catch (err) {
         console.error('Failed to save todos:', err)
       }
@@ -118,7 +124,7 @@ export default function TodoList({
 
   const handleAdd = () => {
     if (!newTodo.trim()) return
-    const updated = [{ text: newTodo.trim(), done: false }, ...todos]
+    const updated = [{ id: '', text: newTodo.trim(), done: false }, ...todos]
     setTodos(updated)
     clearNewTodoDraft()
     saveTodos(updated)
@@ -256,7 +262,7 @@ export default function TodoList({
       const res = await fetch(`${getApiBase()}/sessions/${sessionName}/todos/move`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target_session: targetSession, todo_index: index }),
+        body: JSON.stringify({ target_session: targetSession, todo_id: todos[index].id }),
       })
       const data = await res.json()
       setTodos(data.source_todos || [])
@@ -309,9 +315,12 @@ export default function TodoList({
     setLaunchingIndex(index)
     setLaunchFailure(null)
     try {
-      const res = await fetch(`${getApiBase()}/sessions/${sessionName}/todos/${index}/spawn`, {
-        method: 'POST',
-      })
+      const res = await fetch(
+        `${getApiBase()}/sessions/${sessionName}/todos/${todos[index].id}/spawn`,
+        {
+          method: 'POST',
+        }
+      )
       const data = await res.json()
       if (!res.ok) {
         throw new Error(spawnFailureMessage(data.detail))
@@ -382,7 +391,7 @@ export default function TodoList({
               const prevTodo = index > 0 ? todos[index - 1] : null
               const showCompletedSeparator = todo.done && (!prevTodo || !prevTodo.done)
               return (
-                <li key={index} data-testid="todo-item">
+                <li key={todo.id || index} data-testid="todo-item">
                   {showCompletedSeparator && (
                     <div className="flex items-center gap-2 py-2 mb-2">
                       <div className="flex-1 border-t border-border-default" />

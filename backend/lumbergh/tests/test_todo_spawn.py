@@ -116,7 +116,7 @@ def test_launch_spawns_a_ship_worker_on_a_new_branch(tmp_path, monkeypatch):
     assert result["session"] == "fix-the-graph"
 
 
-def test_endpoint_refuses_a_todo_index_that_is_not_there(tmp_path, monkeypatch):
+def test_endpoint_refuses_a_todo_id_that_is_not_there(tmp_path, monkeypatch):
     from tinydb import TinyDB
 
     from lumbergh.routers import sessions
@@ -126,32 +126,77 @@ def test_endpoint_refuses_a_todo_index_that_is_not_there(tmp_path, monkeypatch):
     monkeypatch.setattr(sessions, "get_project_db", lambda _path: TinyDB(tmp_path / "p.json"))
 
     with pytest.raises(HTTPException) as e:
-        sessions.launch_session_todo("port", 0)
+        sessions.launch_session_todo("port", "nothing-like-this")
 
-    assert e.value.status_code == 400
-    assert "index" in str(e.value.detail)
+    assert e.value.status_code == 404
 
 
-def test_endpoint_launches_the_todo_at_that_index(tmp_path, monkeypatch):
+def test_endpoint_launches_the_todo_with_that_id(tmp_path, monkeypatch):
+    """The stored order is not the dashboard's order.
+
+    The dashboard floats unfinished todos to the top and `lb todo add` appends, so a
+    backlog reads `[open, done, open]` on disk while the browser shows `[open, open,
+    done]`. Addressed by position, launching the second row on screen spawned the
+    completed todo sitting at stored position 1 — a worker on the wrong task, under a
+    branch name the last run had already taken.
+    """
     from tinydb import TinyDB
 
+    from lumbergh import todos as todo_store
     from lumbergh.routers import sessions
 
     repo = _repo(tmp_path)
     db = TinyDB(tmp_path / "p.json")
-    db.table("todos").insert({"items": [{"text": "first"}, {"text": "second"}]})
+    db.table("todos").insert(
+        {
+            "items": [
+                {"text": "burner image tags", "done": False},
+                {"text": "demand model env switch", "done": True},
+                {"text": "assign the missing logos", "done": False},
+            ]
+        }
+    )
+    stored = todo_store.load(db.table("todos"))
     monkeypatch.setattr(sessions, "get_session_workdir", lambda _name: repo)
     monkeypatch.setattr(sessions, "get_project_db", lambda _path: db)
     monkeypatch.setattr(sessions, "get_stored_sessions", lambda: {"port": {"workdir": str(repo)}})
     monkeypatch.setattr(sessions, "get_live_sessions", lambda: {"port": {}})
-    monkeypatch.setattr(sessions.worktrees, "all_entries", lambda: [{"branch": "second"}])
+    monkeypatch.setattr(sessions.worktrees, "all_entries", list)
     monkeypatch.setattr(todo_spawn.bill_bundle, "home", lambda: tmp_path)
     seen = {}
     monkeypatch.setattr(
         "lumbergh.routers.bill.spawn", lambda body: (seen.setdefault("body", body) and None) or {}
     )
 
-    sessions.launch_session_todo("port", 1)
+    sessions.launch_session_todo("port", stored[2]["id"])
 
-    assert seen["body"].task_intent == "second"
-    assert seen["body"].branch == "second-2", "a branch already in use must be sidestepped"
+    assert seen["body"].task_intent == "assign the missing logos"
+    assert seen["body"].branch == "assign-the-missing-logos"
+
+
+def test_branch_sidesteps_a_branch_the_repo_already_has(tmp_path, monkeypatch):
+    """A landed worker leaves its branch behind; relaunching must not collide with it."""
+    from tinydb import TinyDB
+
+    from lumbergh import todos as todo_store
+    from lumbergh.routers import sessions
+
+    repo = _repo(tmp_path)
+    db = TinyDB(tmp_path / "p.json")
+    db.table("todos").insert({"items": [{"text": "second", "done": False}]})
+    stored = todo_store.load(db.table("todos"))
+    monkeypatch.setattr(sessions, "get_session_workdir", lambda _name: repo)
+    monkeypatch.setattr(sessions, "get_project_db", lambda _path: db)
+    monkeypatch.setattr(sessions, "get_stored_sessions", lambda: {"port": {"workdir": str(repo)}})
+    monkeypatch.setattr(sessions, "get_live_sessions", dict)
+    monkeypatch.setattr(sessions.worktrees, "all_entries", list)
+    monkeypatch.setattr(todo_spawn, "existing_branches", lambda _repo: {"second"})
+    monkeypatch.setattr(todo_spawn.bill_bundle, "home", lambda: tmp_path)
+    seen = {}
+    monkeypatch.setattr(
+        "lumbergh.routers.bill.spawn", lambda body: (seen.setdefault("body", body) and None) or {}
+    )
+
+    sessions.launch_session_todo("port", stored[0]["id"])
+
+    assert seen["body"].branch == "second-2"

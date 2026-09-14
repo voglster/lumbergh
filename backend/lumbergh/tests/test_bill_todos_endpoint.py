@@ -41,7 +41,13 @@ def test_add_appends_and_list_reads_it_back(tmp_path):
     repo = _repo(tmp_path)
     added = bill.add_bill_todo(bill.TodoAddBody(repo=repo, text="Fix the graph", description="d"))
 
-    assert added["todo"] == {"text": "Fix the graph", "done": False, "description": "d"}
+    assert added["todo"] == {
+        "id": added["todo"]["id"],
+        "text": "Fix the graph",
+        "done": False,
+        "description": "d",
+    }
+    assert added["todo"]["id"]
     assert added["index"] == 1
     assert bill.bill_todos(repo=repo)["todos"] == [added["todo"]]
 

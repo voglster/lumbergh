@@ -43,7 +43,9 @@ def test_move_todo_between_sessions(client, test_session, second_session):
         {"text": "Movable task", "done": False},
         {"text": "Stay put", "done": False},
     ]
-    client.post(f"/api/sessions/{test_session}/todos", json={"todos": source_todos})
+    saved = client.post(
+        f"/api/sessions/{test_session}/todos", json={"todos": source_todos}
+    ).json()["todos"]
 
     # Ensure target starts empty
     client.post(f"/api/sessions/{second_session}/todos", json={"todos": []})
@@ -51,7 +53,7 @@ def test_move_todo_between_sessions(client, test_session, second_session):
     # Move first todo from test_session to second_session
     r = client.post(
         f"/api/sessions/{test_session}/todos/move",
-        json={"todo_index": 0, "target_session": second_session},
+        json={"todo_id": saved[0]["id"], "target_session": second_session},
     )
     assert r.status_code == 200
 

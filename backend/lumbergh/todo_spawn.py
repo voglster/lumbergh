@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 from fastapi import HTTPException
 
 from lumbergh import bill as bill_bundle
+from lumbergh.git_utils import get_branches
 
 if TYPE_CHECKING:
     from lumbergh.routers.bill import SpawnBody
@@ -44,6 +45,20 @@ def launch_repo(meta: dict) -> Path:
             "open the session in a git repo, or spawn the worker by hand",
         )
     return Path(origin).expanduser().resolve()
+
+
+def existing_branches(repo: Path) -> set[str]:
+    """Branch names the repo itself already carries.
+
+    A landed worker's branch outlives its worktree and its registry row, so the registry
+    alone cannot say which names are free — the name it calls unused is the one git
+    refuses to create.  Best-effort: a repo git cannot read yields nothing rather than
+    blocking the launch.
+    """
+    try:
+        return {str(b["name"]) for b in get_branches(repo).get("local", []) if b.get("name")}
+    except Exception:
+        return set()
 
 
 def branch_for(text: str, taken: set[str]) -> str:
@@ -81,7 +96,7 @@ def launch(
 
     repo = launch_repo(meta)
     text = (todo.get("text") or "").strip()
-    branch = branch_for(text, taken)
+    branch = branch_for(text, taken | existing_branches(repo))
     brief = write_brief(text, todo.get("description") or "", branch)
     return spawn(
         SpawnBody(

@@ -789,3 +789,51 @@ def test_reap_readiness_reports_leftover_processes_without_killing_them(tmp_path
         assert _pid_alive(server)
     finally:
         os.kill(server, 9)
+
+
+def _branches(repo: Path) -> set[str]:
+    out = subprocess.run(
+        ["git", "-C", str(repo), "branch", "--format=%(refname:short)"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return set(out.stdout.split())
+
+
+@pytest.mark.usefixtures("worktrees_db")
+def test_reap_clears_the_branch_of_landed_work(tmp_path):
+    """A landed worker's branch outlives its worktree and its registry row, and the next
+    todo that slugs to the same name then cannot be launched at all. Nothing needs it once
+    the work is in — but only a safe delete, so unlanded work is never taken with it."""
+    repo = _repo_with_origin(tmp_path)
+    wt = tmp_path / "wt"
+    _git(repo, "worktree", "add", "-q", "-b", "worker", str(wt), "master")
+    (wt / "work.txt").write_text("done")
+    _git(wt, "add", ".")
+    _git(wt, "commit", "-qm", "work")
+    _git(repo, "merge", "-q", "worker")
+    _git(repo, "push", "-q", "origin", "master")
+
+    result = worktrees.reap(wt, force=False)
+
+    assert result.get("status") == "removed", result
+    assert result.get("branch_removed") == "worker", result
+    assert "worker" not in _branches(repo)
+
+
+@pytest.mark.usefixtures("worktrees_db")
+def test_reap_keeps_the_branch_when_the_work_did_not_land(tmp_path):
+    """`--force` throws away the worktree, never the only remaining record of its commits."""
+    repo = _repo_with_origin(tmp_path)
+    wt = tmp_path / "wt"
+    _git(repo, "worktree", "add", "-q", "-b", "worker", str(wt), "master")
+    (wt / "work.txt").write_text("done")
+    _git(wt, "add", ".")
+    _git(wt, "commit", "-qm", "work")
+
+    result = worktrees.reap(wt, force=True)
+
+    assert result.get("status") == "removed", result
+    assert result.get("branch_removed") is None, result
+    assert "worker" in _branches(repo)

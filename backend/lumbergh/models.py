@@ -81,8 +81,13 @@ class RewordInput(BaseModel):
 
 
 class TodoItem(BaseModel):
-    """A single todo item."""
+    """A single todo item.
 
+    ``id`` is how a todo is addressed; it is optional only so a client can post a row it
+    just created without inventing one (``lumbergh.todos.save`` mints it).
+    """
+
+    id: str | None = None
     text: str
     done: bool
     description: str | None = None
@@ -164,7 +169,7 @@ class TodoMoveRequest(BaseModel):
     """Request to move a todo between sessions."""
 
     target_session: str
-    todo_index: int
+    todo_id: str
 
 
 class CherryPickInput(BaseModel):

@@ -16,14 +16,13 @@ from pydantic import BaseModel
 from lumbergh import babysit, bill_watch, fleet, land, session_attention, worktrees
 from lumbergh import bill as bill_bundle
 from lumbergh import runs as run_groups
+from lumbergh import todos as todo_store
 from lumbergh.activity.resolve import resolve_adapter
 from lumbergh.activity.resolve import session_meta as _session_meta
 from lumbergh.bill import artifacts
 from lumbergh.briefs import enumerate_briefs
 from lumbergh.db_utils import (
     get_project_db,
-    get_single_document_items,
-    save_single_document_items,
 )
 from lumbergh.idle_monitor import idle_monitor, tmux_ref
 from lumbergh.routers.sessions import SESSION_NAME_PATTERN, create_tmux_session, create_tmux_window
@@ -1279,8 +1278,13 @@ def _todos_table(repo: str):
 
 @router.get("/todos")
 def bill_todos(repo: str):
-    """The repo's whole backlog, in the order the dashboard shows it."""
-    return {"todos": get_single_document_items(_todos_table(repo))}
+    """The repo's whole backlog, in stored order.
+
+    Not the dashboard's order — it floats unfinished todos to the top. The numbering
+    below is this listing's own, which is why `lb todo done` takes a number from it and
+    nothing else does.
+    """
+    return {"todos": todo_store.load(_todos_table(repo))}
 
 
 @router.post("/todos/add")
@@ -1288,11 +1292,10 @@ def add_bill_todo(body: TodoAddBody):
     if not body.text.strip():
         raise _fail("text", "no todo text given", 'lb todo add "<text>"')
     table = _todos_table(body.repo)
-    todos = get_single_document_items(table)
-    todo = {"text": body.text.strip(), "done": False, "description": body.description}
-    todos.append(todo)
-    save_single_document_items(table, todos)
-    return {"todo": todo, "index": len(todos)}
+    todos = todo_store.load(table)
+    todos.append({"text": body.text.strip(), "done": False, "description": body.description})
+    saved = todo_store.save(table, todos)
+    return {"todo": saved[-1], "index": len(saved)}
 
 
 def _set_todo_done(repo: str, index: int, done: bool) -> dict:
@@ -1303,7 +1306,7 @@ def _set_todo_done(repo: str, index: int, done: bool) -> dict:
     `lb todo` prints are the numbers this accepts.
     """
     table = _todos_table(repo)
-    todos = get_single_document_items(table)
+    todos = todo_store.load(table)
     if not todos:
         raise _fail("index", "the backlog is empty", 'add one with `lb todo add "<text>"`')
     if not 1 <= index <= len(todos):
@@ -1313,7 +1316,7 @@ def _set_todo_done(repo: str, index: int, done: bool) -> dict:
             "run `lb todo` for the current numbering",
         )
     todos[index - 1]["done"] = done
-    save_single_document_items(table, todos)
+    todo_store.save(table, todos)
     return {"todo": todos[index - 1], "index": index}
 
 
