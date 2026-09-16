@@ -295,13 +295,22 @@ def get_full_diff_with_untracked(cwd: Path) -> dict:
 
 
 def _classify_ref(name: str) -> tuple[str, str]:
-    """Classify a git ref, returning (cleaned_name, kind)."""
+    """Classify a git ref, returning (cleaned_name, kind).
+
+    Takes a ref's full path. Anything under ``refs/`` that is not a head, a
+    remote or a tag — ``refs/original/`` from a filter-branch, ``refs/notes/``,
+    ``refs/bisect/`` — is "other": GitPython shortens those to names that read
+    like branches (``refs/original/refs/heads/x`` becomes ``refs/heads/x``) and
+    resolve to nothing, so callers must not treat them as refs to walk.
+    """
     if name.startswith("refs/heads/"):
         return name[11:], "local"
     if name.startswith("refs/remotes/"):
         return name[13:], "remote"
     if name.startswith("refs/tags/"):
         return name[10:], "tag"
+    if name.startswith("refs/"):
+        return name, "other"
     if name.startswith("origin/"):
         return name, "remote"
     return name, "local"
@@ -316,8 +325,8 @@ def _build_raw_refs(repo: Repo) -> dict[str, list[tuple[str, str]]]:
         if isinstance(ref, TagReference):
             name, kind = ref.name, "tag"
         else:
-            name, kind = _classify_ref(ref.name)
-        if name == "origin/HEAD" or name.startswith("refs/stash"):
+            name, kind = _classify_ref(ref.path)
+        if kind == "other" or name == "origin/HEAD":
             continue
         try:
             hexsha = ref.commit.hexsha
@@ -543,15 +552,15 @@ def _mine_ref_names(cwd: Path, repo: Repo, identity: Identity, head_branch: str 
     kept.update(wt.branch for wt in list_worktrees(cwd) if wt.branch)
 
     for ref in repo.refs:
-        name, kind = _classify_ref(ref.name)
-        if kind == "tag" or name == "origin/HEAD" or name.startswith("refs/stash"):
+        name, kind = _classify_ref(ref.path)
+        if kind in ("tag", "other") or name == "origin/HEAD":
             continue
         try:
             tip = ref.commit.hexsha
         except Exception:  # noqa: S112 - skip refs that can't resolve
             continue
-        if owns_ref(cwd, ref.name, tip, identity, frozenset(trunk)):
-            kept.add(ref.name)
+        if owns_ref(cwd, name, tip, identity, frozenset(trunk)):
+            kept.add(name)
 
     return kept
 

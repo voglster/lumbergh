@@ -227,3 +227,34 @@ class TestMineFilter:
         graph = get_graph_log(repo, identity=resolve_identity(repo), mine_only=True)
 
         assert "theirs" in {b["name"] for b in graph["branches"]}
+
+
+class TestRefsOutsideHeadsAndRemotes:
+    """`git filter-branch` leaves `refs/original/refs/heads/<name>` behind.
+
+    GitPython shortens that ref to `refs/heads/<name>`, which reads like a
+    branch but resolves to nothing once the real branch is gone — and an
+    unresolvable name in the rev-list argv takes the whole graph down.
+    """
+
+    def _leave_a_backup_ref(self, repo, name):
+        _git(repo, "update-ref", f"refs/original/refs/heads/{name}", _git(repo, "rev-parse", name))
+
+    def test_graph_survives_a_filter_branch_backup_ref(self, repo):
+        _branch(repo, "rewritten", [("my work", ME)])
+        self._leave_a_backup_ref(repo, "rewritten")
+        get_graph_log(repo, identity=resolve_identity(repo), mine_only=True)
+        _git(repo, "branch", "-qD", "rewritten")
+        _branch(repo, "live", [("my live work", ME)])
+
+        graph = get_graph_log(repo, identity=resolve_identity(repo), mine_only=True)
+
+        assert "my live work" in _messages(graph)
+
+    def test_backup_ref_is_not_labelled_as_a_branch(self, repo):
+        _branch(repo, "rewritten", [("my work", ME)])
+        self._leave_a_backup_ref(repo, "rewritten")
+
+        graph = get_graph_log(repo, identity=resolve_identity(repo), mine_only=True)
+
+        assert "refs/heads/rewritten" not in _branches_in_graph(graph)
