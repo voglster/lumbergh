@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { applyGraphResponse, type GraphResponse } from './graphSync'
+import { applyGraphResponse, GraphCursor, type GraphResponse } from './graphSync'
 import type { GraphCommit, GraphData } from '../diff/types'
 
 function commit(hash: string): GraphCommit {
@@ -223,5 +223,42 @@ describe('applyGraphResponse', () => {
 
     expect(next!.workingChanges).toEqual({ files: 3, staged: 1, unstaged: 2 })
     expect(next!.version).toBe('v2')
+  })
+})
+
+describe('GraphCursor', () => {
+  it('asks for everything when it holds nothing', () => {
+    const cursor = new GraphCursor()
+
+    expect(cursor.headers()).toEqual({})
+    expect(cursor.sinceParam()).toBe('')
+  })
+
+  it('offers both tokens once a response has been folded in', () => {
+    const cursor = new GraphCursor()
+
+    cursor.advance('"abc"', 'v2', true)
+
+    expect(cursor.headers()).toEqual({ 'If-None-Match': '"abc"' })
+    expect(cursor.sinceParam()).toBe('&since=v2')
+  })
+
+  it('drops the delta cursor when a response could not be applied', () => {
+    const cursor = new GraphCursor()
+    cursor.advance('"abc"', 'v2', true)
+
+    cursor.advance('"def"', 'v3', false)
+
+    expect(cursor.sinceParam()).toBe('')
+  })
+
+  it('offers no way to be answered "nothing new" after a reset', () => {
+    const cursor = new GraphCursor()
+    cursor.advance('"abc"', 'v2', true)
+
+    cursor.reset()
+
+    expect(cursor.headers()).toEqual({})
+    expect(cursor.sinceParam()).toBe('')
   })
 })

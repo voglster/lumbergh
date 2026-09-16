@@ -102,3 +102,26 @@ describe('the worktrees button', () => {
     expect(onOpenWorktrees).toHaveBeenCalled()
   })
 })
+
+describe('forcing a fresh graph', () => {
+  it('offers a refresh alongside the filters', () => {
+    render(<GraphToolbar {...props} onRefresh={vi.fn()} expandedByDefault />)
+
+    expect(screen.getByTestId('graph-refresh')).toBeTruthy()
+  })
+
+  it('asks for the requery when clicked', () => {
+    const onRefresh = vi.fn()
+    render(<GraphToolbar {...props} onRefresh={onRefresh} expandedByDefault />)
+
+    fireEvent.click(screen.getByTestId('graph-refresh'))
+
+    expect(onRefresh).toHaveBeenCalled()
+  })
+
+  it('reports that it is working, so a slow requery does not look ignored', () => {
+    render(<GraphToolbar {...props} onRefresh={vi.fn()} refreshing expandedByDefault />)
+
+    expect(screen.getByTestId('graph-refresh').getAttribute('aria-busy')).toBe('true')
+  })
+})

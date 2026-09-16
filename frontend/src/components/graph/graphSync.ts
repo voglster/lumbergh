@@ -106,3 +106,39 @@ export function applyGraphResponse(
   withShortHash(keyframe.commits)
   return { graph: keyframe, cursorValid: true }
 }
+
+/**
+ * The two tokens a poll offers so the server can answer "nothing new": an HTTP
+ * ETag and the delta cursor.
+ *
+ * They are held together because they have to be dropped together. Keeping the
+ * ETag while asking for a keyframe leaves the request answerable with a 304,
+ * which is how a "refresh" button ends up doing nothing at all.
+ */
+export class GraphCursor {
+  private etag = ''
+  private version = ''
+
+  headers(): Record<string, string> {
+    return this.etag ? { 'If-None-Match': this.etag } : {}
+  }
+
+  sinceParam(): string {
+    return this.version ? `&since=${this.version}` : ''
+  }
+
+  /**
+   * Take up the tokens of a response that has been folded into the graph.
+   * A cursor that could not be applied is dropped, so the next poll asks for a
+   * full keyframe instead of another delta against a version we never reached.
+   */
+  advance(etag: string | null, version: string | undefined, cursorValid: boolean): void {
+    this.etag = etag || ''
+    this.version = cursorValid ? (version ?? '') : ''
+  }
+
+  reset(): void {
+    this.etag = ''
+    this.version = ''
+  }
+}

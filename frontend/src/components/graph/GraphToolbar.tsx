@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react'
-import { ChevronDown, ChevronUp, Search, SlidersHorizontal, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, RefreshCw, Search, SlidersHorizontal, X } from 'lucide-react'
 
 interface Props {
   mineOnly: boolean
   /** False once a payload reports no resolvable git identity to filter by. */
   mineAvailable: boolean
   onToggleMineOnly: () => void
+  /** Throw away every cached copy of the graph — the server's and our own — and
+   * draw it again from scratch. The poll cannot do this for us: it asks whether
+   * anything changed, and a view that is wedged is one where nothing looks like
+   * it did. */
+  onRefresh?: () => void
+  /** True while that requery is in flight. */
+  refreshing?: boolean
   onOpenReflog?: () => void
   onOpenWorktrees?: () => void
   /** Worktrees of this repo, excluding the main checkout. Zero hides the button
@@ -47,10 +54,34 @@ function CollapsedToolbar({ filtered, onExpand }: { filtered: boolean; onExpand:
   )
 }
 
+function RefreshButton({
+  onRefresh,
+  refreshing,
+}: {
+  onRefresh?: () => void
+  refreshing?: boolean
+}) {
+  if (!onRefresh) return null
+  return (
+    <button
+      data-testid="graph-refresh"
+      onClick={onRefresh}
+      disabled={!!refreshing}
+      aria-busy={!!refreshing}
+      title="Rebuild the graph from scratch, ignoring every cached copy"
+      className="p-1 rounded-sm ring-1 bg-control-bg text-text-secondary ring-border-default hover:bg-control-bg-hover disabled:opacity-40 shrink-0"
+    >
+      <RefreshCw size={12} className={refreshing ? 'animate-spin' : undefined} />
+    </button>
+  )
+}
+
 function ExpandedToolbar({
   mineOnly,
   mineAvailable,
   onToggleMineOnly,
+  onRefresh,
+  refreshing,
   onOpenReflog,
   onOpenWorktrees,
   worktreeCount = 0,
@@ -85,6 +116,8 @@ function ExpandedToolbar({
       >
         Just mine
       </button>
+
+      <RefreshButton onRefresh={onRefresh} refreshing={refreshing} />
 
       <div className="relative flex items-center min-w-0 flex-1 max-w-xs">
         <Search size={12} className="absolute left-2 text-text-muted pointer-events-none" />

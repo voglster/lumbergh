@@ -8,7 +8,10 @@ import SharedFiles from './SharedFiles'
 const files = [{ name: 'clip.mp4', size: 5326671, modified: Date.now() / 1000 }]
 
 function renderPanel() {
-  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ files }) })))
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ({ ok: true, json: async () => ({ files }) }))
+  )
   const { container } = render(<SharedFiles />)
   return container
 }
@@ -36,7 +39,9 @@ describe('SharedFiles video rendering', () => {
     screen.getByText('clip.mp4').click()
 
     await waitFor(() => {
-      const player = [...container.querySelectorAll('video')].find((v) => v.hasAttribute('controls'))
+      const player = [...container.querySelectorAll('video')].find((v) =>
+        v.hasAttribute('controls')
+      )
       expect(player?.getAttribute('src')).toContain('/shared/files/clip.mp4/content')
     })
   })

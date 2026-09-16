@@ -5,7 +5,7 @@ import { useToast } from '../../hooks/toastContext'
 import { describeGitFailure } from '../../utils/gitFailure'
 import type { GraphData, GraphWorktree } from '../diff/types'
 import GraphToolbar from './GraphToolbar'
-import { applyGraphResponse } from './graphSync'
+import { applyGraphResponse, GraphCursor } from './graphSync'
 import { buildBranchMenuItems } from './branchMenu'
 import { DeleteBranchModal } from './DeleteBranchModal'
 import type { DeleteBranchTarget } from './branchMenu'
@@ -607,6 +607,7 @@ export default function GitGraph({
   const [graphData, setGraphData] = useState<GraphData | null>(null)
   const [sessions, setSessions] = useState<SessionBase[]>([])
   const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [commitLimit, setCommitLimit] = useState(100)
   const [mineOnly, setMineOnly] = useState(readMineOnly)
@@ -701,29 +702,23 @@ export default function GitGraph({
     return map
   }, [graphData])
 
-  const etagRef = useRef<string>('')
-  const versionRef = useRef<string>('')
+  const cursorRef = useRef(new GraphCursor())
   const graphDataRef = useRef<GraphData | null>(null)
   graphDataRef.current = graphData
 
   const fetchGraph = useCallback(async () => {
     if (!sessionName) return
     try {
-      const headers: Record<string, string> = {}
-      if (etagRef.current) headers['If-None-Match'] = etagRef.current
-      const cursor = versionRef.current ? `&since=${versionRef.current}` : ''
+      const cursor = cursorRef.current
       const res = await fetch(
-        `${getApiBase()}/sessions/${sessionName}/git/graph?limit=${commitLimit}&mine=${mineOnly}${cursor}`,
-        { headers }
+        `${getApiBase()}/sessions/${sessionName}/git/graph?limit=${commitLimit}&mine=${mineOnly}${cursor.sinceParam()}`,
+        { headers: cursor.headers() }
       )
       if (res.status === 304) return // Not modified
       if (!res.ok) throw new Error(await errorDetail(res))
-      etagRef.current = res.headers.get('etag') || ''
 
       const { graph, cursorValid } = applyGraphResponse(graphDataRef.current, await res.json())
-      // A cursor we could not apply is dropped so the next poll asks for a full
-      // keyframe. Re-fetching is cheap; rendering a half-merged graph is not.
-      versionRef.current = cursorValid ? (graph?.version ?? '') : ''
+      cursor.advance(res.headers.get('etag'), graph?.version, cursorValid)
       setError(null)
       setLoading(false)
       if (!graph) return
@@ -738,6 +733,25 @@ export default function GitGraph({
     }
   }, [sessionName, commitLimit, mineOnly])
 
+  /**
+   * Drop every cached copy of the graph — the backend's and this page's — and
+   * draw it again. Polling cannot recover a wedged view on its own: each poll
+   * offers the tokens that let the server answer "nothing new", and those are
+   * exactly what a wedged view needs to stop sending.
+   */
+  const refreshGraph = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await fetch(`${getApiBase()}/sessions/${sessionName}/git/invalidate`, {
+        method: 'POST',
+      }).catch(() => {})
+      cursorRef.current.reset()
+      await fetchGraph()
+    } finally {
+      setRefreshing(false)
+    }
+  }, [sessionName, fetchGraph])
+
   const toggleMineOnly = useCallback(() => {
     setMineOnly((on) => {
       const next = !on
@@ -750,8 +764,7 @@ export default function GitGraph({
   // filter makes it meaningless, so drop it and take a fresh keyframe. Declared
   // above the polling effect so it runs before the next fetch.
   useEffect(() => {
-    versionRef.current = ''
-    etagRef.current = ''
+    cursorRef.current.reset()
   }, [sessionName, commitLimit, mineOnly])
 
   // Fetch on mount + poll every 5s (matches diff polling cadence)
@@ -1440,6 +1453,8 @@ export default function GitGraph({
         mineOnly={mineOnly}
         mineAvailable={graphData?.mine?.available ?? true}
         onToggleMineOnly={toggleMineOnly}
+        onRefresh={refreshGraph}
+        refreshing={refreshing}
         onOpenReflog={sessionName ? openReflog : undefined}
         onOpenWorktrees={openWorktrees}
         worktreeCount={worktreeCount}
