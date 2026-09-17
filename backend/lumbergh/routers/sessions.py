@@ -34,7 +34,7 @@ from lumbergh.db_utils import (
     save_single_document_items,
     save_single_document_value,
 )
-from lumbergh.file_utils import get_file_language, list_project_files, validate_path_within_root
+from lumbergh.file_utils import get_file_language, list_directory, validate_path_within_root
 from lumbergh.git_identity import graph_identity
 from lumbergh.git_utils import (
     amend_commit,
@@ -1656,7 +1656,7 @@ async def session_git_commit(name: str, body: CommitInput):
         from lumbergh.diff_cache import diff_cache
 
         diff_cache.invalidate(name)
-        _files_cache.pop(name, None)
+        _invalidate_files_cache(name)
         from lumbergh.message_buffer import message_buffer
 
         message_buffer.clear(name)
@@ -1724,7 +1724,7 @@ async def session_git_checkout(name: str, body: CheckoutInput):
         from lumbergh.diff_cache import diff_cache
 
         diff_cache.invalidate(name)
-        _files_cache.pop(name, None)
+        _invalidate_files_cache(name)
         return result
     except HTTPException:
         raise
@@ -1768,7 +1768,7 @@ async def session_git_reset(name: str):
         from lumbergh.diff_cache import diff_cache
 
         diff_cache.invalidate(name)
-        _files_cache.pop(name, None)
+        _invalidate_files_cache(name)
         return result
     except HTTPException:
         raise
@@ -1788,7 +1788,7 @@ async def session_git_revert_file(name: str, body: RevertFileInput):
         from lumbergh.diff_cache import diff_cache
 
         diff_cache.invalidate(name)
-        _files_cache.pop(name, None)
+        _invalidate_files_cache(name)
         return result
     except HTTPException:
         raise
@@ -1824,7 +1824,7 @@ async def session_git_amend(name: str, body: AmendInput):
         from lumbergh.diff_cache import diff_cache
 
         diff_cache.invalidate(name)
-        _files_cache.pop(name, None)
+        _invalidate_files_cache(name)
         return result
     except HTTPException:
         raise
@@ -1860,7 +1860,7 @@ async def session_git_stash(name: str):
         from lumbergh.diff_cache import diff_cache
 
         diff_cache.invalidate(name)
-        _files_cache.pop(name, None)
+        _invalidate_files_cache(name)
         return result
     except HTTPException:
         raise
@@ -1880,7 +1880,7 @@ async def session_git_stash_pop(name: str, ref: str | None = None):
         from lumbergh.diff_cache import diff_cache
 
         diff_cache.invalidate(name)
-        _files_cache.pop(name, None)
+        _invalidate_files_cache(name)
         return result
     except HTTPException:
         raise
@@ -1900,7 +1900,7 @@ async def session_git_stash_drop(name: str, ref: str | None = None):
         from lumbergh.diff_cache import diff_cache
 
         diff_cache.invalidate(name)
-        _files_cache.pop(name, None)
+        _invalidate_files_cache(name)
         return result
     except HTTPException:
         raise
@@ -1920,7 +1920,7 @@ async def session_git_pull(name: str):
         from lumbergh.diff_cache import diff_cache
 
         diff_cache.invalidate(name)
-        _files_cache.pop(name, None)
+        _invalidate_files_cache(name)
         return result
     except HTTPException:
         raise
@@ -1940,7 +1940,7 @@ async def session_git_fast_forward(name: str, body: BranchTargetInput):
         from lumbergh.diff_cache import diff_cache
 
         diff_cache.invalidate(name)
-        _files_cache.pop(name, None)
+        _invalidate_files_cache(name)
         return result
     except HTTPException:
         raise
@@ -1961,7 +1961,7 @@ async def session_git_rebase(name: str, body: BranchTargetInput):
         from lumbergh.diff_cache import diff_cache
 
         diff_cache.invalidate(name)
-        _files_cache.pop(name, None)
+        _invalidate_files_cache(name)
         return result
     except HTTPException:
         raise
@@ -2066,7 +2066,7 @@ async def session_git_reset_to(name: str, body: ResetToInput):
         from lumbergh.diff_cache import diff_cache
 
         diff_cache.invalidate(name)
-        _files_cache.pop(name, None)
+        _invalidate_files_cache(name)
         return result
     except HTTPException:
         raise
@@ -2088,7 +2088,7 @@ async def session_git_reword(name: str, body: RewordInput):
         from lumbergh.diff_cache import diff_cache
 
         diff_cache.invalidate(name)
-        _files_cache.pop(name, None)
+        _invalidate_files_cache(name)
         return result
     except HTTPException:
         raise
@@ -2109,7 +2109,7 @@ async def session_git_cherry_pick(name: str, body: CherryPickInput):
         from lumbergh.diff_cache import diff_cache
 
         diff_cache.invalidate(name)
-        _files_cache.pop(name, None)
+        _invalidate_files_cache(name)
         return result
     except HTTPException:
         raise
@@ -2338,27 +2338,40 @@ async def copy_global_prompt_to_session(name: str, template_id: str):
 # --- Session-scoped File Endpoints ---
 
 
-_files_cache: dict[str, tuple[float, list, str]] = {}  # name -> (timestamp, files, root)
+# (name, path) -> (timestamp, files, root)
+_files_cache: dict[tuple[str, str], tuple[float, list, str]] = {}
 _FILES_CACHE_TTL = 10.0  # seconds
 
 
+def _invalidate_files_cache(name: str) -> None:
+    """Drop every cached listing for a session (cache is keyed by (name, path))."""
+    for key in [k for k in _files_cache if k[0] == name]:
+        del _files_cache[key]
+
+
 @router.get("/{name}/files")
-async def session_list_files(name: str):
-    """List files in the session's working directory (cached, 10s TTL)."""
+async def session_list_files(name: str, path: str = ""):
+    """List one directory level in the session's workdir (cached, 10s TTL)."""
     import asyncio
     import time
 
     now = time.monotonic()
-    cached = _files_cache.get(name)
+    cached = _files_cache.get((name, path))
     if cached and (now - cached[0]) < _FILES_CACHE_TTL:
         return {"files": cached[1], "root": cached[2]}
 
     workdir = get_session_workdir(name)
 
     try:
-        files = await asyncio.to_thread(list_project_files, workdir, IGNORE_DIRS)
-        _files_cache[name] = (now, files, str(workdir))
+        files = await asyncio.to_thread(list_directory, workdir, path, IGNORE_DIRS)
+        _files_cache[(name, path)] = (now, files, str(workdir))
         return {"files": files, "root": str(workdir)}
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Access denied")
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Directory not found")
+    except NotADirectoryError:
+        raise HTTPException(status_code=400, detail="Path is not a directory")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

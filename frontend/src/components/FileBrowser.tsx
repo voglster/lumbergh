@@ -104,6 +104,24 @@ interface FileEntry {
   size: number | null
 }
 
+// Build the files-listing URL for one directory level (root when path is '').
+function filesUrl(sessionName: string | undefined, path: string): string {
+  const base = sessionName
+    ? `${getApiBase()}/sessions/${sessionName}/files`
+    : `${getApiBase()}/files`
+  return path ? `${base}?path=${encodeURIComponent(path)}` : base
+}
+
+// Updater that removes a directory's error once its refetch succeeds.
+function clearDirError(path: string) {
+  return (prev: Map<string, string>) => {
+    if (!prev.has(path)) return prev
+    const next = new Map(prev)
+    next.delete(path)
+    return next
+  }
+}
+
 interface FileContent {
   content: string
   language: string
@@ -306,7 +324,9 @@ interface Props {
 export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
   const { theme } = useTheme()
   const isDesktop = useIsDesktop()
-  const [files, setFiles] = useState<FileEntry[]>([])
+  const [dirs, setDirs] = useState<Map<string, FileEntry[]>>(new Map())
+  const [loadingDirs, setLoadingDirs] = useState<Set<string>>(new Set())
+  const [dirErrors, setDirErrors] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<FileContent | null>(null)
@@ -492,51 +512,74 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
     }
   }
 
-  const fetchFiles = useCallback(
-    async (silent = false) => {
-      if (!silent) {
+  const fetchDir = useCallback(
+    async (path = '', silent = false) => {
+      const isRoot = path === ''
+      const rootUI = !silent && isRoot
+      if (rootUI) {
         setLoading(true)
         setError(null)
       }
+      if (!isRoot) setLoadingDirs((prev) => new Set(prev).add(path))
       try {
-        // Use session-scoped endpoint if sessionName is provided
-        const url = sessionName
-          ? `${getApiBase()}/sessions/${sessionName}/files`
-          : `${getApiBase()}/files`
+        const url = filesUrl(sessionName, path)
         const res = await fetch(url)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const json = await res.json()
-        setFiles(json.files)
+        setDirs((prev) => new Map(prev).set(path, json.files))
+        if (!isRoot) setDirErrors(clearDirError(path))
         if (json.root) setRootDir(json.root)
       } catch (e) {
-        if (!silent) {
-          setError(e instanceof Error ? e.message : 'Failed to fetch files')
+        const message = e instanceof Error ? e.message : 'Failed to fetch files'
+        if (isRoot) {
+          // Only a failed root fetch may blank the panel.
+          if (!silent) setError(message)
+        } else {
+          // A failed subdirectory surfaces on its own row and leaves every
+          // already-loaded directory intact.
+          setDirErrors((prev) => new Map(prev).set(path, message))
         }
       } finally {
-        if (!silent) {
-          setLoading(false)
+        if (rootUI) setLoading(false)
+        if (!isRoot) {
+          setLoadingDirs((prev) => {
+            const next = new Set(prev)
+            next.delete(path)
+            return next
+          })
         }
       }
     },
     [sessionName]
   )
 
+  // Auto-refresh reads the live expanded set through a ref so the interval is
+  // not torn down and rebuilt every time a folder is opened.
+  const expandedRef = useRef(expandedDirs)
+  useEffect(() => {
+    expandedRef.current = expandedDirs
+  }, [expandedDirs])
+
   // Reset state when session changes
   useEffect(() => {
     setSelectedFile(null)
     setExpandedDirs(new Set())
+    setDirs(new Map())
   }, [sessionName])
 
   useEffect(() => {
-    fetchFiles()
+    fetchDir('')
 
-    // Auto-refresh every 5 seconds
+    // Auto-refresh every 5 seconds: root plus whatever is expanded. Collapsed
+    // directories are not on screen, so they are not refetched. Results merge
+    // into the map rather than replacing it, or the tree would remount each tick.
     const interval = setInterval(() => {
-      fetchFiles(true)
+      fetchDir('', true)
+      expandedRef.current.forEach((p) => fetchDir(p, true))
     }, 5000)
 
     return () => clearInterval(interval)
-  }, [fetchFiles])
+  }, [fetchDir])
 
   const fetchFileContent = async (path: string) => {
     setLoadingFile(true)
@@ -572,6 +615,7 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
   }
 
   const toggleDir = (path: string) => {
+    const opening = !expandedDirs.has(path)
     setExpandedDirs((prev) => {
       const next = new Set(prev)
       if (next.has(path)) {
@@ -581,24 +625,9 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
       }
       return next
     })
-  }
-
-  // Build tree structure from flat file list
-  const buildTree = (files: FileEntry[]) => {
-    const tree: Map<string, FileEntry[]> = new Map()
-    tree.set('', []) // root
-
-    for (const file of files) {
-      const parts = file.path.split('/')
-      const parentPath = parts.slice(0, -1).join('/')
-
-      if (!tree.has(parentPath)) {
-        tree.set(parentPath, [])
-      }
-      tree.get(parentPath)!.push(file)
+    if (opening && !dirs.has(path)) {
+      fetchDir(path)
     }
-
-    return tree
   }
 
   const renderTree = (tree: Map<string, FileEntry[]>, parentPath: string, depth: number) => {
@@ -624,7 +653,9 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
               className="w-full flex items-center gap-2 px-2 py-1 hover:bg-bg-surface text-left"
               style={{ paddingLeft: `${depth * 16 + 8}px` }}
             >
-              {isExpanded ? (
+              {loadingDirs.has(entry.path) ? (
+                <RefreshCw size={14} className="text-text-muted animate-spin" />
+              ) : isExpanded ? (
                 <ChevronDown size={14} className="text-text-muted" />
               ) : (
                 <ChevronRight size={14} className="text-text-muted" />
@@ -633,6 +664,14 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
               <span className="text-text-secondary truncate">{name}</span>
             </button>
             {isExpanded && renderTree(tree, entry.path, depth + 1)}
+            {isExpanded && dirErrors.has(entry.path) && (
+              <div
+                className="text-xs text-danger px-2 py-1"
+                style={{ paddingLeft: `${(depth + 1) * 16 + 8}px` }}
+              >
+                {dirErrors.get(entry.path)}
+              </div>
+            )}
           </div>
         )
       }
@@ -728,6 +767,13 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
     [navigateToDir]
   )
 
+  const manualRefresh = () => {
+    const expanded = Array.from(expandedDirs)
+    setDirs(new Map())
+    fetchDir('')
+    expanded.forEach((p) => fetchDir(p))
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full text-text-muted">
@@ -741,7 +787,7 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
       <div className="flex flex-col items-center justify-center h-full gap-4">
         <span className="text-danger">Error: {error}</span>
         <button
-          onClick={() => fetchFiles()}
+          onClick={manualRefresh}
           className="px-4 py-2 bg-action hover:brightness-110 rounded text-white"
         >
           Retry
@@ -750,15 +796,13 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
     )
   }
 
-  const tree = buildTree(files)
-
   const treeSidebar = (
     <div className="border-r border-border-default overflow-auto h-full">
       <div className="p-2 bg-bg-surface border-b border-border-default flex justify-between items-center">
         <span className="text-sm text-text-tertiary">Files</span>
         <div className="flex gap-1">
           <button
-            onClick={() => fetchFiles()}
+            onClick={manualRefresh}
             className="text-xs px-2 py-1 bg-control-bg hover:bg-control-bg-hover rounded"
             title="Refresh"
           >
@@ -773,7 +817,7 @@ export default function FileBrowser({ sessionName, onFocusTerminal }: Props) {
           </button>
         </div>
       </div>
-      <div className="py-1">{renderTree(tree, '', 0)}</div>
+      <div className="py-1">{renderTree(dirs, '', 0)}</div>
     </div>
   )
 

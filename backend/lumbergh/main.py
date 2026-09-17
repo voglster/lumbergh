@@ -23,7 +23,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from lumbergh.auth import AuthMiddleware
 from lumbergh.auth import router as auth_router
 from lumbergh.constants import TMUX_CMD
-from lumbergh.file_utils import get_file_language, list_project_files, validate_path_within_root
+from lumbergh.file_utils import get_file_language, list_directory, validate_path_within_root
 from lumbergh.git_utils import (
     get_commit_diff,
     get_commit_log,
@@ -369,15 +369,21 @@ async def git_push_endpoint():
 
 
 @app.get("/api/files")
-async def list_files():
-    """List files in the project directory."""
+async def list_files(path: str = ""):
+    """List one directory level in the project directory."""
     from lumbergh.routers.sessions import _run_git
 
     try:
-        files = await _run_git(list_project_files, PROJECT_ROOT)
+        files = await _run_git(list_directory, PROJECT_ROOT, path)
         return {"files": files, "root": str(PROJECT_ROOT)}
     except HTTPException:
         raise
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Access denied")
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Directory not found")
+    except NotADirectoryError:
+        raise HTTPException(status_code=400, detail="Path is not a directory")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

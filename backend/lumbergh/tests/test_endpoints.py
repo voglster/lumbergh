@@ -84,6 +84,37 @@ class TestFilesEndpoints:
         if response.status_code == 200:
             assert "root:" not in response.text
 
+    def test_list_files_returns_root_level_only(self, client):
+        """No nested paths come back without an explicit ?path."""
+        response = client.get("/api/files")
+        assert response.status_code == 200
+        paths = [f["path"] for f in response.json()["files"]]
+        assert paths, "expected at least one entry at the project root"
+        assert all("/" not in p for p in paths)
+
+    def test_list_files_with_path_lists_that_directory(self, client):
+        response = client.get("/api/files", params={"path": "backend"})
+        assert response.status_code == 200
+        paths = [f["path"] for f in response.json()["files"]]
+        assert paths, "expected entries under backend/"
+        assert all(p.startswith("backend/") for p in paths)
+
+    def test_list_files_traversal_blocked(self, client):
+        response = client.get("/api/files", params={"path": "../.."})
+        assert response.status_code == 403
+
+    def test_list_files_absolute_path_blocked(self, client):
+        response = client.get("/api/files", params={"path": "/etc"})
+        assert response.status_code == 403
+
+    def test_list_files_missing_directory(self, client):
+        response = client.get("/api/files", params={"path": "no_such_dir_xyz123"})
+        assert response.status_code == 404
+
+    def test_list_files_file_as_path(self, client):
+        response = client.get("/api/files", params={"path": "README.md"})
+        assert response.status_code == 400
+
 
 class TestCreateSessionErrorMapping:
     """Regression: OSError from subprocess (e.g. EMFILE) used to surface as a

@@ -2,54 +2,69 @@
 File system utilities for the Lumbergh backend.
 """
 
-from collections.abc import Iterator
+import os
 from pathlib import Path
 
 from lumbergh.constants import IGNORE_DIRS
 
 
-def iter_project_files(root: Path, ignore_dirs: set[str] | None = None) -> Iterator[Path]:
+def list_directory(
+    root: Path, rel_path: str = "", ignore_dirs: set[str] | None = None
+) -> list[dict]:
     """
-    Iterate over files in a project directory, skipping ignored directories.
+    List the immediate children of one directory under root.
+
+    Only the named directory is scanned; nothing beneath it is touched. The
+    file browser expands one level at a time, so walking the whole tree was
+    work whose result was discarded -- and it held the GIL long enough to
+    stall the event loop. See
+    docs/superpowers/specs/2026-09-17-lazy-file-listing-design.md.
 
     Args:
-        root: Root directory to iterate
-        ignore_dirs: Set of directory names to skip (uses IGNORE_DIRS if None)
+        root: Project root. Reported paths are relative to this.
+        rel_path: Directory to list, relative to root. Empty lists root itself.
+        ignore_dirs: Directory names to omit (uses IGNORE_DIRS if None)
 
-    Yields:
-        Path objects for each file/directory
+    Returns:
+        List of dicts with path, type, and size keys. Directories sort first,
+        then files, each group case-insensitively by name.
+
+    Raises:
+        PermissionError: rel_path escapes root, or the directory is unreadable
+        FileNotFoundError: rel_path does not exist
+        NotADirectoryError: rel_path is a file, not a directory
     """
     if ignore_dirs is None:
         ignore_dirs = IGNORE_DIRS
 
-    for item in sorted(root.rglob("*")):
-        if any(ignored in item.parts for ignored in ignore_dirs):
-            continue
-        yield item
+    target = root / rel_path if rel_path else root
+    if not validate_path_within_root(target, root):
+        raise PermissionError(rel_path)
 
+    entries: list[dict] = []
+    with os.scandir(target) as it:
+        for entry in it:
+            if entry.name in ignore_dirs:
+                continue
+            try:
+                # is_dir() follows symlinks so a linked directory still shows
+                # as a folder; escape safety is validate_path_within_root's job
+                # on the way in. scandir reuses the dirent type, so this costs
+                # no extra syscall; only files are stat()ed, for their size.
+                is_dir = entry.is_dir()
+                size = None if is_dir else entry.stat().st_size
+            except OSError:
+                continue  # vanished between scandir and stat
+            entries.append(
+                {
+                    "path": f"{rel_path}/{entry.name}" if rel_path else entry.name,
+                    "type": "directory" if is_dir else "file",
+                    "size": size,
+                }
+            )
 
-def list_project_files(root: Path, ignore_dirs: set[str] | None = None) -> list[dict]:
-    """
-    List files in a project directory as a list of dicts.
-
-    Args:
-        root: Root directory to list
-        ignore_dirs: Set of directory names to skip
-
-    Returns:
-        List of dicts with path, type, and size keys
-    """
-    files = []
-    for item in iter_project_files(root, ignore_dirs):
-        rel_path = item.relative_to(root)
-        files.append(
-            {
-                "path": str(rel_path),
-                "type": "directory" if item.is_dir() else "file",
-                "size": item.stat().st_size if item.is_file() else None,
-            }
-        )
-    return files
+    entries.sort(key=lambda e: (e["type"] != "directory", e["path"].lower()))
+    return entries
 
 
 def get_file_language(path: Path | str) -> str:
