@@ -12,6 +12,7 @@ from lumbergh.db_utils import CONFIG_DIR
 from lumbergh.main import app
 from lumbergh.quick_worktree import next_quick_name
 from lumbergh.routers import sessions as sessions_router
+from lumbergh.routers.sessions import _resolve_launch_command as real_launch_command
 
 
 class TestNaming:
@@ -32,7 +33,9 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setattr(sessions_router, "sessions_table", table)
     monkeypatch.setattr(sessions_router, "get_live_sessions", dict)
     monkeypatch.setattr(sessions_router, "create_tmux_session", lambda *_a, **_k: None)
-    monkeypatch.setattr(sessions_router, "_resolve_launch_command", lambda _provider: "claude")
+    monkeypatch.setattr(
+        sessions_router, "_resolve_launch_command", lambda _provider, **_kw: "claude"
+    )
     from lumbergh.routers import settings as settings_router
 
     monkeypatch.setattr(
@@ -88,3 +91,47 @@ class TestRegistryIsolation:
         client.post("/api/sessions/quick-worktree", json={"parent_repo": str(mock_git_repo)})
 
         assert (registry.read_text() if registry.exists() else None) == before
+
+
+@pytest.fixture
+def launches(request, monkeypatch):
+    """The launch commands the endpoint actually hands tmux.
+
+    Restores the real resolver the ``client`` fixture stubs out — the choice of
+    command is the thing under test here — so it has to be set up after it.
+    """
+    request.getfixturevalue("client")
+    recorded: list[str] = []
+    monkeypatch.setattr(sessions_router, "_resolve_launch_command", real_launch_command)
+    monkeypatch.setattr(
+        sessions_router,
+        "create_tmux_session",
+        lambda _name, _workdir, launch_command: recorded.append(launch_command),
+    )
+    return recorded
+
+
+class TestFreshConversation:
+    """A quick worktree is a new agent, never a returning one.
+
+    Names are the lowest free number, so ``quick/1`` comes back around once the
+    last one is gone — and onto the same worktree path, because the path is
+    derived from the branch. The harness keys its history on the working
+    directory, so ``claude --continue`` there picks up whoever sat in that seat
+    before and carries on their conversation.
+    """
+
+    def test_it_launches_an_agent_with_nothing_to_resume(self, client, launches, mock_git_repo):
+        client.post("/api/sessions/quick-worktree", json={"parent_repo": str(mock_git_repo)})
+
+        assert launches == ["claude"]
+
+    def test_the_reused_name_does_not_reopen_the_last_occupants_conversation(
+        self, client, launches, mock_git_repo
+    ):
+        """quick-1, deleted, then quick-1 again — the second one starts empty."""
+        client.post("/api/sessions/quick-worktree", json={"parent_repo": str(mock_git_repo)})
+        client.delete("/api/sessions/quick-1")
+        client.post("/api/sessions/quick-worktree", json={"parent_repo": str(mock_git_repo)})
+
+        assert all("--continue" not in command for command in launches)

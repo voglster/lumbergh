@@ -149,6 +149,10 @@ class CreateSessionRequest(BaseModel):
     agent_provider: str | None = None  # Override global default agent provider
     tab_visibility: dict[str, bool] | None = None  # Override global tab visibility
     fork_from: str | None = None  # Start from this session's conversation, branched
+    # Start the agent on a brand-new conversation instead of resuming the last one in
+    # that directory. A harness keys its history on the working directory, so a session
+    # created at a path some earlier session used inherits that session's conversation.
+    fresh: bool = False
 
 
 class SessionUpdate(BaseModel):

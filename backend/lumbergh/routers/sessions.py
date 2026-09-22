@@ -897,7 +897,7 @@ def _spawn_tmux_or_raise(body: CreateSessionRequest, workdir: Path) -> None:
     launch_cmd = (
         _fork_launch_command(body)
         if body.fork_from
-        else _resolve_launch_command(body.agent_provider)
+        else _resolve_launch_command(body.agent_provider, fresh=body.fresh)
     )
     try:
         create_tmux_session(body.name, workdir, launch_command=launch_cmd)
@@ -912,13 +912,13 @@ def _spawn_tmux_or_raise(body: CreateSessionRequest, workdir: Path) -> None:
         )
 
 
-def _resolve_launch_command(agent_provider: str | None) -> str:
+def _resolve_launch_command(agent_provider: str | None, *, fresh: bool = False) -> str:
     """Resolve the agent launch command from provider + global settings."""
     from lumbergh.routers.settings import get_settings
 
     settings = get_settings()
     default_agent = settings.get("defaultAgent")
-    return get_launch_command(agent_provider, default_agent)
+    return get_launch_command(agent_provider, default_agent, fresh=fresh)
 
 
 @router.post("")
@@ -1038,6 +1038,10 @@ def create_quick_worktree(body: QuickWorktreeRequest):
             name=name,
             mode="worktree",
             worktree=WorktreeConfig(parent_repo=str(repo), branch=branch, create_branch=True),
+            # `quick/1` comes back around once the last one is gone, onto the same
+            # worktree path — and `--continue` there would reopen its predecessor's
+            # conversation instead of giving you the new agent you asked for.
+            fresh=True,
         )
     )
 
