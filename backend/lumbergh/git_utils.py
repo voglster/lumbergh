@@ -1271,6 +1271,86 @@ def _git_error(e: GitCommandError) -> dict:
     return {"error": message}
 
 
+def _split_remote_ref(repo: Repo, branch: str) -> tuple[str, str] | None:
+    """Split a remote-tracking name into ``(remote_ref, local_name)``.
+
+    ``None`` for anything that is not one — including a local branch genuinely
+    named ``origin/x``, which is legal and means itself. Remote names come from
+    the repo rather than a hardcoded ``origin/`` for the same reason.
+    """
+    if any(head.name == branch for head in repo.heads):
+        return None
+    for remote in repo.remotes:
+        prefix = f"{remote.name}/"
+        if not branch.startswith(prefix):
+            continue
+        try:
+            known = any(ref.name == branch for ref in remote.refs)
+        except (AssertionError, GitCommandError):
+            continue
+        if known:
+            return branch, branch[len(prefix) :]
+    return None
+
+
+def _checkout_tracking_branch(
+    repo: Repo, remote_ref: str, local_name: str, reset_to: str | None
+) -> dict:
+    """Put HEAD on the local branch a remote-tracking name stands for.
+
+    Naming the remote from the UI means "put me on that branch", never "detach
+    HEAD onto the commit it points at" — there is no button for the latter and
+    no reason to want it. So the branch is created if it is missing, carried
+    forward if it is merely behind, and left exactly where it is if it holds
+    commits the remote has never seen: moving it there would discard them
+    silently. ``reset_to`` is the caller saying it meant to, and moves the
+    branch rather than the detached HEAD this used to leave behind.
+    """
+    if not any(head.name == local_name for head in repo.heads):
+        repo.git.checkout("-b", local_name, "--track", remote_ref)
+        return {
+            "status": "success",
+            "branch": local_name,
+            "divergedCommits": 0,
+            "message": f"Created '{local_name}' tracking '{remote_ref}'",
+        }
+
+    repo.git.checkout(local_name)
+    if repo.heads[local_name].tracking_branch() is None:
+        repo.git.branch("--set-upstream-to", remote_ref, local_name)
+
+    if reset_to:
+        repo.git.reset("--hard", reset_to)
+        return {
+            "status": "success",
+            "branch": local_name,
+            "divergedCommits": 0,
+            "message": f"Switched to branch '{local_name}' and reset to {reset_to[:7]}",
+        }
+
+    ahead = int(repo.git.rev_list("--count", f"{remote_ref}..{local_name}"))
+    if ahead:
+        plural = "" if ahead == 1 else "s"
+        return {
+            "status": "success",
+            "branch": local_name,
+            "divergedCommits": ahead,
+            "message": f"Switched to branch '{local_name}'. It holds {ahead} commit{plural} "
+            f"not on {remote_ref}, so it was left where it is.",
+        }
+
+    moved = repo.commit(local_name).hexsha != repo.commit(remote_ref).hexsha
+    if moved:
+        repo.git.merge("--ff-only", remote_ref)
+    return {
+        "status": "success",
+        "branch": local_name,
+        "divergedCommits": 0,
+        "message": f"Switched to branch '{local_name}'"
+        + (f" and moved it to {remote_ref}" if moved else ""),
+    }
+
+
 def checkout_branch(cwd: Path, branch: str, reset_to: str | None = None) -> dict:
     """
     Checkout a branch if the working directory is clean.
@@ -1289,6 +1369,10 @@ def checkout_branch(cwd: Path, branch: str, reset_to: str | None = None) -> dict
         return {"error": "Working directory has pending changes. Commit or stash changes first."}
 
     try:
+        remote = _split_remote_ref(repo, branch)
+        if remote:
+            return _checkout_tracking_branch(repo, *remote, reset_to)
+
         repo.git.checkout(branch)
         if reset_to:
             repo.git.reset("--hard", reset_to)
