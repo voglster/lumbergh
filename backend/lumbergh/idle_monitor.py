@@ -154,6 +154,10 @@ class IdleMonitor:
     # lets him go permanently deaf. Fifteen minutes is ~96 check-ins/day — cheap even for a
     # local model, and a check-in a few minutes late costs nothing at supervision scale.
     BILL_HEARTBEAT_INTERVAL_SECONDS = 900.0
+    # The same check-in, posted to an outside supervisor's webhook. That supervisor has no
+    # idle state we can read, so the cadence alone throttles it — and a chat assistant
+    # pinged every fifteen minutes about a calm fleet is noise, not supervision.
+    OVERSEER_WEBHOOK_HEARTBEAT_INTERVAL_SECONDS = 1800.0
 
     def __init__(self):
         self._fingerprints: dict[str, str] = {}
@@ -175,6 +179,13 @@ class IdleMonitor:
         # Last time we contacted Bill by any tap (edge or heartbeat). Shared so the two
         # never double-contact him inside one heartbeat window.
         self._last_bill_nudge_at = 0.0
+        # Webhook mode only: the session entry (name, role, state, why) of every report already posted as
+        # needing the supervisor. Without Bill's idle->working edge to re-arm on, this is
+        # what keeps one blocked worker from being re-posted every sweep.
+        self._webhook_attention_posted: set[tuple] = set()
+        # The webhook heartbeat counts from here rather than from 0, or every backend
+        # restart (and `--reload` restarts on each save) would post a check-in at once.
+        self._started_at = time.time()
         # Per-babysat-session latch for the "advance a stuck babysat overseer" tap: the
         # _state_since value we last nudged Bill about. Keying on the idle-episode
         # timestamp re-arms on the session's *next* idle without our having to observe
@@ -441,9 +452,12 @@ class IdleMonitor:
           permanently deaf once everything has been acked — the exact gap the edge
           trigger alone can't see.
         """
-        from lumbergh import bill_nudge
+        from lumbergh import bill_nudge, overseer_webhook
 
-        state = self.get_state(bill_nudge.BILL_SESSION).value
+        webhook = overseer_webhook.configured()
+        # An outside supervisor has no pane to read, so there is no "busy" to wait out:
+        # it is always reachable, and the dedupe below does the job the idle gate does.
+        state = "idle" if webhook else self.get_state(bill_nudge.BILL_SESSION).value
         if state != "idle":
             self._bill_nudged = False
             return
@@ -467,8 +481,7 @@ class IdleMonitor:
         if await self._maybe_report_broken_babysit(loop, now):
             return
 
-        if bill_nudge.should_nudge(state, his):
-            await self._nudge_edge(loop, now)
+        if await self._maybe_wake(loop, now, his, webhook):
             return
 
         # No edge, but a babysat overseer may be stuck idle with no sentinel — ranked below
@@ -479,13 +492,63 @@ class IdleMonitor:
         # Calm fleet: fall through to the heartbeat. It must not touch ``_bill_nudged`` —
         # that latch belongs to the edge, and a heartbeat setting it would suppress a real
         # blocker until Bill next left idle.
-        idle_for = self.state_since_seconds(bill_nudge.BILL_SESSION)
-        if idle_for is None or idle_for < self.BILL_HEARTBEAT_INTERVAL_SECONDS:
-            return
-        if now - self._last_bill_nudge_at < self.BILL_HEARTBEAT_INTERVAL_SECONDS:
+        if not self._heartbeat_due(now, webhook):
             return
         if await loop.run_in_executor(None, bill_nudge.heartbeat_nudge):
             self._last_bill_nudge_at = now
+
+    async def _maybe_wake(
+        self, loop: asyncio.AbstractEventLoop, now: float, his: list[dict], webhook: bool
+    ) -> bool:
+        """The edge, by transport. True when a report needs the supervisor, so the caller
+        stops before the lower-ranked taps."""
+        from lumbergh import bill_nudge
+
+        if webhook:
+            return await self._post_attention(loop, now, his)
+        if bill_nudge.should_nudge("idle", his):
+            await self._nudge_edge(loop, now)
+            return True
+        return False
+
+    def _heartbeat_due(self, now: float, webhook: bool) -> bool:
+        if webhook:
+            quiet_since = max(self._last_bill_nudge_at, self._started_at)
+            return now - quiet_since >= self.OVERSEER_WEBHOOK_HEARTBEAT_INTERVAL_SECONDS
+        from lumbergh import bill_nudge
+
+        idle_for = self.state_since_seconds(bill_nudge.BILL_SESSION)
+        if idle_for is None or idle_for < self.BILL_HEARTBEAT_INTERVAL_SECONDS:
+            return False
+        return now - self._last_bill_nudge_at >= self.BILL_HEARTBEAT_INTERVAL_SECONDS
+
+    async def _post_attention(
+        self, loop: asyncio.AbstractEventLoop, now: float, rows: list[dict]
+    ) -> bool:
+        """The edge tap, for a webhook supervisor. Returns whether anything needs it.
+
+        Bill's edge re-arms when he leaves idle; a webhook receiver never does, so this
+        latches on *what* was posted instead. A report needing attention for a reason not
+        yet posted (newly blocked, a fresh chunk, blocked turned error) posts again, with
+        every currently-needing report in the body. A report that stops needing attention
+        drops out of the latch, so its next episode posts afresh. The supervisor acks the
+        idle+unseen ones by running ``lb fleet`` as Bill, exactly as Bill does.
+
+        True while anything needs attention, posted or not, so the caller holds the
+        advance and heartbeat taps back just as it does behind Bill's latched edge.
+        """
+        from lumbergh import bill_nudge
+        from lumbergh.routers.bill import BILL_SESSION, _needing
+
+        needing = _needing(rows, BILL_SESSION)
+        current = {tuple(bill_nudge.session_entry(r).values()) for r in needing}
+        self._webhook_attention_posted &= current
+        if current - self._webhook_attention_posted:
+            sent = await loop.run_in_executor(None, bill_nudge.nudge, needing)
+            if sent:
+                self._webhook_attention_posted = current
+                self._last_bill_nudge_at = now
+        return bool(needing)
 
     async def _nudge_edge(self, loop: asyncio.AbstractEventLoop, now: float) -> None:
         """The edge tap: a report needs Bill now. Once per idle episode.
