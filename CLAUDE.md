@@ -215,6 +215,25 @@ initialises it; the host injects only `window.flutter_inappwebview` and
 `POST /api/glasses/probe`, which writes `~/.config/lumbergh/glasses-probe.json` — that
 WebView has no console.
 
+## Outside Supervisor Webhook
+
+Bill's four server-side taps (`bill_nudge.py`: attention, heartbeat, broken babysit,
+idle babysat overseer) normally type into the tmux session named `bill`. With
+`LUMBERGH_OVERSEER_WEBHOOK_URL` set in the backend's environment they go out as a
+JSON POST instead (`overseer_webhook.py`), for a supervisor that lives outside
+Lumbergh and drives `lb` as Bill (`LUMBERGH_SESSION=bill`). The key comes from
+`LUMBERGH_OVERSEER_WEBHOOK_KEY`, sent as `Authorization: Bearer <key>` unless
+`LUMBERGH_OVERSEER_WEBHOOK_HEADER` names another header, which then carries the raw key.
+Body: `source`, `kind` (`attention` / `heartbeat` / `babysit_broken` / `babysit_idle`),
+`reason`, `message` (the text Bill would have been typed), `sessions`
+(`name`/`role`/`state`/`why`) and `timestamp`.
+
+Webhook mode drops the "is Bill idle?" gate, since there is no pane to read, so it has
+its own dedupe in `IdleMonitor._post_attention`: an attention post fires only when a
+report needs the supervisor for a reason not already posted, and the heartbeat runs at
+most every 30 minutes, counted from backend start so `--reload` doesn't post one on
+every save. A failed POST holds further ones off for a minute.
+
 ## Debugging Event Loop Lag
 
 Lumbergh serves terminals, polls and clicks from one event loop, so a handler
