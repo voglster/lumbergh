@@ -17,10 +17,15 @@ Two taps, both a single tmux line (a newline would submit early and split the se
   idle with no sentinel, so nothing auto-refreshed it. An imperative to advance *that*
   session, not a generic check-in Bill can answer with "all quiet". The idle monitor owns
   *when* and *which*; this owns only *what to say*.
+
+With ``LUMBERGH_OVERSEER_WEBHOOK_URL`` set, every tap goes to that webhook instead of
+Bill's pane (see ``overseer_webhook``), carrying the sessions it is about so a supervisor
+outside Lumbergh can act without first asking which ones.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
+from lumbergh import fleet, overseer_webhook
 from lumbergh.tmux_pty import send_text
 
 BILL_SESSION = "bill"
@@ -62,17 +67,52 @@ def _bill_ref() -> str:
     return tmux_ref(BILL_SESSION)
 
 
-def nudge(send: Callable[[str, str], bool] = send_text) -> bool:
+def attention_reason(row: dict) -> str:
+    if row["state"] in fleet.ATTENTION_STATES:
+        return row["state"]
+    if fleet.holding_uncommitted_work(row):
+        return "idle holding uncommitted work"
+    return "finished a chunk"
+
+
+def session_entry(row: dict) -> dict:
+    return {
+        "name": row.get("session") or row["task"],
+        "role": row.get("role"),
+        "state": row["state"],
+        "why": attention_reason(row),
+    }
+
+
+def nudge(needing: Sequence[dict] = (), send: Callable[[str, str], bool] = send_text) -> bool:
+    if overseer_webhook.configured():
+        entries = [session_entry(r) for r in needing]
+        reason = "Needs you: " + ", ".join(f"{e['name']} ({e['why']})" for e in entries)
+        return overseer_webhook.post("attention", reason, _WAKE, entries)
     return bool(send(_bill_ref(), _WAKE))
 
 
 def heartbeat_nudge(send: Callable[[str, str], bool] = send_text) -> bool:
+    if overseer_webhook.configured():
+        return overseer_webhook.post(
+            "heartbeat", "Routine check-in: nothing flagged", _HEARTBEAT, []
+        )
     return bool(send(_bill_ref(), _HEARTBEAT))
 
 
 def advance_nudge(session: str, send: Callable[[str, str], bool] = send_text) -> bool:
-    return bool(send(_bill_ref(), _ADVANCE.format(s=session)))
+    text = _ADVANCE.format(s=session)
+    if overseer_webhook.configured():
+        entry = {"name": session, "role": "overseer", "state": "idle", "why": "babysat, idle"}
+        reason = f"Babysat {session} is idle and not blocked"
+        return overseer_webhook.post("babysit_idle", reason, text, [entry])
+    return bool(send(_bill_ref(), text))
 
 
 def broken_babysit_nudge(session: str, send: Callable[[str, str], bool] = send_text) -> bool:
-    return bool(send(_bill_ref(), _BROKEN_BABYSIT.format(s=session)))
+    text = _BROKEN_BABYSIT.format(s=session)
+    if overseer_webhook.configured():
+        entry = {"name": session, "role": "overseer", "state": "error", "why": "no live agent"}
+        reason = f"Babysat {session} has no live agent"
+        return overseer_webhook.post("babysit_broken", reason, text, [entry])
+    return bool(send(_bill_ref(), text))
