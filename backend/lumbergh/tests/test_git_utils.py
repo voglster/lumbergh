@@ -127,6 +127,42 @@ class TestGetFullDiffWithUntracked:
         assert "README.md" in paths
         assert "new_file.txt" in paths
 
+    def test_modified_binary_is_listed_without_its_bytes(self, mock_git_repo):
+        image = mock_git_repo / "sprite.webp"
+        image.write_bytes(b"RIFF\x00\x00WEBP" + bytes(range(256)) * 100)
+        subprocess.run(["git", "add", "-A"], cwd=mock_git_repo, check=True)
+        subprocess.run(["git", "commit", "-qm", "sprite"], cwd=mock_git_repo, check=True)
+        image.write_bytes(b"RIFF\x00\x01WEBP" + bytes(range(255, -1, -1)) * 100)
+
+        [entry] = get_full_diff_with_untracked(mock_git_repo)["files"]
+
+        assert entry["path"] == "sprite.webp"
+        assert entry["oldContent"] is None
+        assert entry["newContent"] is None
+
+    def test_untracked_binary_is_listed_without_its_bytes(self, mock_git_repo):
+        (mock_git_repo / "frame.png").write_bytes(
+            b"\x89PNG\r\n\x1a\n\x00" + bytes(range(256)) * 100
+        )
+
+        [entry] = get_full_diff_with_untracked(mock_git_repo)["files"]
+
+        assert entry["path"] == "frame.png"
+        assert entry["newContent"] is None
+        assert "Binary files" in entry["diff"]
+        assert len(entry["diff"]) < 200
+
+    def test_embedded_contents_stop_at_the_payload_budget(self, mock_git_repo, monkeypatch):
+        monkeypatch.setattr("lumbergh.git_utils.MAX_DIFF_CONTENT_BYTES", 2_500)
+        for i in range(5):
+            (mock_git_repo / f"notes{i}.txt").write_text("x" * 1_000)
+
+        files = get_full_diff_with_untracked(mock_git_repo)["files"]
+
+        assert len(files) == 5
+        embedded = sum(len(f["newContent"] or "") + len(f["diff"]) for f in files)
+        assert embedded <= 2_500 + 1_100
+
 
 class TestGetCommitLog:
     def test_returns_commits(self, mock_git_repo):
@@ -154,6 +190,21 @@ class TestGetCommitDiff:
     def test_nonexistent_commit(self, mock_git_repo):
         result = get_commit_diff(mock_git_repo, "nonexistent123")
         assert result is None
+
+    def test_binary_change_is_listed_without_its_bytes(self, mock_git_repo):
+        image = mock_git_repo / "sprite.webp"
+        image.write_bytes(b"RIFF\x00\x00WEBP" + bytes(range(256)) * 100)
+        subprocess.run(["git", "add", "-A"], cwd=mock_git_repo, check=True)
+        subprocess.run(["git", "commit", "-qm", "sprite"], cwd=mock_git_repo, check=True)
+        image.write_bytes(b"RIFF\x00\x01WEBP" + bytes(range(255, -1, -1)) * 100)
+        subprocess.run(["git", "commit", "-qam", "redraw"], cwd=mock_git_repo, check=True)
+        head = get_commit_log(mock_git_repo, limit=1)[0]["hash"]
+
+        [entry] = get_commit_diff(mock_git_repo, head)["files"]
+
+        assert entry["path"] == "sprite.webp"
+        assert entry["oldContent"] is None
+        assert entry["newContent"] is None
 
 
 class TestStageAllAndCommit:
@@ -309,6 +360,22 @@ class TestGetRangeDiff:
         assert result["range"]["commitCount"] == 2
         assert result["range"]["from"]["hash"] == base
         assert result["range"]["to"]["hash"] == head
+
+    def test_binary_change_is_listed_without_its_bytes(self, mock_git_repo):
+        base = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=mock_git_repo, capture_output=True, text=True
+        ).stdout.strip()
+        (mock_git_repo / "frame.png").write_bytes(b"\x89PNG\x00" + bytes(range(256)) * 100)
+        subprocess.run(["git", "add", "-A"], cwd=mock_git_repo, check=True)
+        subprocess.run(["git", "commit", "-qm", "frame"], cwd=mock_git_repo, check=True)
+        head = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=mock_git_repo, capture_output=True, text=True
+        ).stdout.strip()
+
+        [entry] = get_range_diff(mock_git_repo, base, head)["files"]
+
+        assert entry["path"] == "frame.png"
+        assert entry["newContent"] is None
 
     def test_orders_the_pair_by_ancestry_whichever_way_it_is_asked(self, mock_git_repo):
         base = subprocess.run(

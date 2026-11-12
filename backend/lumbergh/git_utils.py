@@ -9,6 +9,7 @@ import os
 import re
 import subprocess
 import tempfile
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -41,20 +42,48 @@ def _sanitize(text: str) -> str:
 # files (e.g. node_modules, binaries, model weights).
 MAX_DIFF_FILE_BYTES = 1_000_000  # 1 MB
 MAX_DIFF_TOTAL_FILES = 500
+# The diff payload is JSON-encoded, md5'd for its ETag and gzipped on the event
+# loop, so its size is how long every terminal and poll freezes per refresh.
+MAX_DIFF_CONTENT_BYTES = 8_000_000
+# Same window and test git itself uses to call a file binary.
+BINARY_SNIFF_BYTES = 8000
+
+
+def _looks_binary(data: bytes) -> bool:
+    return b"\0" in data[:BINARY_SNIFF_BYTES]
+
+
+def _is_binary_file(path: Path) -> bool:
+    try:
+        with path.open("rb") as f:
+            return _looks_binary(f.read(BINARY_SNIFF_BYTES))
+    except OSError:
+        return False
 
 
 def _read_if_small(path: Path) -> str | None:
-    """Read a file's text content, returning None if it's too large or unreadable."""
+    """A text file's content; None if it is too large, binary, or unreadable."""
     try:
-        size = path.stat().st_size
+        if path.stat().st_size > MAX_DIFF_FILE_BYTES:
+            return None
+        data = path.read_bytes()
     except OSError:
         return None
-    if size > MAX_DIFF_FILE_BYTES:
+    if _looks_binary(data):
         return None
-    try:
-        return path.read_text(errors="replace")
-    except Exception:
-        return None
+    return data.decode("utf-8", errors="replace")
+
+
+def _binary_diff(path: str, old: str = "/dev/null") -> str:
+    return f"diff --git a/{path} b/{path}\nBinary files {old} and b/{path} differ"
+
+
+def _is_binary_diff(diff: str) -> bool:
+    return any(line.startswith("Binary files ") for line in diff.split("\n", 4))
+
+
+def _omitted_diff(path: str) -> str:
+    return f"diff --git a/{path} b/{path}"
 
 
 def gravatar_url(email: str, size: int = 40) -> str:
@@ -204,6 +233,9 @@ def generate_untracked_file_diff(workdir: Path, path: str) -> tuple[FileDiff | N
     if not full_path.is_file():
         return None, stats
 
+    if _is_binary_file(full_path):
+        return FileDiff(path=path, diff=_binary_diff(path)), stats
+
     content = _read_if_small(full_path)
     if content is None:
         return None, stats
@@ -231,9 +263,53 @@ def get_file_content_at_ref(repo: Repo, ref: str, path: str) -> str | None:
         return None
 
 
+class _ContentBudget:
+    """Spends MAX_DIFF_CONTENT_BYTES across a diff payload, first come first served.
+
+    A file that no longer fits keeps its place in the list but loses its
+    contents, and then its diff text, so the agent's change set stays visible
+    even when it is too big to ship.
+    """
+
+    def __init__(self) -> None:
+        self.remaining = MAX_DIFF_CONTENT_BYTES
+
+    def entry(self, path: str, diff: str, old: str | None, new: str | None) -> dict:
+        full = len(diff) + len(old or "") + len(new or "")
+        if full <= self.remaining:
+            self.remaining -= full
+        elif len(diff) <= self.remaining:
+            self.remaining -= len(diff)
+            old = new = None
+        else:
+            diff, old, new = _omitted_diff(path), None, None
+        return {"path": path, "diff": diff, "oldContent": old, "newContent": new}
+
+
+def _content_entries(
+    parsed_files: list[FileDiff],
+    budget: _ContentBudget,
+    old_content_of: Callable[[str], str | None],
+    new_content_of: Callable[[str], str | None],
+) -> list[dict]:
+    """Payload entries for parsed diffs, reading contents only for text files."""
+    entries = []
+    for f in parsed_files:
+        if _is_binary_diff(f.diff):
+            entries.append(budget.entry(f.path, f.diff, None, None))
+        else:
+            entries.append(
+                budget.entry(f.path, f.diff, old_content_of(f.path), new_content_of(f.path))
+            )
+    return entries
+
+
 def get_full_diff_with_untracked(cwd: Path) -> dict:
     """
     Get git diff for all changed files, including untracked files.
+
+    Binary files are listed but never embedded, and embedded text stops at
+    MAX_DIFF_CONTENT_BYTES.
 
     Returns:
         Dict with 'files' (list of file diffs with old/new content) and 'stats'
@@ -246,6 +322,7 @@ def get_full_diff_with_untracked(cwd: Path) -> dict:
     files: list[dict] = []
     total_stats = DiffStats()
     workdir = Path(repo.working_dir)
+    budget = _ContentBudget()
 
     # Get diff of working tree against HEAD
     if repo.head.is_valid():
@@ -253,19 +330,12 @@ def get_full_diff_with_untracked(cwd: Path) -> dict:
             diff_text = _sanitize(_parseable_diff(repo, "HEAD"))
             if diff_text:
                 parsed_files, stats = parse_diff_output(diff_text)
-                for f in parsed_files:
-                    if len(files) >= MAX_DIFF_TOTAL_FILES:
-                        break
-                    old_content = get_file_content_at_ref(repo, "HEAD", f.path)
-                    new_content = _read_if_small(workdir / f.path)
-                    files.append(
-                        {
-                            "path": f.path,
-                            "diff": f.diff,
-                            "oldContent": old_content,
-                            "newContent": new_content,
-                        }
-                    )
+                files = _content_entries(
+                    parsed_files[:MAX_DIFF_TOTAL_FILES],
+                    budget,
+                    lambda path: get_file_content_at_ref(repo, "HEAD", path),
+                    lambda path: _read_if_small(workdir / path),
+                )
                 total_stats.additions += stats.additions
                 total_stats.deletions += stats.deletions
         except GitCommandError:
@@ -277,15 +347,12 @@ def get_full_diff_with_untracked(cwd: Path) -> dict:
             break
         file_diff, stats = generate_untracked_file_diff(workdir, untracked_path)
         if file_diff:
-            new_content = _read_if_small(workdir / untracked_path)
-            files.append(
-                {
-                    "path": file_diff.path,
-                    "diff": file_diff.diff,
-                    "oldContent": None,
-                    "newContent": new_content,
-                }
+            new_content = (
+                None
+                if _is_binary_diff(file_diff.diff)
+                else _read_if_small(workdir / untracked_path)
             )
+            files.append(budget.entry(file_diff.path, file_diff.diff, None, new_content))
             total_stats.additions += stats.additions
 
     return {
@@ -879,21 +946,13 @@ def get_commit_diff(cwd: Path, commit_hash: str) -> dict | None:
     stats = DiffStats()
 
     if diff_text:
-        parsed_files, parsed_stats = parse_diff_output(diff_text)
-        for f in parsed_files:
-            # Get old content from parent commit (if exists)
-            old_content = get_file_content_at_ref(repo, parent_ref, f.path) if parent_ref else None
-            # Get new content from this commit
-            new_content = get_file_content_at_ref(repo, commit_hash, f.path)
-            files.append(
-                {
-                    "path": f.path,
-                    "diff": f.diff,
-                    "oldContent": old_content,
-                    "newContent": new_content,
-                }
-            )
-        stats = parsed_stats
+        parsed_files, stats = parse_diff_output(diff_text)
+        files = _content_entries(
+            parsed_files,
+            _ContentBudget(),
+            lambda path: get_file_content_at_ref(repo, parent_ref, path) if parent_ref else None,
+            lambda path: get_file_content_at_ref(repo, commit_hash, path),
+        )
 
     return {
         **commit_info,
@@ -953,15 +1012,12 @@ def get_range_diff(cwd: Path, from_hash: str, to_hash: str) -> dict | None:
 
     if diff_text:
         parsed_files, stats = parse_diff_output(diff_text)
-        files = [
-            {
-                "path": f.path,
-                "diff": f.diff,
-                "oldContent": get_file_content_at_ref(repo, base.hexsha, f.path),
-                "newContent": get_file_content_at_ref(repo, head.hexsha, f.path),
-            }
-            for f in parsed_files
-        ]
+        files = _content_entries(
+            parsed_files,
+            _ContentBudget(),
+            lambda path: get_file_content_at_ref(repo, base.hexsha, path),
+            lambda path: get_file_content_at_ref(repo, head.hexsha, path),
+        )
 
     return {
         **_commit_summary(head),
