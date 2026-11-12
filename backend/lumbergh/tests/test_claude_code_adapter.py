@@ -1,4 +1,5 @@
 import asyncio
+import json
 from pathlib import Path
 
 from lumbergh.activity.claude_code import ClaudeCodeAdapter
@@ -334,3 +335,26 @@ def test_tail_streams_history_then_stops(tmp_path):
 
     events = asyncio.run(run())
     assert [e.text for e in events] == ["hi"]
+
+
+def test_compaction_summary_collapses_to_a_compacted_chip(tmp_path):
+    boundary = (
+        '{"type":"system","subtype":"compact_boundary","content":"Conversation compacted",'
+        '"compactMetadata":{"trigger":"auto","preTokens":416510}}'
+    )
+    summary = json.dumps(
+        {
+            "type": "user",
+            "isCompactSummary": True,
+            "isVisibleInTranscriptOnly": True,
+            "message": {
+                "role": "user",
+                "content": "This session is being continued from a previous conversation "
+                "that ran out of context.\n\n" + "Summary detail. " * 2000,
+            },
+        }
+    )
+
+    events = _events_for(tmp_path, boundary, summary)
+
+    assert [(e.type, e.text) for e in events] == [("status", "compacted")]

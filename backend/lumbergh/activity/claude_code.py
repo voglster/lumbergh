@@ -201,6 +201,10 @@ class ClaudeCodeAdapter(AgentAdapter):
         kind = obj.get("type")
         ts = _parse_ts(obj.get("timestamp"))
         message = obj.get("message") or {}
+        if kind == "user" and obj.get("isCompactSummary"):
+            return [
+                ConversationEvent(type="status", id=self._eid(), timestamp=ts, text="compacted")
+            ]
         if kind == "user":
             return self._user_events(message, ts)
         if kind == "assistant":
