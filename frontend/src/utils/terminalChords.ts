@@ -42,8 +42,13 @@ export function exitsScrollMode(event: KeyboardEvent): boolean {
 export function isPasteChord(event: KeyboardEvent): boolean {
   if (event.type !== 'keydown') return false
   if (event.shiftKey || event.altKey) return false
-  // Physical key position: on a non-QWERTY layout the key labelled V is not the
-  // one the OS paste shortcut uses, and the OS shortcut is what we are matching.
-  if (event.code !== 'KeyV') return false
+  // Physical key position, preferred: on a non-QWERTY layout the key labelled V
+  // is not the one the OS paste shortcut uses, and the OS shortcut is what we
+  // are matching. But dictation/injection tools (Wispr Flow and friends) send a
+  // trusted, OS-level Ctrl+V whose `code` is sometimes empty - there's no
+  // physical key behind it, so there's nothing to report. Fall back to the
+  // produced character in that case rather than dropping the paste.
+  const matchesV = event.code ? event.code === 'KeyV' : event.key.toLowerCase() === 'v'
+  if (!matchesV) return false
   return event.ctrlKey !== event.metaKey
 }
