@@ -240,6 +240,10 @@ POSTing. Piper's webhook URL and auth stay in sherpa's vault, not Lumbergh's
 environment. The heartbeat is not sent to Piper. A note `sherpa piper` reports as unsent
 counts as a failed POST, and gets the same one-minute hold-off.
 
+To turn either mode on persistently, put the variables in
+`~/.config/lumbergh/backend.env` (`KEY=value` lines). `backend/start.sh` loads that file
+when it exists, so the settings stay out of the repo and out of every other shell.
+
 ## Debugging Event Loop Lag
 
 Lumbergh serves terminals, polls and clicks from one event loop, so a handler

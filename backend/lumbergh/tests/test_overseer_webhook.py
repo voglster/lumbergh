@@ -15,6 +15,7 @@ def webhook_env(monkeypatch):
     monkeypatch.setenv(overseer_webhook.URL_ENV, URL)
     monkeypatch.setenv(overseer_webhook.KEY_ENV, "s3cret")
     monkeypatch.delenv(overseer_webhook.HEADER_ENV, raising=False)
+    monkeypatch.delenv(overseer_webhook.PIPER_ENV, raising=False)
     overseer_webhook.reset_backoff()
     yield
     overseer_webhook.reset_backoff()
