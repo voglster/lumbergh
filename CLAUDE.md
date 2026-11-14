@@ -234,6 +234,12 @@ report needs the supervisor for a reason not already posted, and the heartbeat r
 most every 30 minutes, counted from backend start so `--reload` doesn't post one on
 every save. A failed POST holds further ones off for a minute.
 
+`LUMBERGH_OVERSEER_PIPER=1` sends the same taps to Piper (Jim's Grok Bot assistant) by
+running `sherpa piper "<reason>" --session <names> --kind done|blocked|error` instead of
+POSTing. Piper's webhook URL and auth stay in sherpa's vault, not Lumbergh's
+environment. The heartbeat is not sent to Piper. A note `sherpa piper` reports as unsent
+counts as a failed POST, and gets the same one-minute hold-off.
+
 ## Debugging Event Loop Lag
 
 Lumbergh serves terminals, polls and clicks from one event loop, so a handler
